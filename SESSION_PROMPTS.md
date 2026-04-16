@@ -13,19 +13,19 @@ Execute Slice 0 from SPEC §10:
 - Initialize Next.js 15 with TypeScript, App Router, Tailwind, ESLint
 - Add shadcn/ui, install button/input/dropdown-menu/dialog/sheet/table/badge/tooltip/toast/sonner/select/checkbox/form/label/separator/tabs/card
 - Install: @supabase/supabase-js, @supabase/ssr, zod, react-hook-form, @hookform/resolvers, @tanstack/react-table, lucide-react, date-fns
-- Create Supabase clients per SPEC §8 directory structure
-- Implement /login page per SPEC §2.1: single "Sign in with Microsoft" button + "Keep me signed in for 30 days" checkbox
-- Implement /auth/callback route handler that: exchanges code, looks up team_members by email, auto-provisions as 'member' if absent, blocks if is_active=false, sets persistent cookie iff "keep signed in" was checked (30-day refresh token TTL)
+- Create Supabase clients per SPEC §8 directory structure. Structure the auth provider layer so it is a SINGLE file (e.g. /lib/auth/provider.ts) — migrating to Azure AD in v2 should touch only that file plus the login page button.
+- Implement /login page per SPEC §2.1: email input + "Send me a sign-in link" button + "Keep me signed in for 30 days" checkbox. Client-side validation that email ends with @anexadvisory.com; show inline error otherwise. Confirmation screen after submit.
+- Implement /auth/callback route handler that: verifies the session, re-checks the email domain server-side (signs out + redirects to /login?error=domain if invalid), looks up team_members by email, auto-provisions as 'member' if absent, blocks if is_active=false, sets persistent cookie iff "keep signed in" was checked (30-day refresh token TTL)
 - Implement middleware.ts per SPEC §2.1: guard all routes except /login and /auth/callback; redirect on missing/inactive session
 - Implement AppShell (sidebar with links to /, /assets, /developers, /logs, /team; top bar with user menu including Sign out)
 - Scaffold empty pages for all 5 routes
 - Add .env.example with NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-- Write docs/AUTH_SETUP.md with the manual Azure AD + Supabase steps from SPEC §2.1 "Setup prerequisites"
-- Seed script: insert team_members row for omkar.chaudhari@anexadvisory.com with role='admin', is_active=true (auth.users entry will be created on first login; seed uses a known UUID and the trigger on auth.users linking is handled on first login by an upsert in /auth/callback)
+- Write docs/AUTH_SETUP.md documenting BOTH (a) current v1 setup (what the user already did in Supabase — enable Email provider, magic link config), and (b) v2 migration steps to Azure AD (what to do when ready to switch)
+- Seed script: insert team_members row for omkar.chaudhari@anexadvisory.com with role='admin', is_active=true. The auth.users entry will be created on first login; /auth/callback handles linking by upserting on email match.
 
-End state: I can complete Azure AD setup via the docs, log in with my @anexadvisory.com Microsoft account, see the shell, click between routes. No business data yet.
+End state: I can run `npm run dev`, visit /login, enter my @anexadvisory.com email, receive a magic link email, click it, land logged in on the dashboard shell. Non-Anex emails are rejected.
 
-Show me the file tree, any decisions you made, and paste the contents of docs/AUTH_SETUP.md so I can follow it.
+Show me the file tree, any decisions you made, and paste the contents of docs/AUTH_SETUP.md.
 ```
 
 ---

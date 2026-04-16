@@ -18,7 +18,7 @@ Anex Dashboard — internal PM tool for real-estate opportunities. Next.js 15 + 
 8. **Server actions return `{ ok: true, data } | { ok: false, error: string }`.** Never throw across the boundary.
 9. **Migrations are additive and numbered.** Never edit a migration after it's been applied to a shared DB. Write a new one.
 10. **Do not read or write files outside this repo** unless explicitly instructed.
-11. **Azure AD is the only way in.** Never add email/password, magic-link, or other OAuth providers to the login flow. Domain restriction is enforced by Microsoft (single-tenant app), not by us.
+11. **Login is email magic-link only in v1, locked to `@anexadvisory.com`.** Domain check runs both client-side (before send) and server-side (in `/auth/callback`). Do NOT add password login, Google, GitHub, or any other provider. Azure AD OAuth is the planned v2 switch — keep the auth layer modular so swapping providers is a single-file change.
 
 ## Directory conventions
 

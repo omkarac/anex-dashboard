@@ -30,7 +30,7 @@ Anex Dashboard is an internal project-management tool for Anex. It tracks real-e
 | Tables | TanStack Table | Handles filtering, sorting, 1000s of rows |
 | Forms | react-hook-form + Zod | Same schema on client + server |
 | DB | Supabase (Postgres) | RLS, realtime, one-command migrations |
-| Auth | Supabase Auth + Azure AD OAuth (single-tenant) | Tenant-restricted login enforced by Microsoft |
+| Auth | Supabase Auth — email magic link (v1), Azure AD OAuth (v2) | Fast to ship v1; clean switch to Azure later |
 | Hosting | Vercel | Zero-config for Next.js |
 | Validation | Zod (shared schemas in `/lib/schemas/`) | One schema drives DB insert validation, form validation, and TS types |
 
@@ -38,32 +38,30 @@ Anex Dashboard is an internal project-management tool for Anex. It tracks real-e
 
 ## 2.1 Authentication & Session
 
-### Provider
+### Provider (v1 — temporary)
 
-Supabase Auth with **Microsoft/Azure AD OAuth** as the sole provider. Configured as single-tenant against Anex's Azure AD tenant. No email/password, no magic link, no Google/GitHub.
+Supabase Auth with **email magic-link** as the sole provider. User enters their email, receives a link, clicks it, is logged in. No passwords.
 
-**Consequence of single-tenant:** Microsoft itself rejects any login attempt from accounts outside `@anexadvisory.com` before the OAuth callback even hits our app. We do not need app-level domain filtering — it's enforced upstream.
+**Domain restriction (enforced in app):** only emails ending in `@anexadvisory.com` may proceed. Any other email is rejected with a clear message before or immediately after the magic-link round trip. The `/auth/callback` route re-verifies the email domain server-side (defense in depth) and signs the user out if it doesn't match.
 
-### Setup prerequisites (manual, one-time)
+**Migration path to Azure AD (v2):** when ready, we switch the provider to Azure AD single-tenant (credentials already exist in the Anex Azure tenant and Supabase project). The app-level domain check becomes redundant (Microsoft enforces it) but stays in place as a safety net. This is a ~15-minute switch: swap the provider, update the login button, re-test.
 
-These happen in Azure Portal + Supabase Dashboard, not in code. Document them in `docs/AUTH_SETUP.md` during Slice 0:
+### First admin
 
-1. Azure AD app registration under Anex tenant, "Single tenant" option
-2. Redirect URI: `https://<project>.supabase.co/auth/v1/callback`
-3. API permissions: `openid`, `email`, `profile`, `User.Read`
-4. Client secret generated, stored in Supabase → Auth → Providers → Azure
-5. Supabase Auth: disable Email provider, enable Azure, paste tenant ID + client ID + client secret
+`omkar.chaudhari@anexadvisory.com` — seeded as `role='admin'` in the `team_members` table. On first login, the auth callback links the authenticated user to this seeded row.
 
 ### Login page (`/login`)
 
-- Single "Sign in with Microsoft" button, Anex branding.
+- Single email input + **"Send me a sign-in link"** button
+- Before calling Supabase `signInWithOtp`, the client checks the email ends with `@anexadvisory.com`. If not, show inline error "Only @anexadvisory.com emails are allowed."
 - Checkbox: **"Keep me signed in for 30 days"** (unchecked by default).
-- No other fields.
-- On successful OAuth callback:
+- After the user clicks the button: show a friendly "Check your email for the link" confirmation screen.
+- On clicking the emailed link → lands on `/auth/callback`:
+  - Re-verifies email domain server-side. If not `@anexadvisory.com` → sign out, redirect to `/login?error=domain`.
   - Look up `team_members` by email.
   - If found and `is_active = true` → proceed, set session cookie.
   - If found and `is_active = false` → sign out, show "Account deactivated".
-  - If not found → auto-provision as `member` with `full_name` from OAuth profile, `is_active = true`. (Admins can deactivate later.) First login by `omkar.chaudhari@anexadvisory.com` is special-cased in the seed to get `role = admin`.
+  - If not found → auto-provision as `member` with the email; `full_name` set from the email local-part until the user updates it in profile. First login by `omkar.chaudhari@anexadvisory.com` is special-cased in the seed to get `role = admin`.
 
 ### Session duration
 
@@ -84,10 +82,10 @@ Sign out button in user menu → clears Supabase session + our "keep signed in" 
 
 ### What we never do
 
-- Store OAuth tokens in JS-accessible storage (always httpOnly cookies via `@supabase/ssr`).
-- Expose the Azure client secret to the browser.
-- Check domain at the app level — that's Azure AD's job (and we trust it).
+- Store auth tokens in JS-accessible storage (always httpOnly cookies via `@supabase/ssr`).
+- Accept a login from an email not ending in `@anexadvisory.com` — checked client-side AND re-checked server-side in the callback.
 - Allow the auto-provisioning code to grant `admin` role to anyone other than the seeded first admin.
+- (When migrating to Azure AD) remove the app-level domain check — it stays as a safety net even after Azure enforces it upstream.
 
 ---
 
