@@ -25,36 +25,24 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // IMPORTANT: use getUser() not getSession() — getSession() reads an
+  // unverified JWT from the cookie and can let expired sessions through.
+  const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isAuthRoute =
-    pathname === '/login' || pathname.startsWith('/auth/');
+  const isPublicRoute =
+    pathname === '/login' ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon');
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && !isAuthRoute) {
-    // Check team_member is_active
-    const { data: member } = await supabase
-      .from('team_members')
-      .select('is_active')
-      .eq('id', user.id)
-      .single();
-
-    if (member && !member.is_active) {
-      await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('error', 'deactivated');
-      return NextResponse.redirect(url);
-    }
-  }
-
+  // Must return supabaseResponse — not NextResponse.next() — so that
+  // refreshed session cookies are forwarded to the browser.
   return supabaseResponse;
 }

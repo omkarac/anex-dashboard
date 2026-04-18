@@ -1,8 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Handles Supabase session refresh redirects (not used in password login flow,
-// kept for future OAuth/magic-link switch)
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
@@ -11,7 +10,30 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  const supabase = await createClient();
+  const cookieStore = await cookies();
+
+  // The redirect response is created first so we can attach session cookies to it.
+  // cookies() from next/headers is read-only in Route Handlers — setAll must
+  // write directly onto the response object or the session never reaches the browser.
+  const redirectTo = NextResponse.redirect(`${origin}/`);
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            redirectTo.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
@@ -21,7 +43,7 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(`${origin}/login`);
 
-  // Auto-provision member if not exists
+  // Auto-provision team_members row on first login
   const { data: existing } = await supabase
     .from('team_members')
     .select('id, is_active')
@@ -41,5 +63,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=deactivated`);
   }
 
-  return NextResponse.redirect(`${origin}/`);
+  return redirectTo;
 }
