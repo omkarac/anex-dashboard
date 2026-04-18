@@ -1,0 +1,13 @@
+-- Seed script for first admin.
+-- Run AFTER omkar.chaudhari@anexadvisory.com has logged in at least once
+-- (so auth.users row exists). Replace <USER_ID> with the actual UUID from
+-- the auth.users table in Supabase dashboard.
+--
+-- UPDATE team_members
+-- SET role = 'admin'
+-- WHERE email = 'omkar.chaudhari@anexadvisory.com';
+--
+-- Or upsert if the auth callback hasn't run yet:
+-- INSERT INTO team_members (id, full_name, email, role, is_active)
+-- VALUES ('<USER_ID>', 'Omkar Chaudhari', 'omkar.chaudhari@anexadvisory.com', 'admin', true)
+-- ON CONFLICT (id) DO UPDATE SET role = 'admin';

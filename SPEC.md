@@ -1,3 +1,4 @@
+
 # Anex Dashboard — Master Specification
 
 > **This is the single source of truth.** All code must conform to this document. If a requirement conflicts with code, the spec wins and the code changes. If reality conflicts with the spec, update the spec first, then the code.

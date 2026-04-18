@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(npm install *)",
-      "Bash(npx shadcn@latest init --defaults)"
+      "Bash(npx shadcn@latest init --defaults)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(supabase --version)"
+    ],
+    "additionalDirectories": [
+      "/Users/omkar/anex-dashboard-1/app/auth"
     ]
   }
 }
