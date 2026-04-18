@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createServiceClient } from '@/lib/supabase/service';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -11,12 +12,9 @@ export async function GET(request: NextRequest) {
   }
 
   const cookieStore = await cookies();
-
-  // The redirect response is created first so we can attach session cookies to it.
-  // cookies() from next/headers is read-only in Route Handlers — setAll must
-  // write directly onto the response object or the session never reaches the browser.
   const redirectTo = NextResponse.redirect(`${origin}/`);
 
+  // Auth client — must write session cookies onto the redirect response
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -35,30 +33,35 @@ export async function GET(request: NextRequest) {
   );
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-
   if (error) {
+    console.error('[auth/callback] exchangeCodeForSession error:', error.message);
     return NextResponse.redirect(`${origin}/login?error=exchange_failed`);
   }
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(`${origin}/login`);
+  if (!user) {
+    return NextResponse.redirect(`${origin}/login`);
+  }
 
-  // Auto-provision team_members row on first login
-  const { data: existing } = await supabase
+  // Service client bypasses RLS — required for INSERT since only admins
+  // can write via RLS, but we need to self-provision on first login.
+  const service = createServiceClient();
+
+  const { data: existing } = await service
     .from('team_members')
     .select('id, is_active')
     .eq('id', user.id)
     .single();
 
-  if (!existing && user.email) {
-    await supabase.from('team_members').insert({
+  if (!existing) {
+    await service.from('team_members').insert({
       id: user.id,
-      full_name: user.email.split('@')[0],
-      email: user.email,
+      full_name: user.email!.split('@')[0],
+      email: user.email!,
       role: 'member',
       is_active: true,
     });
-  } else if (existing && !existing.is_active) {
+  } else if (!existing.is_active) {
     await supabase.auth.signOut();
     return NextResponse.redirect(`${origin}/login?error=deactivated`);
   }
