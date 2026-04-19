@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import { listAssets, getDistinctSpocAgents } from '@/lib/queries/assets';
+import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/queries/assets';
 import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
@@ -42,9 +42,10 @@ export default async function AssetsPage({
     page,
   };
 
-  const [{ assets, count, pageCount }, spocOptions] = await Promise.all([
+  const [{ assets, count, pageCount }, spocOptions, bounds] = await Promise.all([
     listAssets(filters),
     getDistinctSpocAgents(),
+    getAssetNumericBounds(),
   ]);
 
   return (
@@ -61,7 +62,7 @@ export default async function AssetsPage({
         </div>
         <div className="mt-3">
           <Suspense>
-            <FilterBar spocOptions={spocOptions} />
+            <FilterBar spocOptions={spocOptions} toplineBound={bounds.topline_max} invBound={bounds.inv_max} />
           </Suspense>
         </div>
       </div>

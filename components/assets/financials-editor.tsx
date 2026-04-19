@@ -6,7 +6,6 @@ import { Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateAssetFinancials } from '@/lib/actions/assets';
-import { formatCr, formatSqm, formatPsf } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 
 type NumericField = {
@@ -16,16 +15,19 @@ type NumericField = {
   unit?: string;
 };
 
+const num = (v: number | null | undefined) =>
+  v != null ? v.toLocaleString('en-IN') : '—';
+
 const FIELDS: NumericField[] = [
-  { key: 'plot_size_sqm',               label: 'Plot Size',              format: formatSqm,  unit: 'sq.m.' },
-  { key: 'fsi_potential',               label: 'FSI Potential',          format: (v) => v?.toFixed(3) ?? '—' },
-  { key: 'development_potential_sqm',   label: 'Development Potential',  format: formatSqm,  unit: 'sq.m.' },
-  { key: 'rehab_area_sqm',              label: 'Rehab Area',             format: formatSqm,  unit: 'sq.m.' },
-  { key: 'sale_area_sqm',               label: 'Sale Area',              format: formatSqm,  unit: 'sq.m.' },
-  { key: 'sale_rate_psf',               label: 'Sale Rate',              format: formatPsf,  unit: '₹/sq.ft.' },
-  { key: 'initial_investment_cr',       label: 'Initial Investment',     format: formatCr,   unit: '₹Cr' },
-  { key: 'topline_cr',                  label: 'Topline',                format: formatCr,   unit: '₹Cr' },
-  { key: 'profit_cr',                   label: 'Profit',                 format: formatCr,   unit: '₹Cr' },
+  { key: 'plot_size_sqm',               label: 'Plot Size',              format: num,  unit: 'sq.m.' },
+  { key: 'fsi_potential',               label: 'FSI Potential',          format: (v) => v != null ? (v as number).toFixed(3) : '—' },
+  { key: 'development_potential_sqm',   label: 'Development Potential',  format: num,  unit: 'sq.m.' },
+  { key: 'rehab_area_sqm',              label: 'Rehab Area',             format: num,  unit: 'sq.m.' },
+  { key: 'sale_area_sqm',               label: 'Sale Area',              format: num,  unit: 'sq.m.' },
+  { key: 'sale_rate_psf',               label: 'Sale Rate',              format: num,  unit: '/sq.ft.' },
+  { key: 'initial_investment_cr',       label: 'Initial Investment',     format: num,  unit: 'Cr' },
+  { key: 'topline_cr',                  label: 'Topline',                format: num,  unit: 'Cr' },
+  { key: 'profit_cr',                   label: 'Profit',                 format: num,  unit: 'Cr' },
 ];
 
 export function FinancialsEditor({ asset }: { asset: Asset }) {

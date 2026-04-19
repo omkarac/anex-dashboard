@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
 import { MultiSelect } from '@/components/shared/multi-select';
+import { RangeSlider } from '@/components/ui/range-slider';
 import { ASSET_STATUS_LABELS, ASSET_TEMPERATURE_LABELS, ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,8 @@ import type { SortOption } from '@/lib/queries/assets';
 
 type FilterBarProps = {
   spocOptions: string[];
+  toplineBound: number;
+  invBound: number;
 };
 
 const STATUS_OPTIONS = (Object.keys(ASSET_STATUS_LABELS) as AssetStatus[]).map((v) => ({
@@ -36,59 +39,110 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'topline_asc',  label: 'Topline ↑' },
 ];
 
-function RangeInput({
+function NumericRangeFilter({
   label,
   paramMin,
   paramMax,
-  onChange,
+  bound,
+  onCommit,
 }: {
   label: string;
   paramMin: string;
   paramMax: string;
-  onChange: (key: string, val: string) => void;
+  bound: number;
+  onCommit: (key: string, val: string) => void;
 }) {
   const searchParams = useSearchParams();
-  const [min, setMin] = useState(searchParams.get(paramMin) ?? '');
-  const [max, setMax] = useState(searchParams.get(paramMax) ?? '');
 
+  const initMin = () => Math.max(0, Number(searchParams.get(paramMin) ?? 0));
+  const initMax = () => Math.min(bound, Number(searchParams.get(paramMax) ?? bound));
+
+  const [sliderMin, setSliderMin] = useState(initMin);
+  const [sliderMax, setSliderMax] = useState(initMax);
+  const [inputMin, setInputMin] = useState(String(initMin()));
+  const [inputMax, setInputMax] = useState(String(initMax()));
+
+  // Sync if URL changes externally (e.g. clear)
   useEffect(() => {
-    setMin(searchParams.get(paramMin) ?? '');
-    setMax(searchParams.get(paramMax) ?? '');
-  }, [searchParams, paramMin, paramMax]);
+    const urlMin = Math.max(0, Number(searchParams.get(paramMin) ?? 0));
+    const urlMax = Math.min(bound, Number(searchParams.get(paramMax) ?? bound));
+    setSliderMin(urlMin);
+    setSliderMax(urlMax);
+    setInputMin(String(urlMin));
+    setInputMax(String(urlMax));
+  }, [searchParams, paramMin, paramMax, bound]);
 
-  function commit(key: string, val: string) {
-    onChange(key, val);
+  function commitMin(v: number) {
+    const clamped = Math.min(v, sliderMax);
+    setSliderMin(clamped);
+    setInputMin(String(clamped));
+    onCommit(paramMin, clamped === 0 ? '' : String(clamped));
+  }
+
+  function commitMax(v: number) {
+    const clamped = Math.max(v, sliderMin);
+    setSliderMax(clamped);
+    setInputMax(String(clamped));
+    onCommit(paramMax, clamped === bound ? '' : String(clamped));
+  }
+
+  function handleInputMin(raw: string) {
+    setInputMin(raw);
+    const v = parseFloat(raw);
+    if (!isNaN(v) && v >= 0 && v <= sliderMax) commitMin(v);
+  }
+
+  function handleInputMax(raw: string) {
+    setInputMax(raw);
+    const v = parseFloat(raw);
+    if (!isNaN(v) && v >= sliderMin && v <= bound) commitMax(v);
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">{label} ₹Cr</span>
-      <Input
-        type="number"
+    <div className="flex flex-col gap-1.5 min-w-[220px]">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{label} (Cr)</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {sliderMin} – {sliderMax}
+        </span>
+      </div>
+      <RangeSlider
         min={0}
-        placeholder="Min"
-        className="h-8 w-20 text-xs"
-        value={min}
-        onChange={(e) => setMin(e.target.value)}
-        onBlur={() => commit(paramMin, min)}
-        onKeyDown={(e) => { if (e.key === 'Enter') commit(paramMin, min); }}
+        max={bound}
+        step={1}
+        valueMin={sliderMin}
+        valueMax={sliderMax}
+        onChangeMin={commitMin}
+        onChangeMax={commitMax}
       />
-      <span className="text-xs text-muted-foreground">–</span>
-      <Input
-        type="number"
-        min={0}
-        placeholder="Max"
-        className="h-8 w-20 text-xs"
-        value={max}
-        onChange={(e) => setMax(e.target.value)}
-        onBlur={() => commit(paramMax, max)}
-        onKeyDown={(e) => { if (e.key === 'Enter') commit(paramMax, max); }}
-      />
+      <div className="flex items-center gap-1.5">
+        <Input
+          type="number"
+          min={0}
+          max={sliderMax}
+          value={inputMin}
+          onChange={(e) => handleInputMin(e.target.value)}
+          onBlur={() => handleInputMin(inputMin)}
+          className="h-7 w-20 text-xs text-center"
+          placeholder="Min"
+        />
+        <span className="text-xs text-muted-foreground">–</span>
+        <Input
+          type="number"
+          min={sliderMin}
+          max={bound}
+          value={inputMax}
+          onChange={(e) => handleInputMax(e.target.value)}
+          onBlur={() => handleInputMax(inputMax)}
+          className="h-7 w-20 text-xs text-center"
+          placeholder="Max"
+        />
+      </div>
     </div>
   );
 }
 
-export function FilterBar({ spocOptions }: FilterBarProps) {
+export function FilterBar({ spocOptions, toplineBound, invBound }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -129,7 +183,7 @@ export function FilterBar({ spocOptions }: FilterBarProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {/* Row 1: categorical filters + sort */}
       <div className="flex flex-wrap items-center gap-2">
         <MultiSelect
@@ -168,9 +222,8 @@ export function FilterBar({ spocOptions }: FilterBarProps) {
           className="w-36"
         />
 
-        {/* Sort */}
         <div className="flex items-center gap-1.5 ml-auto">
-          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <select
             value={currentSort}
             onChange={(e) => setParam('sort', e.target.value === 'updated_desc' ? '' : e.target.value)}
@@ -190,19 +243,21 @@ export function FilterBar({ spocOptions }: FilterBarProps) {
         )}
       </div>
 
-      {/* Row 2: numeric range filters */}
-      <div className="flex flex-wrap items-center gap-4">
-        <RangeInput
+      {/* Row 2: numeric range sliders */}
+      <div className="flex flex-wrap gap-6">
+        <NumericRangeFilter
           label="Topline"
           paramMin="topline_min"
           paramMax="topline_max"
-          onChange={setParam}
+          bound={toplineBound}
+          onCommit={setParam}
         />
-        <RangeInput
-          label="Inv."
+        <NumericRangeFilter
+          label="Initial Investment"
           paramMin="inv_min"
           paramMax="inv_max"
-          onChange={setParam}
+          bound={invBound}
+          onCommit={setParam}
         />
       </div>
     </div>

@@ -67,16 +67,24 @@ const columns: ColumnDef<Asset>[] = [
   },
   {
     accessorKey: 'initial_investment_cr',
-    header: 'Inv. (₹Cr)',
+    header: 'Inv. (Cr)',
     cell: ({ row }) => (
-      <span className="tabular-nums">{formatCr(row.original.initial_investment_cr)}</span>
+      <span className="tabular-nums">
+        {row.original.initial_investment_cr != null
+          ? row.original.initial_investment_cr.toLocaleString('en-IN')
+          : <span className="text-muted-foreground">—</span>}
+      </span>
     ),
   },
   {
     accessorKey: 'topline_cr',
-    header: 'Topline (₹Cr)',
+    header: 'Topline (Cr)',
     cell: ({ row }) => (
-      <span className="tabular-nums">{formatCr(row.original.topline_cr)}</span>
+      <span className="tabular-nums">
+        {row.original.topline_cr != null
+          ? row.original.topline_cr.toLocaleString('en-IN')
+          : <span className="text-muted-foreground">—</span>}
+      </span>
     ),
   },
   {
@@ -141,8 +149,8 @@ export function AssetTable({ data, count, pageCount, page }: AssetTableProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-lg border overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-lg border overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm">
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="border-b bg-muted/40">
