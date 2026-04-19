@@ -83,8 +83,27 @@ export async function getAsset(id: string): Promise<Asset | null> {
   return data as Asset;
 }
 
-export function getAssetNumericBounds(): { topline_max: number; inv_max: number } {
-  return { topline_max: 5000, inv_max: 5000 };
+export async function getAssetNumericBounds(): Promise<{
+  topline_max: number;
+  inv_max: number;
+}> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('assets')
+    .select('topline_cr, initial_investment_cr')
+    .is('deleted_at', null);
+
+  let topline_max = 1000;
+  let inv_max = 1000;
+
+  if (data?.length) {
+    const toplines = data.map((r) => r.topline_cr ?? 0).filter((v) => v > 0);
+    const invs = data.map((r) => r.initial_investment_cr ?? 0).filter((v) => v > 0);
+    if (toplines.length) topline_max = Math.ceil((Math.max(...toplines) / CR_SCALE) * 1.1);
+    if (invs.length) inv_max = Math.ceil((Math.max(...invs) / CR_SCALE) * 1.1);
+  }
+
+  return { topline_max, inv_max };
 }
 
 export async function getDistinctSpocAgents(): Promise<string[]> {

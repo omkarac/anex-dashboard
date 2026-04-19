@@ -42,11 +42,11 @@ export default async function AssetsPage({
     page,
   };
 
-  const [{ assets, count, pageCount }, spocOptions] = await Promise.all([
+  const [{ assets, count, pageCount }, spocOptions, bounds] = await Promise.all([
     listAssets(filters),
     getDistinctSpocAgents(),
+    getAssetNumericBounds(),
   ]);
-  const bounds = getAssetNumericBounds();
 
   return (
     <div className="flex flex-col h-full">
