@@ -1,14 +1,22 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { listAssets, getDistinctSpocAgents } from '@/lib/queries/assets';
+import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
 import { AssetCreateSheet } from '@/components/assets/asset-create-sheet';
 
 export const metadata: Metadata = { title: 'Assets — Anex' };
 
+const VALID_SORTS: SortOption[] = ['updated_desc', 'name_asc', 'name_desc', 'topline_asc', 'topline_desc'];
+
 function parseParam(params: Record<string, string>, key: string): string[] {
   return params[key] ? params[key].split(',').filter(Boolean) : [];
+}
+
+function parseNum(params: Record<string, string>, key: string): number | undefined {
+  const v = parseFloat(params[key]);
+  return isNaN(v) ? undefined : v;
 }
 
 export default async function AssetsPage({
@@ -18,6 +26,7 @@ export default async function AssetsPage({
 }) {
   const params = await searchParams;
   const page = parseInt(params.page ?? '1', 10);
+  const sort = VALID_SORTS.includes(params.sort as SortOption) ? (params.sort as SortOption) : 'updated_desc';
 
   const filters = {
     status: parseParam(params, 'status'),
@@ -25,6 +34,11 @@ export default async function AssetsPage({
     asset_type: parseParam(params, 'asset_type'),
     regulation: parseParam(params, 'regulation'),
     spoc_agent: parseParam(params, 'spoc_agent'),
+    sort,
+    topline_min: parseNum(params, 'topline_min'),
+    topline_max: parseNum(params, 'topline_max'),
+    inv_min: parseNum(params, 'inv_min'),
+    inv_max: parseNum(params, 'inv_max'),
     page,
   };
 

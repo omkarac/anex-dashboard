@@ -15,6 +15,7 @@ import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { ENGAGEMENT_KIND_LABELS } from '@/lib/enums/engagement';
 import { formatCr, formatSqm, formatPsf, formatDate } from '@/lib/utils/formatters';
 import { ConvertDialog } from '@/components/assets/convert-dialog';
+import { FinancialsEditor } from '@/components/assets/financials-editor';
 import { ChevronLeft } from 'lucide-react';
 
 export async function generateMetadata({
@@ -107,20 +108,7 @@ export default async function AssetDetailPage({
               {asset.handover_notes && <Field label="Handover Notes" value={asset.handover_notes} />}
             </section>
 
-            <section className="rounded-lg border p-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Feasibility Numbers
-              </h2>
-              <Field label="Plot Size" value={formatSqm(asset.plot_size_sqm)} />
-              <Field label="FSI Potential" value={asset.fsi_potential?.toFixed(3) ?? null} />
-              <Field label="Development Potential" value={formatSqm(asset.development_potential_sqm)} />
-              <Field label="Rehab Area" value={formatSqm(asset.rehab_area_sqm)} />
-              <Field label="Sale Area" value={formatSqm(asset.sale_area_sqm)} />
-              <Field label="Sale Rate" value={formatPsf(asset.sale_rate_psf)} />
-              <Field label="Initial Investment" value={formatCr(asset.initial_investment_cr)} />
-              <Field label="Topline" value={formatCr(asset.topline_cr)} />
-              <Field label="Profit" value={formatCr(asset.profit_cr)} />
-            </section>
+            <FinancialsEditor asset={asset} />
 
             {(asset.regulations.length > 0 || asset.regulation_notes) && (
               <section className="rounded-lg border p-4">

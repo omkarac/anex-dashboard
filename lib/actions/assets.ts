@@ -173,6 +173,39 @@ export async function updateAssetNextStep(
   return result;
 }
 
+export async function updateAssetFinancials(
+  assetId: string,
+  fields: {
+    initial_investment_cr?: number | null;
+    topline_cr?: number | null;
+    profit_cr?: number | null;
+    sale_rate_psf?: number | null;
+    plot_size_sqm?: number | null;
+    development_potential_sqm?: number | null;
+    rehab_area_sqm?: number | null;
+    sale_area_sqm?: number | null;
+    fsi_potential?: number | null;
+  }
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'asset',
+    entityId: assetId,
+    summary: 'Feasibility numbers updated',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('assets')
+        .update({ ...fields, updated_by: actorId })
+        .eq('id', assetId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  return result;
+}
+
 export async function softDeleteAsset(assetId: string): Promise<ActionResult<void>> {
   const result = await withAudit({
     action: 'delete',

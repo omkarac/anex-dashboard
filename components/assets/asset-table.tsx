@@ -66,8 +66,15 @@ const columns: ColumnDef<Asset>[] = [
     cell: ({ row }) => row.original.spoc_agent ?? <span className="text-muted-foreground">—</span>,
   },
   {
+    accessorKey: 'initial_investment_cr',
+    header: 'Inv. (₹Cr)',
+    cell: ({ row }) => (
+      <span className="tabular-nums">{formatCr(row.original.initial_investment_cr)}</span>
+    ),
+  },
+  {
     accessorKey: 'topline_cr',
-    header: 'Topline',
+    header: 'Topline (₹Cr)',
     cell: ({ row }) => (
       <span className="tabular-nums">{formatCr(row.original.topline_cr)}</span>
     ),
