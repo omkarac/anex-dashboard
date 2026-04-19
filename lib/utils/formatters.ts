@@ -1,3 +1,15 @@
+// DB stores monetary values in rupees; 1 Crore = 10^7 rupees
+export const CR_SCALE = 1e7;
+
+export function toCr(rupees: number | null | undefined): number | null {
+  if (rupees == null) return null;
+  return rupees / CR_SCALE;
+}
+
+export function fromCr(crore: number): number {
+  return crore * CR_SCALE;
+}
+
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—';
   return new Intl.DateTimeFormat('en-IN', {

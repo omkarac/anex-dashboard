@@ -13,7 +13,7 @@ import { getSharesForAsset, getDeveloperOptions } from '@/lib/queries/developers
 import { getEngagementForAsset } from '@/lib/queries/engagements';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { ENGAGEMENT_KIND_LABELS } from '@/lib/enums/engagement';
-import { formatCr, formatSqm, formatPsf, formatDate } from '@/lib/utils/formatters';
+import { formatSqm, formatPsf, formatDate, toCr } from '@/lib/utils/formatters';
 import { ConvertDialog } from '@/components/assets/convert-dialog';
 import { FinancialsEditor } from '@/components/assets/financials-editor';
 import { ChevronLeft } from 'lucide-react';

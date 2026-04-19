@@ -6,6 +6,7 @@ import { Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateAssetFinancials } from '@/lib/actions/assets';
+import { toCr, fromCr } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 
 type NumericField = {
@@ -13,6 +14,7 @@ type NumericField = {
   label: string;
   format: (v: number | null | undefined) => string;
   unit?: string;
+  isCr?: boolean; // value stored in rupees, display/edit in Crore
 };
 
 const num = (v: number | null | undefined) =>
@@ -25,9 +27,9 @@ const FIELDS: NumericField[] = [
   { key: 'rehab_area_sqm',              label: 'Rehab Area',             format: num,  unit: 'sq.m.' },
   { key: 'sale_area_sqm',               label: 'Sale Area',              format: num,  unit: 'sq.m.' },
   { key: 'sale_rate_psf',               label: 'Sale Rate',              format: num,  unit: '/sq.ft.' },
-  { key: 'initial_investment_cr',       label: 'Initial Investment',     format: num,  unit: 'Cr' },
-  { key: 'topline_cr',                  label: 'Topline',                format: num,  unit: 'Cr' },
-  { key: 'profit_cr',                   label: 'Profit',                 format: num,  unit: 'Cr' },
+  { key: 'initial_investment_cr',       label: 'Initial Investment',     format: (v) => toCr(v as number)?.toLocaleString('en-IN') ?? '—', unit: 'Cr', isCr: true },
+  { key: 'topline_cr',                  label: 'Topline',                format: (v) => toCr(v as number)?.toLocaleString('en-IN') ?? '—', unit: 'Cr', isCr: true },
+  { key: 'profit_cr',                   label: 'Profit',                 format: (v) => toCr(v as number)?.toLocaleString('en-IN') ?? '—', unit: 'Cr', isCr: true },
 ];
 
 export function FinancialsEditor({ asset }: { asset: Asset }) {
@@ -35,12 +37,22 @@ export function FinancialsEditor({ asset }: { asset: Asset }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(FIELDS.map((f) => [f.key, asset[f.key] != null ? String(asset[f.key]) : '']))
+    Object.fromEntries(FIELDS.map((f) => {
+      const raw = asset[f.key];
+      if (raw == null) return [f.key, ''];
+      const display = f.isCr ? toCr(raw as number) : raw;
+      return [f.key, display != null ? String(display) : ''];
+    }))
   );
   const [error, setError] = useState<string | null>(null);
 
   function cancel() {
-    setValues(Object.fromEntries(FIELDS.map((f) => [f.key, asset[f.key] != null ? String(asset[f.key]) : ''])));
+    setValues(Object.fromEntries(FIELDS.map((f) => {
+      const raw = asset[f.key];
+      if (raw == null) return [f.key, ''];
+      const display = f.isCr ? toCr(raw as number) : raw;
+      return [f.key, display != null ? String(display) : ''];
+    })));
     setEditing(false);
     setError(null);
   }
@@ -50,7 +62,10 @@ export function FinancialsEditor({ asset }: { asset: Asset }) {
       const fields: Record<string, number | null> = {};
       for (const f of FIELDS) {
         const raw = values[f.key as string].trim();
-        fields[f.key as string] = raw === '' ? null : parseFloat(raw);
+        if (raw === '') { fields[f.key as string] = null; continue; }
+        const parsed = parseFloat(raw);
+        // Cr fields: user edits in Crore, convert back to rupees for storage
+        fields[f.key as string] = f.isCr ? fromCr(parsed) : parsed;
       }
       const result = await updateAssetFinancials(asset.id, fields as Parameters<typeof updateAssetFinancials>[1]);
       if (result.ok) {

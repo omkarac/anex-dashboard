@@ -15,6 +15,7 @@ import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { formatDate, formatCr, formatSqm } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { toCr } from '@/lib/utils/formatters';
 
 const columns: ColumnDef<Asset>[] = [
   {
@@ -68,24 +69,18 @@ const columns: ColumnDef<Asset>[] = [
   {
     accessorKey: 'initial_investment_cr',
     header: 'Inv. (Cr)',
-    cell: ({ row }) => (
-      <span className="tabular-nums">
-        {row.original.initial_investment_cr != null
-          ? row.original.initial_investment_cr.toLocaleString('en-IN')
-          : <span className="text-muted-foreground">—</span>}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const v = toCr(row.original.initial_investment_cr);
+      return <span className="tabular-nums">{v != null ? v.toLocaleString('en-IN') : <span className="text-muted-foreground">—</span>}</span>;
+    },
   },
   {
     accessorKey: 'topline_cr',
     header: 'Topline (Cr)',
-    cell: ({ row }) => (
-      <span className="tabular-nums">
-        {row.original.topline_cr != null
-          ? row.original.topline_cr.toLocaleString('en-IN')
-          : <span className="text-muted-foreground">—</span>}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const v = toCr(row.original.topline_cr);
+      return <span className="tabular-nums">{v != null ? v.toLocaleString('en-IN') : <span className="text-muted-foreground">—</span>}</span>;
+    },
   },
   {
     accessorKey: 'plot_size_sqm',
