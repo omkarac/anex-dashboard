@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,13 +31,15 @@ function PanelShell({
   title,
   count,
   children,
+  chatMode,
 }: {
   title: string;
   count?: number;
   children: React.ReactNode;
+  chatMode?: boolean;
 }) {
   return (
-    <div className="rounded-lg border flex flex-col min-h-0">
+    <div className="rounded-lg border flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-muted/30 shrink-0">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
@@ -48,7 +50,9 @@ function PanelShell({
           </span>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      <div className={chatMode ? 'flex flex-col flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-y-auto'}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -67,50 +71,72 @@ function UpdatesPanel({
   const [body, setBody] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Scroll to bottom whenever updates change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [updates.length]);
 
   function submit() {
     if (!body.trim()) return;
     startTransition(async () => {
       const result = await createUpdate(assetId, body);
-      if (result.ok) { setBody(''); router.refresh(); }
+      if (result.ok) {
+        setBody('');
+        router.refresh();
+        textareaRef.current?.focus();
+      }
     });
   }
 
+  // Sort oldest first so newest appears at bottom
+  const sorted = [...updates].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
   return (
-    <div className="flex flex-col gap-3 p-3">
-      <div className="flex gap-2">
+    <div className="flex flex-col h-full">
+      {/* Scrollable messages */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 min-h-0">
+        {sorted.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center my-auto">No updates yet. Start the conversation.</p>
+        ) : (
+          sorted.map((u) => (
+            <UpdateBubble key={u.id} update={u} assetId={assetId} currentUserId={currentUserId} />
+          ))
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input pinned at bottom */}
+      <div className="border-t px-3 py-2.5 shrink-0 flex gap-2 items-end bg-background">
         <Textarea
+          ref={textareaRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Write an update…"
-          rows={2}
-          className="text-sm resize-none"
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); }}
+          placeholder="Write an update… (⌘↵ to send)"
+          rows={1}
+          className="text-sm resize-none flex-1 min-h-[36px] max-h-[120px]"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+          }}
         />
         <Button
           size="sm"
           onClick={submit}
           disabled={isPending || !body.trim()}
-          className="shrink-0 self-end"
+          className="shrink-0 h-9"
         >
-          Post
+          Send
         </Button>
       </div>
-
-      {updates.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">No updates yet.</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {updates.map((u) => (
-            <UpdateCard key={u.id} update={u} assetId={assetId} currentUserId={currentUserId} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function UpdateCard({
+function UpdateBubble({
   update,
   assetId,
   currentUserId,
@@ -121,26 +147,32 @@ function UpdateCard({
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const canDelete = update.created_by === currentUserId;
+  const isOwn = update.created_by === currentUserId;
 
   return (
-    <div className="group rounded-md border p-2.5 text-sm flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium">{update.author?.full_name ?? 'Unknown'}</span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">{formatTimeAgo(update.created_at)}</span>
-          {canDelete && (
-            <button
-              onClick={() => startTransition(async () => { await deleteUpdate(update.id, assetId); router.refresh(); })}
-              disabled={isPending}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity disabled:opacity-40"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+    <div className={`group flex flex-col gap-0.5 max-w-[80%] ${isOwn ? 'self-end items-end' : 'self-start items-start'}`}>
+      {!isOwn && (
+        <span className="text-xs text-muted-foreground px-1">{update.author?.full_name ?? 'Unknown'}</span>
+      )}
+      <div className={`relative rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
+        isOwn
+          ? 'bg-primary text-primary-foreground rounded-br-sm'
+          : 'bg-muted text-foreground rounded-bl-sm'
+      }`}>
+        {update.body}
       </div>
-      <p className="text-sm whitespace-pre-wrap">{update.body}</p>
+      <div className={`flex items-center gap-1.5 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
+        <span className="text-xs text-muted-foreground">{formatTimeAgo(update.created_at)}</span>
+        {isOwn && (
+          <button
+            onClick={() => startTransition(async () => { await deleteUpdate(update.id, assetId); router.refresh(); })}
+            disabled={isPending}
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity disabled:opacity-40"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -376,13 +408,13 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, history, 
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="flex flex-col" style={{ maxHeight: '420px' }}>
-        <PanelShell title="Updates" count={updates.length}>
+      <div className="flex flex-col" style={{ height: '480px' }}>
+        <PanelShell title="Updates" count={updates.length} chatMode>
           <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} />
         </PanelShell>
       </div>
 
-      <div className="flex flex-col" style={{ maxHeight: '420px' }}>
+      <div className="flex flex-col" style={{ maxHeight: '480px' }}>
         <PanelShell title="Tasks" count={openTasks}>
           <TasksPanel assetId={assetId} tasks={tasks} />
         </PanelShell>
