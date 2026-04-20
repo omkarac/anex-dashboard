@@ -71,11 +71,22 @@ export async function listLogs(filters: LogFilters = {}): Promise<{
 
   const memberMap = new Map((members ?? []).map((m) => [m.id, m.full_name]));
 
-  // Resolve asset: prefer asset_id column (new entries), fall back to entity_id for old asset-type entries
+  // Resolve asset: prefer asset_id column (new entries), fall back to entity_id for old entries
+  // where entity_id stores the asset id directly (asset, update-create, task-create actions)
+  const ENTITY_ID_IS_ASSET: Record<string, string[]> = {
+    asset: ['create', 'update', 'delete', 'status_change', 'convert'],
+    update: ['create'],
+    task: ['create'],
+    developer_share: ['share'],
+  };
   const resolvedAssetIds = rows.map((r) => {
     const fromCol = (r as { asset_id?: string }).asset_id;
-    const fromEntity = r.entity_type === 'asset' && r.entity_id && r.entity_id !== 'pending' ? r.entity_id : null;
-    return fromCol ?? fromEntity ?? null;
+    if (fromCol) return fromCol;
+    const allowedActions = ENTITY_ID_IS_ASSET[r.entity_type] ?? [];
+    if (allowedActions.includes(r.action) && r.entity_id && r.entity_id !== 'pending') {
+      return r.entity_id;
+    }
+    return null;
   });
 
   const assetIds = [...new Set(resolvedAssetIds.filter(Boolean))] as string[];
