@@ -19,6 +19,7 @@ export async function withAudit<T>(params: {
   action: AuditAction;
   entityType: string;
   entityId: string;
+  assetId?: string;
   summary: string;
   diff?: { before: unknown; after: unknown };
   mutation: (actorId: string) => Promise<T>;
@@ -40,6 +41,7 @@ export async function withAudit<T>(params: {
       action: params.action,
       entity_type: params.entityType,
       entity_id: params.entityId,
+      asset_id: params.assetId ?? null,
       summary: params.summary,
       diff: params.diff ?? null,
     });

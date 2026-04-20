@@ -22,6 +22,7 @@ export async function createTask(
     action: 'create',
     entityType: 'task',
     entityId: assetId,
+    assetId,
     summary: `Task created: ${data.title}`,
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -51,6 +52,7 @@ export async function updateTaskStatus(
     action: 'update',
     entityType: 'task',
     entityId: taskId,
+    assetId,
     summary: `Task status changed to ${status}`,
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -75,6 +77,7 @@ export async function deleteTask(
     action: 'delete',
     entityType: 'task',
     entityId: taskId,
+    assetId,
     summary: 'Task deleted',
     mutation: async (actorId) => {
       const service = createServiceClient();

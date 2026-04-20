@@ -16,6 +16,7 @@ export async function convertToEngagement(
     action: 'convert',
     entityType: 'asset',
     entityId: assetId,
+    assetId,
     summary: `Converted to engagement (${kind})`,
     mutation: async (actorId) => {
       const service = createServiceClient();

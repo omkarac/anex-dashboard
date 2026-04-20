@@ -16,6 +16,7 @@ export async function createUpdate(
     action: 'create',
     entityType: 'update',
     entityId: assetId,
+    assetId,
     summary: 'Update added',
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -40,6 +41,7 @@ export async function deleteUpdate(
     action: 'delete',
     entityType: 'update',
     entityId: updateId,
+    assetId,
     summary: 'Update deleted',
     mutation: async (actorId) => {
       const service = createServiceClient();

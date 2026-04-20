@@ -43,6 +43,7 @@ export async function shareWithDeveloper(
     action: 'share',
     entityType: 'developer_share',
     entityId: assetId,
+    assetId,
     summary: `Asset shared with developer`,
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -73,6 +74,7 @@ export async function updateShareOutcome(
     action: 'update',
     entityType: 'developer_share',
     entityId: shareId,
+    assetId,
     summary: `Share outcome updated: ${outcome}`,
     mutation: async (actorId) => {
       const service = createServiceClient();

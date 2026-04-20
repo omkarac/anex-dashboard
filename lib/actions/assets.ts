@@ -84,6 +84,7 @@ export async function updateAssetStatus(
     action: 'status_change',
     entityType: 'asset',
     entityId: assetId,
+    assetId,
     summary: `Status changed to ${toStatus}`,
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -135,6 +136,7 @@ export async function updateAssetTemperature(
     action: 'update',
     entityType: 'asset',
     entityId: assetId,
+    assetId,
     summary: `Temperature changed to ${temperature}`,
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -158,6 +160,7 @@ export async function updateAssetNextStep(
     action: 'update',
     entityType: 'asset',
     entityId: assetId,
+    assetId,
     summary: `Next step updated`,
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -191,6 +194,7 @@ export async function updateAssetFinancials(
     action: 'update',
     entityType: 'asset',
     entityId: assetId,
+    assetId,
     summary: 'Feasibility numbers updated',
     mutation: async (actorId) => {
       const service = createServiceClient();
@@ -211,6 +215,7 @@ export async function softDeleteAsset(assetId: string): Promise<ActionResult<voi
     action: 'delete',
     entityType: 'asset',
     entityId: assetId,
+    assetId,
     summary: 'Asset soft-deleted',
     mutation: async (actorId) => {
       const service = createServiceClient();
