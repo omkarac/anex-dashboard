@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import type { TaskStatus, TaskPriority } from '@/lib/schemas/task';
 
 export type TaskWithAssignee = {
@@ -20,8 +20,8 @@ export type TaskWithAssignee = {
 };
 
 export async function getTasksForAsset(assetId: string): Promise<TaskWithAssignee[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from('tasks')
     .select('*, assignee:team_members!assigned_to(full_name)')
     .eq('asset_id', assetId)
@@ -35,13 +35,14 @@ export async function getTasksForAsset(assetId: string): Promise<TaskWithAssigne
 export type TeamMemberOption = {
   id: string;
   full_name: string;
+  email: string;
 };
 
 export async function getTeamMembers(): Promise<TeamMemberOption[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from('team_members')
-    .select('id, full_name')
+    .select('id, full_name, email')
     .eq('is_active', true)
     .order('full_name');
 

@@ -15,6 +15,7 @@ import { formatDate as _formatDate } from '@/lib/utils/formatters';
 import type { UpdateWithAuthor, StatusHistoryEntry, ActivityLogEntry } from '@/lib/queries/updates';
 import type { TaskWithAssignee } from '@/lib/queries/tasks';
 import type { ShareWithDetails } from '@/lib/queries/developers';
+import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { TaskPriority, TaskStatus } from '@/lib/schemas/task';
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
   history: StatusHistoryEntry[];
   activity: ActivityLogEntry[];
   shares: ShareWithDetails[];
+  teamMembers: TeamMemberOption[];
 };
 
 function PanelShell({
@@ -197,30 +199,44 @@ const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
   cancelled: <Ban className="h-3.5 w-3.5 text-muted-foreground" />,
 };
 
-function TasksPanel({ assetId, tasks }: { assetId: string; tasks: TaskWithAssignee[] }) {
+function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
+  assetId: string;
+  tasks: TaskWithAssignee[];
+  teamMembers: TeamMemberOption[];
+  currentUserId: string;
+}) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
+  const [assignedTo, setAssignedTo] = useState<string>('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // Filter out the admin account (omkarac02@gmail.com) from assignee options
+  const assignableMembers = teamMembers.filter((m) => m.email !== 'omkarac02@gmail.com');
 
   function submitTask() {
     if (!title.trim()) return;
     startTransition(async () => {
-      const result = await createTask(assetId, { title, priority, due_date: dueDate || null });
-      if (result.ok) { setTitle(''); setDueDate(''); setPriority('medium'); router.refresh(); }
+      const result = await createTask(assetId, {
+        title,
+        priority,
+        due_date: dueDate || null,
+        assigned_to: assignedTo || currentUserId,
+      });
+      if (result.ok) { setTitle(''); setDueDate(''); setPriority('medium'); setAssignedTo(''); router.refresh(); }
     });
   }
 
   return (
     <div className="flex flex-col gap-2 p-3">
       {/* Quick-add */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add task…"
-          className="h-8 text-sm"
+          className="h-8 text-sm flex-1 min-w-[140px]"
           onKeyDown={(e) => { if (e.key === 'Enter') submitTask(); }}
         />
         <select
@@ -230,6 +246,16 @@ function TasksPanel({ assetId, tasks }: { assetId: string; tasks: TaskWithAssign
         >
           {PRIORITY_OPTIONS.map((p) => (
             <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
+          ))}
+        </select>
+        <select
+          value={assignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px]"
+        >
+          <option value="">Assign to self</option>
+          {assignableMembers.map((m) => (
+            <option key={m.id} value={m.id}>{m.full_name}</option>
           ))}
         </select>
         <input
@@ -277,6 +303,12 @@ function TaskRow({ task, assetId }: { task: TaskWithAssignee; assetId: string })
       <span className={`flex-1 text-sm min-w-0 truncate ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
         {task.title}
       </span>
+
+      {task.assignee && (
+        <span className="text-xs text-muted-foreground shrink-0 max-w-[80px] truncate">
+          {task.assignee.full_name.split(' ')[0]}
+        </span>
+      )}
 
       <span className={`text-xs shrink-0 ${TASK_PRIORITY_COLORS[task.priority]}`}>
         {TASK_PRIORITY_LABELS[task.priority]}
@@ -403,7 +435,7 @@ function SharesPanel({ shares }: { shares: ShareWithDetails[] }) {
   );
 }
 
-export function DetailPanels({ assetId, currentUserId, updates, tasks, history, activity, shares }: Props) {
+export function DetailPanels({ assetId, currentUserId, updates, tasks, history, activity, shares, teamMembers }: Props) {
   const openTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled').length;
 
   return (
@@ -416,7 +448,7 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, history, 
 
       <div className="flex flex-col" style={{ maxHeight: '480px' }}>
         <PanelShell title="Tasks" count={openTasks}>
-          <TasksPanel assetId={assetId} tasks={tasks} />
+          <TasksPanel assetId={assetId} tasks={tasks} teamMembers={teamMembers} currentUserId={currentUserId} />
         </PanelShell>
       </div>
 

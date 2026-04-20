@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getAsset } from '@/lib/queries/assets';
 import { getUpdatesForAsset, getStatusHistoryForAsset, getActivityLogsForAsset } from '@/lib/queries/updates';
-import { getTasksForAsset } from '@/lib/queries/tasks';
+import { getTasksForAsset, getTeamMembers } from '@/lib/queries/tasks';
 import { StatusBadge } from '@/components/assets/status-badge';
 import { TemperatureBadge } from '@/components/assets/temperature-badge';
 import { DetailPanels } from '@/components/assets/detail-panels';
@@ -50,7 +50,7 @@ export default async function AssetDetailPage({
   const currentUserId = user?.id ?? '';
 
   // .catch(() => []) / null ensures a missing table never 500s the page
-  const [asset, updates, tasks, history, activity, shares, developers, engagement] = await Promise.all([
+  const [asset, updates, tasks, history, activity, shares, developers, engagement, teamMembers] = await Promise.all([
     getAsset(id),
     getUpdatesForAsset(id).catch(() => []),
     getTasksForAsset(id).catch(() => []),
@@ -59,6 +59,7 @@ export default async function AssetDetailPage({
     getSharesForAsset(id).catch(() => []),
     getDeveloperOptions().catch(() => []),
     getEngagementForAsset(id).catch(() => null),
+    getTeamMembers().catch(() => []),
   ]);
 
   if (!asset) notFound();
@@ -163,6 +164,7 @@ export default async function AssetDetailPage({
               history={history}
               activity={activity}
               shares={shares}
+              teamMembers={teamMembers}
             />
           </div>
         </div>
