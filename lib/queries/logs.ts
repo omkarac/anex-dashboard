@@ -71,15 +71,21 @@ export async function listLogs(filters: LogFilters = {}): Promise<{
 
   const memberMap = new Map((members ?? []).map((m) => [m.id, m.full_name]));
 
-  // Resolve asset names via the asset_id column stored on each log entry
-  const assetIds = [...new Set(rows.map((r) => (r as { asset_id?: string }).asset_id).filter(Boolean))] as string[];
+  // Resolve asset: prefer asset_id column (new entries), fall back to entity_id for old asset-type entries
+  const resolvedAssetIds = rows.map((r) => {
+    const fromCol = (r as { asset_id?: string }).asset_id;
+    const fromEntity = r.entity_type === 'asset' && r.entity_id && r.entity_id !== 'pending' ? r.entity_id : null;
+    return fromCol ?? fromEntity ?? null;
+  });
+
+  const assetIds = [...new Set(resolvedAssetIds.filter(Boolean))] as string[];
   const { data: assetRows } = assetIds.length
     ? await service.from('assets').select('id, property_name').in('id', assetIds)
     : { data: [] };
   const assetMap = new Map((assetRows ?? []).map((a) => [a.id, a.property_name]));
 
-  const logs: LogEntry[] = rows.map((r) => {
-    const assetId = (r as { asset_id?: string }).asset_id;
+  const logs: LogEntry[] = rows.map((r, i) => {
+    const assetId = resolvedAssetIds[i];
     return {
       ...r,
       actor: r.actor_id ? { full_name: memberMap.get(r.actor_id) ?? 'Unknown' } : null,
