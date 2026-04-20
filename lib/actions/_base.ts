@@ -25,23 +25,12 @@ export async function withAudit<T>(params: {
 }): Promise<ActionResult<T>> {
   try {
     const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return { ok: false, error: 'Not authenticated' };
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: 'Not authenticated' };
 
-    const actorId = session.user.id;
+    const actorId = user.id;
 
-    // Ensure team_members row exists
     const service = createServiceClient();
-    await service.from('team_members').upsert(
-      {
-        id: actorId,
-        full_name: session.user.email?.split('@')[0] ?? 'User',
-        email: session.user.email!,
-        role: 'member',
-        is_active: true,
-      },
-      { onConflict: 'id', ignoreDuplicates: true }
-    );
 
     const data = await params.mutation(actorId);
 

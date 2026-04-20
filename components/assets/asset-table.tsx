@@ -92,11 +92,24 @@ const columns: ColumnDef<Asset>[] = [
   {
     accessorKey: 'next_step',
     header: 'Next Step',
-    cell: ({ row }) => (
-      <span className="max-w-48 line-clamp-1 block text-muted-foreground text-xs">
-        {row.original.next_step ?? '—'}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const text = row.original.next_step;
+      if (!text) return <span className="text-muted-foreground text-xs">—</span>;
+      const truncated = text.length > 60;
+      return (
+        <span className="text-xs text-muted-foreground">
+          {truncated ? text.slice(0, 60).trimEnd() + '…' : text}
+          {truncated && (
+            <Link
+              href={`/assets/${row.original.id}`}
+              className="ml-1 text-foreground hover:underline underline-offset-2 whitespace-nowrap"
+            >
+              read more
+            </Link>
+          )}
+        </span>
+      );
+    },
   },
   {
     accessorKey: 'updated_at',

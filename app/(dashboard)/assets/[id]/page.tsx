@@ -16,6 +16,7 @@ import { ENGAGEMENT_KIND_LABELS } from '@/lib/enums/engagement';
 import { formatSqm, formatPsf, formatDate, toCr } from '@/lib/utils/formatters';
 import { ConvertDialog } from '@/components/assets/convert-dialog';
 import { FinancialsEditor } from '@/components/assets/financials-editor';
+import { NextStepEditor } from '@/components/assets/next-step-editor';
 import { ChevronLeft } from 'lucide-react';
 
 export async function generateMetadata({
@@ -45,8 +46,8 @@ export default async function AssetDetailPage({
   const { id } = await params;
 
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const currentUserId = session?.user.id ?? '';
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id ?? '';
 
   // .catch(() => []) / null ensures a missing table never 500s the page
   const [asset, updates, tasks, history, activity, shares, developers, engagement] = await Promise.all([
@@ -128,14 +129,7 @@ export default async function AssetDetailPage({
               </section>
             )}
 
-            {asset.next_step && (
-              <section className="rounded-lg border p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Next Step
-                </h2>
-                <p className="text-sm">{asset.next_step}</p>
-              </section>
-            )}
+            <NextStepEditor assetId={id} initialValue={asset.next_step} />
 
             {engagement && (
               <section className="rounded-lg border border-green-200 bg-green-50/50 p-4">
