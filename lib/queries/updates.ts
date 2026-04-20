@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import type { AssetStatus, AssetTemperature } from '@/lib/schemas/asset';
 
 export type UpdateWithAuthor = {
@@ -38,8 +38,8 @@ export type ActivityLogEntry = {
 };
 
 export async function getUpdatesForAsset(assetId: string): Promise<UpdateWithAuthor[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from('updates')
     .select('*, author:team_members!created_by(full_name)')
     .eq('asset_id', assetId)
@@ -51,8 +51,8 @@ export async function getUpdatesForAsset(assetId: string): Promise<UpdateWithAut
 }
 
 export async function getStatusHistoryForAsset(assetId: string): Promise<StatusHistoryEntry[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from('status_history')
     .select('*, actor:team_members!changed_by(full_name)')
     .eq('asset_id', assetId)
@@ -63,8 +63,8 @@ export async function getStatusHistoryForAsset(assetId: string): Promise<StatusH
 }
 
 export async function getActivityLogsForAsset(assetId: string): Promise<ActivityLogEntry[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = createServiceClient();
+  const { data, error } = await service
     .from('activity_logs')
     .select('*, actor:team_members!actor_id(full_name)')
     .eq('entity_id', assetId)
