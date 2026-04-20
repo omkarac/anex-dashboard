@@ -133,7 +133,7 @@ export function LogTable({ logs, total, page }: Props) {
               <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground w-28">Who</th>
               <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground w-24">Action</th>
               <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground w-24">Type</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground w-28">Entity</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Asset</th>
               <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Summary</th>
               <th className="px-3 py-2 w-10" />
             </tr>
@@ -161,13 +161,16 @@ export function LogTable({ logs, total, page }: Props) {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{log.entity_type}</td>
-                  <td className="px-3 py-2 text-xs">
-                    {href ? (
-                      <Link href={href} className="text-primary hover:underline font-mono text-xs">
-                        {log.entity_id.slice(0, 8)}…
+                  <td className="px-3 py-2 text-xs max-w-[180px] truncate">
+                    {log.asset ? (
+                      <Link
+                        href={`/assets/${log.asset.id}`}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        {log.asset.property_name}
                       </Link>
                     ) : (
-                      <span className="font-mono text-xs text-muted-foreground">{log.entity_id.slice(0, 8)}…</span>
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground max-w-xs truncate">

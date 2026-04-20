@@ -11,6 +11,7 @@ export type LogEntry = {
   deleted_at: string | null;
   delete_reason: string | null;
   actor: { full_name: string } | null;
+  asset: { id: string; property_name: string } | null;
 };
 
 export type LogFilters = {
@@ -70,9 +71,26 @@ export async function listLogs(filters: LogFilters = {}): Promise<{
 
   const memberMap = new Map((members ?? []).map((m) => [m.id, m.full_name]));
 
+  // Resolve asset names for entries directly referencing an asset
+  const assetIds = [
+    ...new Set(
+      rows
+        .filter((r) => r.entity_type === 'asset' && r.entity_id && r.entity_id !== 'pending')
+        .map((r) => r.entity_id)
+    ),
+  ];
+  const { data: assetRows } = assetIds.length
+    ? await service.from('assets').select('id, property_name').in('id', assetIds)
+    : { data: [] };
+  const assetMap = new Map((assetRows ?? []).map((a) => [a.id, a.property_name]));
+
   const logs: LogEntry[] = rows.map((r) => ({
     ...r,
     actor: r.actor_id ? { full_name: memberMap.get(r.actor_id) ?? 'Unknown' } : null,
+    asset:
+      r.entity_type === 'asset' && assetMap.has(r.entity_id)
+        ? { id: r.entity_id, property_name: assetMap.get(r.entity_id)! }
+        : null,
   }));
 
   return { logs, total, page };
