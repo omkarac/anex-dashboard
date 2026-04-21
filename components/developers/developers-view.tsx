@@ -210,7 +210,7 @@ function ShareRow({ share, assetId }: { share: DeveloperShareFull; assetId?: str
 
 // ─── Developer detail panel ───────────────────────────────────────────────────
 
-function DeveloperPanel({ dev, onClose }: { dev: DeveloperWithStats; onClose: () => void }) {
+function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onClose: () => void; onSave: (patch: Partial<DeveloperWithStats>) => void }) {
   const router = useRouter();
   const p = palette(dev.name);
   const [editing, setEditing] = useState(false);
@@ -244,18 +244,20 @@ function DeveloperPanel({ dev, onClose }: { dev: DeveloperWithStats; onClose: ()
   }
 
   function saveEdit() {
+    const patch = {
+      name: form.name.trim() || dev.name,
+      contact_person: form.contact_person.trim() || null,
+      contact_email: form.contact_email.trim() || null,
+      contact_phone: form.contact_phone.trim() || null,
+      logo_url: form.logo_url.trim() || null,
+      notes: form.notes.trim() || null,
+    };
     startTransition(async () => {
-      const result = await updateDeveloper(dev.id, {
-        name: form.name.trim() || dev.name,
-        contact_person: form.contact_person.trim() || null,
-        contact_email: form.contact_email.trim() || null,
-        contact_phone: form.contact_phone.trim() || null,
-        logo_url: form.logo_url.trim() || null,
-        notes: form.notes.trim() || null,
-      });
+      const result = await updateDeveloper(dev.id, patch);
       if (result.ok) {
         setEditing(false);
         setError(null);
+        onSave(patch);
         router.refresh();
       } else {
         setError(result.error);
@@ -468,7 +470,11 @@ export function DevelopersView({ developers }: { developers: DeveloperWithStats[
 
       {/* Detail panel */}
       {selected && (
-        <DeveloperPanel dev={selected} onClose={() => setSelected(null)} />
+        <DeveloperPanel
+          dev={selected}
+          onClose={() => setSelected(null)}
+          onSave={(patch) => setSelected((prev) => prev ? { ...prev, ...patch } : null)}
+        />
       )}
     </>
   );
