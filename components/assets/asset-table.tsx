@@ -86,7 +86,11 @@ const columns: ColumnDef<Asset>[] = [
     accessorKey: 'plot_size_sqm',
     header: 'Plot (sq.m.)',
     cell: ({ row }) => (
-      <span className="tabular-nums">{formatSqm(row.original.plot_size_sqm)}</span>
+      <span className="tabular-nums">
+        {row.original.plot_size_sqm != null
+          ? row.original.plot_size_sqm.toLocaleString('en-IN')
+          : <span className="text-muted-foreground">—</span>}
+      </span>
     ),
   },
   {

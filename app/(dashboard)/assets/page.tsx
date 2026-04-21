@@ -39,6 +39,8 @@ export default async function AssetsPage({
     topline_max: parseNum(params, 'topline_max'),
     inv_min: parseNum(params, 'inv_min'),
     inv_max: parseNum(params, 'inv_max'),
+    plot_min: parseNum(params, 'plot_min'),
+    plot_max: parseNum(params, 'plot_max'),
     page,
   };
 
@@ -62,7 +64,7 @@ export default async function AssetsPage({
         </div>
         <div className="mt-3">
           <Suspense>
-            <FilterBar spocOptions={spocOptions} toplineBound={bounds.topline_max} invBound={bounds.inv_max} />
+            <FilterBar spocOptions={spocOptions} toplineBound={bounds.topline_max} invBound={bounds.inv_max} plotBound={bounds.plot_max} />
           </Suspense>
         </div>
       </div>

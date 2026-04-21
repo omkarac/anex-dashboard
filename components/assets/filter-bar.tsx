@@ -15,6 +15,7 @@ type FilterBarProps = {
   spocOptions: string[];
   toplineBound: number;
   invBound: number;
+  plotBound: number;
 };
 
 const STATUS_OPTIONS = (Object.keys(ASSET_STATUS_LABELS) as AssetStatus[]).map((v) => ({
@@ -41,12 +42,14 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 function NumericRangeFilter({
   label,
+  unit,
   paramMin,
   paramMax,
   bound,
   onCommit,
 }: {
   label: string;
+  unit?: string;
   paramMin: string;
   paramMax: string;
   bound: number;
@@ -101,7 +104,7 @@ function NumericRangeFilter({
   return (
     <div className="flex flex-col gap-1.5 min-w-[220px]">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label} (Cr)</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}{unit ? ` (${unit})` : ''}</span>
         <span className="text-xs text-muted-foreground tabular-nums">
           {sliderMin} – {sliderMax}
         </span>
@@ -142,7 +145,7 @@ function NumericRangeFilter({
   );
 }
 
-export function FilterBar({ spocOptions, toplineBound, invBound }: FilterBarProps) {
+export function FilterBar({ spocOptions, toplineBound, invBound, plotBound }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -173,7 +176,7 @@ export function FilterBar({ spocOptions, toplineBound, invBound }: FilterBarProp
   const currentSort = (searchParams.get('sort') ?? 'updated_desc') as SortOption;
 
   const hasFilters = ['status', 'temperature', 'asset_type', 'regulation', 'spoc_agent',
-    'topline_min', 'topline_max', 'inv_min', 'inv_max'].some((k) => searchParams.has(k));
+    'topline_min', 'topline_max', 'inv_min', 'inv_max', 'plot_min', 'plot_max'].some((k) => searchParams.has(k));
 
   function clearAll() {
     const params = new URLSearchParams();
@@ -247,6 +250,7 @@ export function FilterBar({ spocOptions, toplineBound, invBound }: FilterBarProp
       <div className="flex flex-wrap gap-6">
         <NumericRangeFilter
           label="Topline"
+          unit="Cr"
           paramMin="topline_min"
           paramMax="topline_max"
           bound={toplineBound}
@@ -254,9 +258,18 @@ export function FilterBar({ spocOptions, toplineBound, invBound }: FilterBarProp
         />
         <NumericRangeFilter
           label="Initial Investment"
+          unit="Cr"
           paramMin="inv_min"
           paramMax="inv_max"
           bound={invBound}
+          onCommit={setParam}
+        />
+        <NumericRangeFilter
+          label="Plot Size"
+          unit="sq.m."
+          paramMin="plot_min"
+          paramMax="plot_max"
+          bound={plotBound}
           onCommit={setParam}
         />
       </div>

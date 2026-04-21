@@ -17,6 +17,8 @@ export type AssetFilters = {
   topline_max?: number;
   inv_min?: number;
   inv_max?: number;
+  plot_min?: number;
+  plot_max?: number;
   page?: number;
 };
 
@@ -58,6 +60,8 @@ export async function listAssets(filters: AssetFilters = {}): Promise<{
   if (filters.topline_max != null) query = query.lte('topline_cr', filters.topline_max * CR_SCALE);
   if (filters.inv_min != null) query = query.gte('initial_investment_cr', filters.inv_min * CR_SCALE);
   if (filters.inv_max != null) query = query.lte('initial_investment_cr', filters.inv_max * CR_SCALE);
+  if (filters.plot_min != null) query = query.gte('plot_size_sqm', filters.plot_min);
+  if (filters.plot_max != null) query = query.lte('plot_size_sqm', filters.plot_max);
 
   const { data, count, error } = await query;
   if (error) throw error;
@@ -86,24 +90,28 @@ export async function getAsset(id: string): Promise<Asset | null> {
 export async function getAssetNumericBounds(): Promise<{
   topline_max: number;
   inv_max: number;
+  plot_max: number;
 }> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('assets')
-    .select('topline_cr, initial_investment_cr')
+    .select('topline_cr, initial_investment_cr, plot_size_sqm')
     .is('deleted_at', null);
 
   let topline_max = 1000;
   let inv_max = 1000;
+  let plot_max = 10000;
 
   if (data?.length) {
     const toplines = data.map((r) => r.topline_cr ?? 0).filter((v) => v > 0);
     const invs = data.map((r) => r.initial_investment_cr ?? 0).filter((v) => v > 0);
+    const plots = data.map((r) => r.plot_size_sqm ?? 0).filter((v) => v > 0);
     if (toplines.length) topline_max = Math.ceil((Math.max(...toplines) / CR_SCALE) * 1.1);
     if (invs.length) inv_max = Math.ceil((Math.max(...invs) / CR_SCALE) * 1.1);
+    if (plots.length) plot_max = Math.ceil(Math.max(...plots) * 1.1);
   }
 
-  return { topline_max, inv_max };
+  return { topline_max, inv_max, plot_max };
 }
 
 export async function getDistinctSpocAgents(): Promise<string[]> {
