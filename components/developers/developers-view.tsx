@@ -391,7 +391,7 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
                 alt=""
                 aria-hidden
                 className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-                style={{ filter: 'blur(28px) saturate(200%)', transform: 'scale(1.4)', opacity: 0.38 }}
+                style={{ filter: 'blur(21px) saturate(200%)', transform: 'scale(1.4)', opacity: 0.38 }}
               />
               <div className="absolute inset-0 bg-background/45" />
               {dominantRgb && (
