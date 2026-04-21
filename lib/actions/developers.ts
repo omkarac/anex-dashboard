@@ -35,6 +35,36 @@ export async function createDeveloper(formData: FormData): Promise<ActionResult<
   return result;
 }
 
+export async function updateDeveloper(
+  developerId: string,
+  data: {
+    name: string;
+    contact_person: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+    notes: string | null;
+    logo_url: string | null;
+  }
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'developer',
+    entityId: developerId,
+    summary: `Developer updated: ${data.name}`,
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('developers')
+        .update({ ...data, updated_by: actorId } as never)
+        .eq('id', developerId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/developers');
+  return result;
+}
+
 export async function shareWithDeveloper(
   assetId: string,
   developerId: string,

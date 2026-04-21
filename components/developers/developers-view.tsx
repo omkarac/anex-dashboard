@@ -3,11 +3,14 @@
 import { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Mail, Phone, ExternalLink, ChevronRight, Building2 } from 'lucide-react';
+import { Search, Mail, Phone, ExternalLink, ChevronRight, Building2, Pencil, X, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
-import { updateShareOutcome } from '@/lib/actions/developers';
+import { updateShareOutcome, updateDeveloper } from '@/lib/actions/developers';
 import { DeveloperCreateSheet } from './developer-create-sheet';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
@@ -208,51 +211,170 @@ function ShareRow({ share, assetId }: { share: DeveloperShareFull; assetId?: str
 // ─── Developer detail panel ───────────────────────────────────────────────────
 
 function DeveloperPanel({ dev, onClose }: { dev: DeveloperWithStats; onClose: () => void }) {
+  const router = useRouter();
   const p = palette(dev.name);
+  const [editing, setEditing] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: dev.name,
+    contact_person: dev.contact_person ?? '',
+    contact_email: dev.contact_email ?? '',
+    contact_phone: dev.contact_phone ?? '',
+    logo_url: dev.logo_url ?? '',
+    notes: dev.notes ?? '',
+  });
+
+  function field(key: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  }
+
+  function cancelEdit() {
+    setForm({
+      name: dev.name,
+      contact_person: dev.contact_person ?? '',
+      contact_email: dev.contact_email ?? '',
+      contact_phone: dev.contact_phone ?? '',
+      logo_url: dev.logo_url ?? '',
+      notes: dev.notes ?? '',
+    });
+    setEditing(false);
+    setError(null);
+  }
+
+  function saveEdit() {
+    startTransition(async () => {
+      const result = await updateDeveloper(dev.id, {
+        name: form.name.trim() || dev.name,
+        contact_person: form.contact_person.trim() || null,
+        contact_email: form.contact_email.trim() || null,
+        contact_phone: form.contact_phone.trim() || null,
+        logo_url: form.logo_url.trim() || null,
+        notes: form.notes.trim() || null,
+      });
+      if (result.ok) {
+        setEditing(false);
+        setError(null);
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+    });
+  }
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col overflow-hidden">
+
         {/* Header */}
-        <div className={`${p.bg} px-6 pt-8 pb-6 shrink-0`}>
+        <div className={`${p.bg} px-6 pt-6 pb-5 shrink-0`}>
           <div className="flex items-start gap-4">
-            <Avatar name={dev.name} logoUrl={dev.logo_url} size="lg" />
+            <Avatar name={editing ? form.name || dev.name : dev.name} logoUrl={editing ? form.logo_url || null : dev.logo_url} size="lg" />
             <div className="flex-1 min-w-0">
-              <h2 className={`text-lg font-bold leading-tight ${p.text}`}>{dev.name}</h2>
-              {dev.contact_person && (
-                <p className="text-sm text-foreground/70 mt-0.5">{dev.contact_person}</p>
+              {editing ? (
+                <Input
+                  value={form.name}
+                  onChange={field('name')}
+                  className="h-8 font-semibold bg-white/70 border-white/60"
+                  placeholder="Company name"
+                />
+              ) : (
+                <h2 className={`text-lg font-bold leading-tight ${p.text}`}>{dev.name}</h2>
               )}
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Added {formatDate(dev.created_at)}
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Added {formatDate(dev.created_at)}</p>
+            </div>
+            {/* Edit / Save / Cancel */}
+            <div className="flex gap-1 shrink-0">
+              {editing ? (
+                <>
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={cancelEdit} disabled={isPending}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" className="h-7 px-3" onClick={saveEdit} disabled={isPending}>
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Contact info */}
-          {(dev.contact_email || dev.contact_phone) && (
-            <div className="flex flex-col gap-1.5 mt-4">
-              {dev.contact_email && (
-                <a
-                  href={`mailto:${dev.contact_email}`}
-                  className="inline-flex items-center gap-2 text-sm text-foreground/80 hover:text-foreground transition-colors"
-                >
-                  <Mail className="h-3.5 w-3.5 shrink-0" />
-                  {dev.contact_email}
-                </a>
-              )}
-              {dev.contact_phone && (
-                <span className="inline-flex items-center gap-2 text-sm text-foreground/80">
-                  <Phone className="h-3.5 w-3.5 shrink-0" />
-                  {dev.contact_phone}
-                </span>
-              )}
+          {error && <p className="text-xs text-destructive mt-2">{error}</p>}
+        </div>
+
+        {/* Contact info — always visible, editable in edit mode */}
+        <div className="px-6 py-4 border-b shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Contact</p>
+          {editing ? (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Contact Person</Label>
+                <Input value={form.contact_person} onChange={field('contact_person')} placeholder="Full name" className="h-8 text-sm" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Email</Label>
+                <Input value={form.contact_email} onChange={field('contact_email')} type="email" placeholder="email@company.com" className="h-8 text-sm" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Phone</Label>
+                <Input value={form.contact_phone} onChange={field('contact_phone')} placeholder="+91 98..." className="h-8 text-sm" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Logo URL</Label>
+                <Input value={form.logo_url} onChange={field('logo_url')} placeholder="https://company.com/logo.png" className="h-8 text-sm" />
+              </div>
             </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {dev.contact_person ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground w-20 text-xs shrink-0">Person</span>
+                  <span className="font-medium">{dev.contact_person}</span>
+                </div>
+              ) : null}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground w-20 text-xs shrink-0">Email</span>
+                {dev.contact_email ? (
+                  <a href={`mailto:${dev.contact_email}`} className="text-primary hover:underline underline-offset-2 flex items-center gap-1">
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    {dev.contact_email}
+                  </a>
+                ) : <span className="text-muted-foreground text-xs">—</span>}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground w-20 text-xs shrink-0">Phone</span>
+                {dev.contact_phone ? (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {dev.contact_phone}
+                  </span>
+                ) : <span className="text-muted-foreground text-xs">—</span>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Notes */}
+        <div className="px-6 py-4 border-b shrink-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Notes</p>
+          {editing ? (
+            <Textarea value={form.notes} onChange={field('notes')} placeholder="Any relevant context…" className="text-sm resize-none min-h-[72px]" />
+          ) : dev.notes ? (
+            <p className="text-sm text-muted-foreground">{dev.notes}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No notes added</p>
           )}
         </div>
 
         {/* Outcome summary */}
         {dev.share_count > 0 && (
-          <div className="px-6 py-4 border-b shrink-0">
+          <div className="px-6 py-3 border-b shrink-0">
             <div className="flex flex-wrap gap-2">
               {Object.entries(dev.outcome_counts)
                 .filter(([, n]) => n > 0)
@@ -269,18 +391,10 @@ function DeveloperPanel({ dev, onClose }: { dev: DeveloperWithStats; onClose: ()
           </div>
         )}
 
-        {/* Notes */}
-        {dev.notes && (
-          <div className="px-6 py-4 border-b shrink-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Notes</p>
-            <p className="text-sm text-muted-foreground">{dev.notes}</p>
-          </div>
-        )}
-
         {/* Shared assets */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Shared Assets {dev.share_count > 0 && `· ${dev.share_count}`}
+            Shared Assets{dev.share_count > 0 ? ` · ${dev.share_count}` : ''}
           </p>
           {dev.shares.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
