@@ -268,15 +268,47 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
   );
 }
 
+// ─── Dominant colour extraction (canvas, CORS-tolerant) ──────────────────────
+
+function useDominantColor(imageUrl: string | null | undefined): string | null {
+  const [rgb, setRgb] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!imageUrl) { setRgb(null); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 80; canvas.height = 80;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, 80, 80);
+        const { data } = ctx.getImageData(0, 0, 80, 80);
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 128) continue;
+          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          if (brightness > 235 || brightness < 20) continue; // skip near-white / near-black
+          r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+        }
+        if (n > 20) setRgb(`${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)}`);
+      } catch {
+        // Canvas tainted by CORS — skip colour extraction, blurry logo still shows
+      }
+    };
+    img.onerror = () => setRgb(null);
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  return rgb;
+}
+
 // ─── Developer detail panel ───────────────────────────────────────────────────
 
 function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onClose: () => void; onSave: (patch: Partial<DeveloperWithStats>) => void }) {
   const router = useRouter();
   const p = palette(dev.name);
-  const [editing, setEditing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: dev.name,
     contact_person: dev.contact_person ?? '',
@@ -285,6 +317,12 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
     logo_url: dev.logo_url ?? '',
     notes: dev.notes ?? '',
   });
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const activeLogoUrl = editing ? (form.logo_url.trim() || null) : dev.logo_url;
+  const dominantRgb = useDominantColor(activeLogoUrl);
 
   function field(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -344,9 +382,31 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
       <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className={`${p.bg} px-6 pt-6 pb-5 shrink-0`}>
-          <div className="flex items-start gap-4">
-            <Avatar name={editing ? form.name || dev.name : dev.name} logoUrl={editing ? form.logo_url || null : dev.logo_url} size="lg" />
+        <div className="relative px-6 pt-6 pb-5 shrink-0 overflow-hidden">
+          {/* Background layer */}
+          {activeLogoUrl ? (
+            <>
+              <img
+                src={activeLogoUrl}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+                style={{ filter: 'blur(28px) saturate(200%)', transform: 'scale(1.4)', opacity: 0.38 }}
+              />
+              <div className="absolute inset-0 bg-background/45" />
+              {dominantRgb && (
+                <div
+                  className="absolute inset-0"
+                  style={{ background: `linear-gradient(135deg, rgba(${dominantRgb},0.28) 0%, rgba(${dominantRgb},0.10) 100%)` }}
+                />
+              )}
+            </>
+          ) : (
+            <div className={`absolute inset-0 ${p.bg}`} />
+          )}
+
+          <div className="relative flex items-start gap-4">
+            <Avatar name={editing ? form.name || dev.name : dev.name} logoUrl={activeLogoUrl} size="lg" />
             <div className="flex-1 min-w-0">
               {editing ? (
                 <Input
@@ -356,7 +416,7 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
                   placeholder="Company name"
                 />
               ) : (
-                <h2 className={`text-lg font-bold leading-tight ${p.text}`}>{dev.name}</h2>
+                <h2 className={`text-lg font-bold leading-tight ${activeLogoUrl ? 'text-foreground' : p.text}`}>{dev.name}</h2>
               )}
               <p className="text-xs text-muted-foreground mt-1">Added {formatDate(dev.created_at)}</p>
             </div>
@@ -396,7 +456,7 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
             </div>
           </div>
 
-          {error && <p className="text-xs text-destructive mt-2">{error}</p>}
+          {error && <p className="relative text-xs text-destructive mt-2">{error}</p>}
         </div>
 
         {/* Contact info — always visible, editable in edit mode */}
