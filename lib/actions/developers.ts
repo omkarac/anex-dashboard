@@ -96,6 +96,26 @@ export async function shareWithDeveloper(
   return result;
 }
 
+export async function deleteDeveloper(developerId: string, name: string): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'delete',
+    entityType: 'developer',
+    entityId: developerId,
+    summary: `Developer deleted: ${name}`,
+    mutation: async () => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('developers')
+        .update({ is_active: false })
+        .eq('id', developerId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/developers');
+  return result;
+}
+
 export async function updateShareNotes(
   shareId: string,
   assetId: string,

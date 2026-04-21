@@ -3,14 +3,14 @@
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Mail, Phone, ExternalLink, ChevronRight, Building2, Pencil, X, Check } from 'lucide-react';
+import { Search, Mail, Phone, ExternalLink, ChevronRight, Building2, Pencil, X, Check, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
-import { updateShareOutcome, updateShareNotes, updateDeveloper } from '@/lib/actions/developers';
+import { updateShareOutcome, updateShareNotes, updateDeveloper, deleteDeveloper } from '@/lib/actions/developers';
 import { DeveloperCreateSheet } from './developer-create-sheet';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
@@ -274,6 +274,7 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
   const router = useRouter();
   const p = palette(dev.name);
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -288,6 +289,19 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
   function field(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteDeveloper(dev.id, dev.name);
+      if (result.ok) {
+        onClose();
+        router.refresh();
+      } else {
+        setError(result.error);
+        setConfirmDelete(false);
+      }
+    });
   }
 
   function cancelEdit() {
@@ -346,7 +360,7 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
               )}
               <p className="text-xs text-muted-foreground mt-1">Added {formatDate(dev.created_at)}</p>
             </div>
-            {/* Edit / Save / Cancel */}
+            {/* Edit / Save / Cancel / Delete */}
             <div className="flex gap-1 shrink-0">
               {editing ? (
                 <>
@@ -358,11 +372,26 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
                     Save
                   </Button>
                 </>
+              ) : confirmDelete ? (
+                <>
+                  <span className="text-xs text-muted-foreground self-center mr-1">Delete?</span>
+                  <Button size="sm" variant="destructive" className="h-7 px-3" onClick={handleDelete} disabled={isPending}>
+                    Yes, delete
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setConfirmDelete(false)} disabled={isPending}>
+                    Cancel
+                  </Button>
+                </>
               ) : (
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
-                  Edit
-                </Button>
+                <>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </>
               )}
             </div>
           </div>
