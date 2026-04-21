@@ -55,7 +55,7 @@ export async function updateDeveloper(
       const service = createServiceClient();
       const { error } = await service
         .from('developers')
-        .update({ ...data, updated_by: actorId } as never)
+        .update(data)
         .eq('id', developerId);
       if (error) throw new Error(error.message);
     },
@@ -111,7 +111,7 @@ export async function updateShareOutcome(
       const service = createServiceClient();
       const { error } = await service
         .from('developer_shares')
-        .update({ outcome, outcome_at: new Date().toISOString(), updated_by: actorId } as never)
+        .update({ outcome, outcome_at: new Date().toISOString() })
         .eq('id', shareId);
       if (error) throw new Error(error.message);
     },
