@@ -68,7 +68,7 @@ export function DeveloperTable({ developers }: Props) {
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 text-sm">
                     <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    {dev.active_shares}
+                    {dev.share_count}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -113,7 +113,7 @@ export function DeveloperTable({ developers }: Props) {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                     Added {formatDate(drawerDev.created_at)}
                   </p>
-                  <p className="text-sm">{drawerDev.active_shares} active {drawerDev.active_shares === 1 ? 'share' : 'shares'}</p>
+                  <p className="text-sm">{drawerDev.share_count} active {drawerDev.share_count === 1 ? 'share' : 'shares'}</p>
                 </div>
               </div>
             </>

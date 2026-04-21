@@ -1,9 +1,22 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import type { Developer } from '@/lib/schemas/developer';
 
+export type DeveloperShareFull = {
+  id: string;
+  asset_id: string;
+  asset_name: string;
+  shared_at: string;
+  shared_by_name: string;
+  outcome: string | null;
+  outcome_at: string | null;
+  notes: string | null;
+};
+
 export type DeveloperWithStats = Developer & {
-  active_shares: number;
+  share_count: number;
   last_shared_at: string | null;
+  outcome_counts: Record<string, number>;
+  shares: DeveloperShareFull[];
 };
 
 export type ShareWithDetails = {
@@ -20,41 +33,62 @@ export type ShareWithDetails = {
 };
 
 export async function listDevelopers(): Promise<DeveloperWithStats[]> {
-  const supabase = await createClient();
+  const service = createServiceClient();
 
-  const { data: devs } = await supabase
-    .from('developers')
-    .select('*')
-    .eq('is_active', true)
-    .order('name');
+  const [{ data: devs }, { data: rawShares }] = await Promise.all([
+    service.from('developers').select('*').eq('is_active', true).order('name'),
+    service.from('developer_shares')
+      .select('*, asset:assets!asset_id(property_name)')
+      .is('deleted_at', null)
+      .order('shared_at', { ascending: false }),
+  ]);
 
   if (!devs?.length) return [];
 
-  const { data: shares } = await supabase
-    .from('developer_shares')
-    .select('developer_id, shared_at')
-    .is('deleted_at', null);
+  const actorIds = [...new Set((rawShares ?? []).map((s) => s.shared_by))];
+  const { data: members } = actorIds.length
+    ? await service.from('team_members').select('id, full_name').in('id', actorIds)
+    : { data: [] };
+  const memberMap = new Map((members ?? []).map((m) => [m.id, m.full_name]));
 
-  const sharesByDev: Record<string, string[]> = {};
-  for (const s of shares ?? []) {
-    if (!sharesByDev[s.developer_id]) sharesByDev[s.developer_id] = [];
-    sharesByDev[s.developer_id].push(s.shared_at);
+  const sharesByDev = new Map<string, DeveloperShareFull[]>();
+  for (const s of rawShares ?? []) {
+    const share: DeveloperShareFull = {
+      id: s.id,
+      asset_id: s.asset_id,
+      asset_name: (s.asset as { property_name: string } | null)?.property_name ?? 'Unknown',
+      shared_at: s.shared_at,
+      shared_by_name: memberMap.get(s.shared_by) ?? 'Unknown',
+      outcome: s.outcome,
+      outcome_at: s.outcome_at ?? null,
+      notes: s.notes,
+    };
+    const arr = sharesByDev.get(s.developer_id) ?? [];
+    arr.push(share);
+    sharesByDev.set(s.developer_id, arr);
   }
 
   return devs.map((d) => {
-    const dates = sharesByDev[d.id] ?? [];
+    const shares = sharesByDev.get(d.id) ?? [];
+    const outcome_counts: Record<string, number> = {};
+    for (const s of shares) {
+      const key = s.outcome ?? 'pending';
+      outcome_counts[key] = (outcome_counts[key] ?? 0) + 1;
+    }
     return {
       ...(d as Developer),
-      active_shares: dates.length,
-      last_shared_at: dates.length > 0 ? dates.sort().at(-1)! : null,
+      share_count: shares.length,
+      last_shared_at: shares[0]?.shared_at ?? null,
+      outcome_counts,
+      shares,
     };
   });
 }
 
 export async function listAllShares(): Promise<ShareWithDetails[]> {
-  const supabase = await createClient();
+  const service = createServiceClient();
 
-  const { data: shares } = await supabase
+  const { data: shares } = await service
     .from('developer_shares')
     .select('*')
     .is('deleted_at', null)
@@ -67,9 +101,9 @@ export async function listAllShares(): Promise<ShareWithDetails[]> {
   const assetIds = [...new Set(shares.map((s) => s.asset_id))];
 
   const [{ data: devs }, { data: members }, { data: assets }] = await Promise.all([
-    supabase.from('developers').select('id, name').in('id', devIds),
-    supabase.from('team_members').select('id, full_name').in('id', actorIds),
-    supabase.from('assets').select('id, property_name').in('id', assetIds),
+    service.from('developers').select('id, name').in('id', devIds),
+    service.from('team_members').select('id, full_name').in('id', actorIds),
+    service.from('assets').select('id, property_name').in('id', assetIds),
   ]);
 
   const devMap = Object.fromEntries((devs ?? []).map((d) => [d.id, d.name]));
@@ -91,9 +125,9 @@ export async function listAllShares(): Promise<ShareWithDetails[]> {
 }
 
 export async function getSharesForAsset(assetId: string): Promise<ShareWithDetails[]> {
-  const supabase = await createClient();
+  const service = createServiceClient();
 
-  const { data: shares } = await supabase
+  const { data: shares } = await service
     .from('developer_shares')
     .select('*')
     .eq('asset_id', assetId)
@@ -106,8 +140,8 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
   const actorIds = [...new Set(shares.map((s) => s.shared_by))];
 
   const [{ data: devs }, { data: members }] = await Promise.all([
-    supabase.from('developers').select('id, name').in('id', devIds),
-    supabase.from('team_members').select('id, full_name').in('id', actorIds),
+    service.from('developers').select('id, name').in('id', devIds),
+    service.from('team_members').select('id, full_name').in('id', actorIds),
   ]);
 
   const devMap = Object.fromEntries((devs ?? []).map((d) => [d.id, d.name]));
@@ -130,8 +164,8 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
 export type DeveloperOption = { id: string; name: string };
 
 export async function getDeveloperOptions(): Promise<DeveloperOption[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const service = createServiceClient();
+  const { data } = await service
     .from('developers')
     .select('id, name')
     .eq('is_active', true)

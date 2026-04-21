@@ -13,6 +13,7 @@ export async function createDeveloper(formData: FormData): Promise<ActionResult<
     contact_email: formData.get('contact_email') || null,
     contact_phone: formData.get('contact_phone') || null,
     notes: formData.get('notes') || null,
+    logo_url: formData.get('logo_url') || null,
   };
 
   const parsed = DeveloperCreateSchema.safeParse(raw);

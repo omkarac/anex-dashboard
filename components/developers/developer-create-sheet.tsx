@@ -61,6 +61,11 @@ export function DeveloperCreateSheet() {
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
+              <Label htmlFor="logo_url">Logo URL</Label>
+              <Input id="logo_url" name="logo_url" type="url" placeholder="https://company.com/logo.png" />
+              <p className="text-xs text-muted-foreground">Paste a direct link to the company logo image</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="notes">Notes</Label>
               <Textarea id="notes" name="notes" rows={3} placeholder="Any relevant context" />
             </div>
