@@ -96,6 +96,31 @@ export async function shareWithDeveloper(
   return result;
 }
 
+export async function updateShareNotes(
+  shareId: string,
+  assetId: string,
+  notes: string | null
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'developer_share',
+    entityId: shareId,
+    assetId,
+    summary: `Share notes updated`,
+    mutation: async () => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('developer_shares')
+        .update({ notes })
+        .eq('id', shareId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/developers');
+  return result;
+}
+
 export async function updateShareOutcome(
   shareId: string,
   assetId: string,

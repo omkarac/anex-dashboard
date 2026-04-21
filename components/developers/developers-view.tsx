@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Mail, Phone, ExternalLink, ChevronRight, Building2, Pencil, X, Check } from 'lucide-react';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
-import { updateShareOutcome, updateDeveloper } from '@/lib/actions/developers';
+import { updateShareOutcome, updateShareNotes, updateDeveloper } from '@/lib/actions/developers';
 import { DeveloperCreateSheet } from './developer-create-sheet';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
@@ -156,15 +156,42 @@ function DeveloperCard({ dev, onClick }: { dev: DeveloperWithStats; onClick: () 
 
 // ─── Share row (inside detail panel) ─────────────────────────────────────────
 
-function ShareRow({ share, assetId }: { share: DeveloperShareFull; assetId?: string }) {
+function ShareRow({ share }: { share: DeveloperShareFull }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notes, setNotes] = useState(share.notes ?? '');
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   function handleOutcomeChange(outcome: string) {
     startTransition(async () => {
       await updateShareOutcome(share.id, share.asset_id, outcome);
       router.refresh();
     });
+  }
+
+  function startNotesEdit() {
+    setEditingNotes(true);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }
+
+  function saveNotes() {
+    const trimmed = notes.trim() || null;
+    setEditingNotes(false);
+    startTransition(async () => {
+      await updateShareNotes(share.id, share.asset_id, trimmed);
+      router.refresh();
+    });
+  }
+
+  function cancelNotes() {
+    setNotes(share.notes ?? '');
+    setEditingNotes(false);
+  }
+
+  function handleNotesKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNotes(); }
+    if (e.key === 'Escape') cancelNotes();
   }
 
   return (
@@ -181,11 +208,44 @@ function ShareRow({ share, assetId }: { share: DeveloperShareFull; assetId?: str
           <p className="text-xs text-muted-foreground mt-0.5">
             Shared by {share.shared_by_name} · {formatDate(share.shared_at)}
           </p>
-          {share.notes && (
-            <p className="text-xs text-muted-foreground italic mt-1.5 bg-muted/40 rounded-md px-2.5 py-1.5">
-              "{share.notes}"
-            </p>
-          )}
+
+          {/* Inline-editable notes */}
+          <div className="mt-1.5">
+            {editingNotes ? (
+              <div className="flex flex-col gap-1">
+                <textarea
+                  ref={textareaRef}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onKeyDown={handleNotesKeyDown}
+                  rows={2}
+                  placeholder="Add a note…"
+                  className="w-full resize-none rounded-md border bg-background px-2.5 py-1.5 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <div className="flex gap-1.5">
+                  <button onClick={saveNotes} disabled={isPending} className="text-xs text-primary hover:underline disabled:opacity-50">Save</button>
+                  <span className="text-xs text-muted-foreground">·</span>
+                  <button onClick={cancelNotes} className="text-xs text-muted-foreground hover:underline">Cancel</button>
+                  <span className="text-xs text-muted-foreground ml-auto opacity-50">Enter to save · Esc to cancel</span>
+                </div>
+              </div>
+            ) : notes ? (
+              <button
+                onClick={startNotesEdit}
+                className="group/note w-full text-left text-xs text-muted-foreground italic bg-muted/40 hover:bg-muted/70 rounded-md px-2.5 py-1.5 transition-colors"
+              >
+                "{notes}"
+                <span className="ml-1.5 opacity-0 group-hover/note:opacity-60 text-[10px] not-italic transition-opacity">edit</span>
+              </button>
+            ) : (
+              <button
+                onClick={startNotesEdit}
+                className="text-xs text-muted-foreground/40 hover:text-muted-foreground italic transition-colors"
+              >
+                + add note
+              </button>
+            )}
+          </div>
         </div>
         <div className="shrink-0">
           <select
