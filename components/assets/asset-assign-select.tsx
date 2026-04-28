@@ -17,6 +17,7 @@ export function AssetAssignSelect({ assetId, assignedTo, teamMembers, variant = 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [localValue, setLocalValue] = useState(assignedTo ?? '');
+  const [error, setError] = useState<string | null>(null);
 
   // Keep in sync when server props update after refresh
   useEffect(() => {
@@ -27,28 +28,38 @@ export function AssetAssignSelect({ assetId, assignedTo, teamMembers, variant = 
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
-    setLocalValue(val); // optimistic — shows new value immediately
+    const prev = localValue;
+    setLocalValue(val);
+    setError(null);
     startTransition(async () => {
-      await assignAsset(assetId, val === '' ? null : val);
-      router.refresh();
+      const result = await assignAsset(assetId, val === '' ? null : val);
+      if (!result.ok) {
+        setLocalValue(prev); // revert on failure
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
     });
   }
 
   if (variant === 'detail') {
     return (
-      <div className="flex items-center gap-2">
-        <UserCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
-        <select
-          value={localValue}
-          disabled={isPending}
-          onChange={handleChange}
-          className="flex-1 h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-        >
-          <option value="">Unassigned</option>
-          {teamMembers.map((m) => (
-            <option key={m.id} value={m.id}>{m.full_name}</option>
-          ))}
-        </select>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <UserCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
+          <select
+            value={localValue}
+            disabled={isPending}
+            onChange={handleChange}
+            className="flex-1 h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+          >
+            <option value="">Unassigned</option>
+            {teamMembers.map((m) => (
+              <option key={m.id} value={m.id}>{m.full_name}</option>
+            ))}
+          </select>
+        </div>
+        {error && <p className="text-xs text-destructive pl-6">{error}</p>}
       </div>
     );
   }
