@@ -9,6 +9,8 @@ export async function updateProfile(data: {
   full_name: string;
   title: string | null;
   phone: string | null;
+  avatar_url?: string | null;
+  banner_color?: string | null;
 }): Promise<ActionResult<void>> {
   const result = await withAudit({
     action: 'update',
@@ -17,9 +19,16 @@ export async function updateProfile(data: {
     summary: 'Profile updated',
     mutation: async (actorId) => {
       const service = createServiceClient();
+      const patch: Record<string, unknown> = {
+        full_name: data.full_name,
+        title: data.title,
+        phone: data.phone,
+      };
+      if ('avatar_url' in data) patch.avatar_url = data.avatar_url;
+      if ('banner_color' in data) patch.banner_color = data.banner_color;
       const { error } = await service
         .from('team_members')
-        .update({ full_name: data.full_name, title: data.title, phone: data.phone })
+        .update(patch)
         .eq('id', actorId);
       if (error) throw new Error(error.message);
     },

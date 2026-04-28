@@ -7,6 +7,8 @@ export type ProfileData = {
   role: string;
   title: string | null;
   phone: string | null;
+  avatar_url: string | null;
+  banner_color: string | null;
   created_at: string;
 };
 
@@ -38,10 +40,21 @@ export async function getProfileData(userId: string): Promise<ProfileData | null
   const service = createServiceClient();
   const { data } = await service
     .from('team_members')
-    .select('id, full_name, email, role, title, phone, created_at')
+    .select('*')
     .eq('id', userId)
     .single();
-  return data as ProfileData | null;
+  if (!data) return null;
+  return {
+    id: data.id,
+    full_name: data.full_name,
+    email: data.email,
+    role: data.role,
+    title: (data as Record<string, unknown>).title as string | null ?? null,
+    phone: (data as Record<string, unknown>).phone as string | null ?? null,
+    avatar_url: (data as Record<string, unknown>).avatar_url as string | null ?? null,
+    banner_color: (data as Record<string, unknown>).banner_color as string | null ?? null,
+    created_at: data.created_at,
+  };
 }
 
 export async function getProfileStats(userId: string): Promise<ProfileStats> {
