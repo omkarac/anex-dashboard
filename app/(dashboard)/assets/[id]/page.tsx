@@ -17,6 +17,7 @@ import { formatSqm, formatPsf, formatDate, toCr } from '@/lib/utils/formatters';
 import { ConvertDialog } from '@/components/assets/convert-dialog';
 import { FinancialsEditor } from '@/components/assets/financials-editor';
 import { NextStepEditor } from '@/components/assets/next-step-editor';
+import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
 import { ChevronLeft } from 'lucide-react';
 
 export async function generateMetadata({
@@ -100,6 +101,18 @@ export default async function AssetDetailPage({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column — core facts */}
           <div className="lg:col-span-1 space-y-4">
+            <section className="rounded-lg border p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Assigned To
+              </h2>
+              <AssetAssignSelect
+                assetId={id}
+                assignedTo={asset.assigned_to ?? null}
+                teamMembers={teamMembers}
+                variant="detail"
+              />
+            </section>
+
             <section className="rounded-lg border p-4">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                 Classification

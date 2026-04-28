@@ -237,3 +237,44 @@ export async function softDeleteAsset(assetId: string): Promise<ActionResult<voi
   if (result.ok) revalidatePath('/assets');
   return result;
 }
+
+export async function searchAssetSuggestions(
+  q: string
+): Promise<{ id: string; property_name: string }[]> {
+  if (!q.trim()) return [];
+  const service = createServiceClient();
+  const { data } = await service
+    .from('assets')
+    .select('id, property_name')
+    .ilike('property_name', `%${q.trim()}%`)
+    .is('deleted_at', null)
+    .order('property_name', { ascending: true })
+    .limit(8);
+  return (data ?? []) as { id: string; property_name: string }[];
+}
+
+export async function assignAsset(
+  assetId: string,
+  assignedTo: string | null
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'asset',
+    entityId: assetId,
+    assetId,
+    summary: assignedTo ? `Asset assigned` : `Asset unassigned`,
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('assets')
+        .update({ assigned_to: assignedTo, updated_by: actorId })
+        .eq('id', assetId);
+      if (error) throw new Error(error.message);
+    },
+  });
+  if (result.ok) {
+    revalidatePath('/assets');
+    revalidatePath(`/assets/${assetId}`);
+  }
+  return result;
+}

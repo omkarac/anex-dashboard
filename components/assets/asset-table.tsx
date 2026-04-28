@@ -10,14 +10,17 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { InlineStatusSelect } from '@/components/assets/inline-status-select';
 import { InlineTemperatureSelect } from '@/components/assets/inline-temperature-select';
+import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
 import { Button } from '@/components/ui/button';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
-import { formatDate, formatCr, formatSqm } from '@/lib/utils/formatters';
+import { formatDate, formatSqm } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
+import type { TeamMemberOption } from '@/lib/queries/tasks';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toCr } from '@/lib/utils/formatters';
 
-const columns: ColumnDef<Asset>[] = [
+function buildColumns(teamMembers: TeamMemberOption[]): ColumnDef<Asset>[] {
+  return [
   {
     accessorKey: 'property_name',
     header: 'Property',
@@ -116,6 +119,18 @@ const columns: ColumnDef<Asset>[] = [
     },
   },
   {
+    accessorKey: 'assigned_to',
+    header: 'Assigned',
+    cell: ({ row }) => (
+      <AssetAssignSelect
+        assetId={row.original.id}
+        assignedTo={row.original.assigned_to ?? null}
+        teamMembers={teamMembers}
+        variant="table"
+      />
+    ),
+  },
+  {
     accessorKey: 'updated_at',
     header: 'Updated',
     cell: ({ row }) => (
@@ -124,18 +139,20 @@ const columns: ColumnDef<Asset>[] = [
       </span>
     ),
   },
-];
+];}
 
 type AssetTableProps = {
   data: Asset[];
   count: number;
   pageCount: number;
   page: number;
+  teamMembers: TeamMemberOption[];
 };
 
-export function AssetTable({ data, count, pageCount, page }: AssetTableProps) {
+export function AssetTable({ data, count, pageCount, page, teamMembers }: AssetTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const columns = buildColumns(teamMembers);
 
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams.toString());

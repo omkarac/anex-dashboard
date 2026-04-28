@@ -7,6 +7,7 @@ const PAGE_SIZE = 50;
 export type SortOption = 'updated_desc' | 'name_asc' | 'name_desc' | 'topline_asc' | 'topline_desc';
 
 export type AssetFilters = {
+  q?: string;
   status?: string[];
   temperature?: string[];
   asset_type?: string[];
@@ -50,6 +51,7 @@ export async function listAssets(filters: AssetFilters = {}): Promise<{
     .order(column, { ascending, nullsFirst: false })
     .range(from, to);
 
+  if (filters.q?.trim()) query = query.ilike('property_name', `%${filters.q.trim()}%`);
   if (filters.status?.length) query = query.in('status', filters.status);
   if (filters.temperature?.length) query = query.in('temperature', filters.temperature);
   if (filters.asset_type?.length) query = query.in('asset_type', filters.asset_type);

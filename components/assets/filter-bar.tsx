@@ -8,6 +8,7 @@ import { ASSET_STATUS_LABELS, ASSET_TEMPERATURE_LABELS, ASSET_TYPE_LABELS, REGUL
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, ArrowUpDown } from 'lucide-react';
+import { AssetSearchInput } from '@/components/assets/asset-search-input';
 import type { AssetStatus, AssetTemperature, AssetType } from '@/lib/schemas/asset';
 import type { SortOption } from '@/lib/queries/assets';
 
@@ -175,7 +176,7 @@ export function FilterBar({ spocOptions, toplineBound, invBound, plotBound }: Fi
 
   const currentSort = (searchParams.get('sort') ?? 'updated_desc') as SortOption;
 
-  const hasFilters = ['status', 'temperature', 'asset_type', 'regulation', 'spoc_agent',
+  const hasFilters = ['q', 'status', 'temperature', 'asset_type', 'regulation', 'spoc_agent',
     'topline_min', 'topline_max', 'inv_min', 'inv_max', 'plot_min', 'plot_max'].some((k) => searchParams.has(k));
 
   function clearAll() {
@@ -187,6 +188,9 @@ export function FilterBar({ spocOptions, toplineBound, invBound, plotBound }: Fi
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Row 0: search */}
+      <AssetSearchInput />
+
       {/* Row 1: categorical filters + sort */}
       <div className="flex flex-wrap items-center gap-2">
         <MultiSelect

@@ -56,6 +56,7 @@ export const AssetSchema = z.object({
   updated_by: z.string().uuid().nullable(),
   deleted_at: z.string().nullable(),
   deleted_by: z.string().uuid().nullable(),
+  assigned_to: z.string().uuid().nullable().optional(),
 });
 export type Asset = z.infer<typeof AssetSchema>;
 

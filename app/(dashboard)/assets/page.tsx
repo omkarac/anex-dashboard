@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/queries/assets';
+import { getTeamMembers } from '@/lib/queries/tasks';
 import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
@@ -29,6 +30,7 @@ export default async function AssetsPage({
   const sort = VALID_SORTS.includes(params.sort as SortOption) ? (params.sort as SortOption) : 'updated_desc';
 
   const filters = {
+    q: params.q?.trim() || undefined,
     status: parseParam(params, 'status'),
     temperature: parseParam(params, 'temperature'),
     asset_type: parseParam(params, 'asset_type'),
@@ -44,10 +46,11 @@ export default async function AssetsPage({
     page,
   };
 
-  const [{ assets, count, pageCount }, spocOptions, bounds] = await Promise.all([
+  const [{ assets, count, pageCount }, spocOptions, bounds, teamMembers] = await Promise.all([
     listAssets(filters),
     getDistinctSpocAgents(),
     getAssetNumericBounds(),
+    getTeamMembers().catch(() => []),
   ]);
 
   return (
@@ -71,7 +74,7 @@ export default async function AssetsPage({
 
       <div className="flex-1 overflow-auto p-6">
         <Suspense>
-          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} />
+          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} teamMembers={teamMembers} />
         </Suspense>
       </div>
     </div>
