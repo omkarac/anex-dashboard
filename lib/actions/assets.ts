@@ -46,6 +46,7 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
     profit_cr: formData.get('profit_cr') ? Number(formData.get('profit_cr')) : null,
     topline_cr: formData.get('topline_cr') ? Number(formData.get('topline_cr')) : null,
     next_step: formData.get('next_step') || null,
+    assigned_to: formData.get('assigned_to') || null,
     created_by: 'placeholder',
   };
 
@@ -63,7 +64,7 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
       const service = createServiceClient();
       const { data, error } = await service
         .from('assets')
-        .insert({ ...parsed.data, created_by: actorId })
+        .insert({ ...parsed.data, created_by: actorId, assigned_to: raw.assigned_to ?? null })
         .select()
         .single();
       if (error) throw new Error(error.message);

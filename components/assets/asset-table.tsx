@@ -11,7 +11,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import { InlineStatusSelect } from '@/components/assets/inline-status-select';
 import { InlineTemperatureSelect } from '@/components/assets/inline-temperature-select';
-import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
 import { Button } from '@/components/ui/button';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { formatDate, formatSqm } from '@/lib/utils/formatters';
@@ -122,14 +121,12 @@ function buildColumns(teamMembers: TeamMemberOption[]): ColumnDef<Asset>[] {
   {
     accessorKey: 'assigned_to',
     header: 'Assigned',
-    cell: ({ row }) => (
-      <AssetAssignSelect
-        assetId={row.original.id}
-        assignedTo={row.original.assigned_to ?? null}
-        teamMembers={teamMembers}
-        variant="table"
-      />
-    ),
+    cell: ({ row }) => {
+      const member = teamMembers.find((m) => m.id === row.original.assigned_to);
+      return member
+        ? <span className="text-xs font-medium">{member.full_name}</span>
+        : <span className="text-muted-foreground text-xs">—</span>;
+    },
   },
   {
     accessorKey: 'updated_at',

@@ -17,12 +17,13 @@ import {
 import { createAsset } from '@/lib/actions/assets';
 import { ASSET_STATUS_LABELS, ASSET_TEMPERATURE_LABELS, ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
 import type { AssetStatus, AssetTemperature, AssetType } from '@/lib/schemas/asset';
+import type { TeamMemberOption } from '@/lib/queries/tasks';
 
 const STATUS_OPTIONS = Object.keys(ASSET_STATUS_LABELS) as AssetStatus[];
 const TEMPERATURE_OPTIONS = Object.keys(ASSET_TEMPERATURE_LABELS) as AssetTemperature[];
 const TYPE_OPTIONS = Object.keys(ASSET_TYPE_LABELS) as AssetType[];
 
-export function AssetCreateSheet() {
+export function AssetCreateSheet({ teamMembers = [] }: { teamMembers?: TeamMemberOption[] }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -130,6 +131,21 @@ export function AssetCreateSheet() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="resource">Source / Resource</Label>
                 <Input id="resource" name="resource" placeholder="Who brought this deal?" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="assigned_to">Assigned To</Label>
+                <select
+                  id="assigned_to"
+                  name="assigned_to"
+                  defaultValue=""
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— Unassigned —</option>
+                  {teamMembers.map((m) => (
+                    <option key={m.id} value={m.id}>{m.full_name}</option>
+                  ))}
+                </select>
               </div>
             </section>
 

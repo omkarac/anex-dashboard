@@ -63,7 +63,7 @@ export default async function AssetsPage({
               All real-estate opportunities tracked by Anex
             </p>
           </div>
-          <AssetCreateSheet />
+          <AssetCreateSheet teamMembers={teamMembers} />
         </div>
         <div className="mt-3">
           <Suspense>
