@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-table';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import { InlineStatusSelect } from '@/components/assets/inline-status-select';
 import { InlineTemperatureSelect } from '@/components/assets/inline-temperature-select';
 import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
@@ -152,7 +153,7 @@ type AssetTableProps = {
 export function AssetTable({ data, count, pageCount, page, teamMembers }: AssetTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const columns = buildColumns(teamMembers);
+  const columns = useMemo(() => buildColumns(teamMembers), [teamMembers]);
 
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams.toString());
