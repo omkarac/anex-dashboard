@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { signOut } from '@/lib/actions/auth';
 import type { TeamMember } from '@/lib/rbac';
@@ -176,6 +176,7 @@ export function AppShell({ member, children }: { member: TeamMember; children: R
               )}
             >
               <Avatar className="h-7 w-7 shrink-0">
+                {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} />}
                 <AvatarFallback className="text-xs bg-primary text-primary-foreground">
                   {initials(member.full_name)}
                 </AvatarFallback>

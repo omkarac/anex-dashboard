@@ -8,6 +8,7 @@ export type TeamMember = {
   email: string;
   role: 'admin' | 'member';
   is_active: boolean;
+  avatar_url: string | null;
   created_at: string;
 };
 
