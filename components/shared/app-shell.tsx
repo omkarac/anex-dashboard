@@ -16,6 +16,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -198,6 +199,13 @@ export function AppShell({ member, children }: { member: TeamMember; children: R
                 <p className="text-xs font-medium">{member.full_name}</p>
                 <p className="text-xs text-muted-foreground truncate">{member.email}</p>
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="p-0">
+                <Link href="/profile" className="flex w-full items-center px-2 py-1.5">
+                  <UserCircle className="mr-2 h-3.5 w-3.5" />
+                  My Profile
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive focus:text-destructive p-0">
                 <form action={signOut} className="w-full">
