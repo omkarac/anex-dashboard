@@ -86,6 +86,8 @@ function UpdatesPanel({ assetId, currentUserId, updates }: {
       created_at: new Date().toISOString(),
       created_by: currentUserId,
       author: null,
+      deleted_at: null,
+      deleted_by: null,
     };
     setOptimistic((prev) => [...prev, tempMsg]);
     setBody('');
