@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let { data: member } = await service
     .from('team_members')
-    .select('id, full_name, email, role, is_active, created_at')
+    .select('id, full_name, email, role, is_active, avatar_url, created_at')
     .eq('id', user.id)
     .single();
 
@@ -28,7 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         role: 'member',
         is_active: true,
       })
-      .select('id, full_name, email, role, is_active, created_at')
+      .select('id, full_name, email, role, is_active, avatar_url, created_at')
       .single();
 
     member = inserted;
