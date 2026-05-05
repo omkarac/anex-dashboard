@@ -46,7 +46,8 @@ export async function createTask(
 export async function updateTaskStatus(
   taskId: string,
   assetId: string,
-  status: TaskStatus
+  status: TaskStatus,
+  fileUrl?: string | null
 ): Promise<ActionResult<void>> {
   const result = await withAudit({
     action: 'update',
@@ -57,10 +58,38 @@ export async function updateTaskStatus(
     mutation: async (actorId) => {
       const service = createServiceClient();
       const patch: Record<string, unknown> = { status, updated_by: actorId };
-      if (status === 'done') patch.completed_at = new Date().toISOString();
-      else patch.completed_at = null;
-
+      if (status === 'done') {
+        patch.completed_at = new Date().toISOString();
+        if (fileUrl !== undefined) patch.file_url = fileUrl || null;
+      } else {
+        patch.completed_at = null;
+      }
       const { error } = await service.from('tasks').update(patch).eq('id', taskId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  return result;
+}
+
+export async function setTaskFileUrl(
+  taskId: string,
+  assetId: string,
+  fileUrl: string | null
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'task',
+    entityId: taskId,
+    assetId,
+    summary: fileUrl ? 'File link attached to task' : 'File link removed from task',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('tasks')
+        .update({ file_url: fileUrl, updated_by: actorId })
+        .eq('id', taskId);
       if (error) throw new Error(error.message);
     },
   });

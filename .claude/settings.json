@@ -5,7 +5,10 @@
       "Bash(npx shadcn@latest init --defaults)",
       "Bash(npx tsc *)",
       "Bash(npm run *)",
-      "Bash(supabase --version)"
+      "Bash(supabase --version)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "/Users/omkar/anex-dashboard-1/app/auth"

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban } from 'lucide-react';
+import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,7 @@ import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/lib/enums/task';
 import { formatTimeAgo, formatDate } from '@/lib/utils/formatters';
 import { createUpdate, deleteUpdate } from '@/lib/actions/updates';
-import { createTask, updateTaskStatus, updateTaskAssignee, deleteTask } from '@/lib/actions/tasks';
+import { createTask, updateTaskStatus, updateTaskAssignee, setTaskFileUrl, deleteTask } from '@/lib/actions/tasks';
 import { formatDate as _formatDate } from '@/lib/utils/formatters';
 import type { UpdateWithAuthor, StatusHistoryEntry, ActivityLogEntry } from '@/lib/queries/updates';
 import type { TaskWithAssignee } from '@/lib/queries/tasks';
@@ -199,15 +199,44 @@ const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
   cancelled: <Ban className="h-3.5 w-3.5 text-muted-foreground" />,
 };
 
-// Milestone checkbox — large, prominent, with assignee select
+// Milestone checkbox — prominent, with assignee select and file link support
 function MilestoneRow({ task, assetId, teamMembers }: { task: TaskWithAssignee; assetId: string; teamMembers: TeamMemberOption[] }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const done = task.status === 'done';
 
-  function toggle() {
+  // When unchecked → clicking shows URL prompt inline before confirming
+  const [prompting, setPrompting] = useState(false);
+  const [urlDraft, setUrlDraft] = useState('');
+  // Editing existing URL on a completed task
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [editUrlDraft, setEditUrlDraft] = useState(task.file_url ?? '');
+
+  function startComplete() {
+    if (done) {
+      // Uncheck — no URL prompt needed
+      startTransition(async () => {
+        const result = await updateTaskStatus(task.id, assetId, 'todo');
+        if (result.ok) router.refresh();
+      });
+    } else {
+      setUrlDraft('');
+      setPrompting(true);
+    }
+  }
+
+  function confirmComplete(fileUrl: string | null) {
+    setPrompting(false);
     startTransition(async () => {
-      const result = await updateTaskStatus(task.id, assetId, done ? 'todo' : 'done');
+      const result = await updateTaskStatus(task.id, assetId, 'done', fileUrl);
+      if (result.ok) router.refresh();
+    });
+  }
+
+  function saveEditedUrl() {
+    setEditingUrl(false);
+    startTransition(async () => {
+      const result = await setTaskFileUrl(task.id, assetId, editUrlDraft.trim() || null);
       if (result.ok) router.refresh();
     });
   }
@@ -220,26 +249,108 @@ function MilestoneRow({ task, assetId, teamMembers }: { task: TaskWithAssignee; 
   }
 
   return (
-    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${done ? 'bg-green-50 border-green-100 dark:bg-green-950/20 dark:border-green-900' : 'bg-card border-border'}`}>
-      <button onClick={toggle} disabled={isPending} className="shrink-0 disabled:opacity-40">
-        {done
-          ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-          : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
-      </button>
-      <span className={`flex-1 text-sm font-medium ${done ? 'line-through text-muted-foreground' : ''}`}>
-        {task.title}
-      </span>
-      <select
-        value={task.assigned_to ?? ''}
-        onChange={(e) => reassign(e.target.value)}
-        disabled={isPending}
-        className="h-7 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px] disabled:opacity-40"
-      >
-        <option value="">Unassigned</option>
-        {teamMembers.map((m) => (
-          <option key={m.id} value={m.id}>{m.full_name}</option>
-        ))}
-      </select>
+    <div className={`flex flex-col gap-2 px-3 py-2.5 rounded-lg border transition-colors ${done ? 'bg-green-50 border-green-100 dark:bg-green-950/20 dark:border-green-900' : 'bg-card border-border'}`}>
+      <div className="flex items-center gap-3">
+        <button onClick={startComplete} disabled={isPending || prompting} className="shrink-0 disabled:opacity-40">
+          {done
+            ? <CheckCircle2 className="h-5 w-5 text-green-500" />
+            : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
+        </button>
+
+        <span className={`flex-1 text-sm font-medium ${done ? 'text-muted-foreground' : ''}`}>
+          {task.title}
+        </span>
+
+        {/* File link — shown when done */}
+        {done && !editingUrl && (
+          task.file_url ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <a
+                href={task.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                title="Open file"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open file
+              </a>
+              <button
+                onClick={() => { setEditUrlDraft(task.file_url ?? ''); setEditingUrl(true); }}
+                className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                title="Edit link"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setEditUrlDraft(''); setEditingUrl(true); }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0 flex items-center gap-1"
+            >
+              <LinkIcon className="h-3 w-3" />
+              Add file link
+            </button>
+          )
+        )}
+
+        <select
+          value={task.assigned_to ?? ''}
+          onChange={(e) => reassign(e.target.value)}
+          disabled={isPending}
+          className="h-7 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px] disabled:opacity-40"
+        >
+          <option value="">Unassigned</option>
+          {teamMembers.map((m) => (
+            <option key={m.id} value={m.id}>{m.full_name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Inline URL prompt when marking complete */}
+      {prompting && (
+        <div className="flex flex-col gap-2 pl-8">
+          <p className="text-xs text-muted-foreground">Paste the SharePoint link for this file (optional)</p>
+          <div className="flex gap-1.5">
+            <Input
+              autoFocus
+              placeholder="https://company.sharepoint.com/…"
+              value={urlDraft}
+              onChange={(e) => setUrlDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmComplete(urlDraft.trim() || null);
+                if (e.key === 'Escape') setPrompting(false);
+              }}
+              className="h-7 text-xs flex-1"
+            />
+            <Button size="sm" className="h-7 text-xs px-2.5" onClick={() => confirmComplete(urlDraft.trim() || null)}>
+              Done
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setPrompting(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Inline URL edit for existing completed task */}
+      {editingUrl && (
+        <div className="flex gap-1.5 pl-8">
+          <Input
+            autoFocus
+            placeholder="https://company.sharepoint.com/…"
+            value={editUrlDraft}
+            onChange={(e) => setEditUrlDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveEditedUrl();
+              if (e.key === 'Escape') setEditingUrl(false);
+            }}
+            className="h-7 text-xs flex-1"
+          />
+          <Button size="sm" className="h-7 text-xs px-2.5" onClick={saveEditedUrl}>Save</Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingUrl(false)}>Cancel</Button>
+        </div>
+      )}
     </div>
   );
 }
