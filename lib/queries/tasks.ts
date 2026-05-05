@@ -11,6 +11,7 @@ export type TaskWithAssignee = {
   assigned_to: string | null;
   due_date: string | null;
   completed_at: string | null;
+  is_milestone: boolean;
   created_at: string;
   created_by: string;
   updated_at: string;

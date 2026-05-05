@@ -10,7 +10,7 @@ import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/lib/enums/task';
 import { formatTimeAgo, formatDate } from '@/lib/utils/formatters';
 import { createUpdate, deleteUpdate } from '@/lib/actions/updates';
-import { createTask, updateTaskStatus, deleteTask } from '@/lib/actions/tasks';
+import { createTask, updateTaskStatus, updateTaskAssignee, deleteTask } from '@/lib/actions/tasks';
 import { formatDate as _formatDate } from '@/lib/utils/formatters';
 import type { UpdateWithAuthor, StatusHistoryEntry, ActivityLogEntry } from '@/lib/queries/updates';
 import type { TaskWithAssignee } from '@/lib/queries/tasks';
@@ -199,6 +199,51 @@ const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
   cancelled: <Ban className="h-3.5 w-3.5 text-muted-foreground" />,
 };
 
+// Milestone checkbox — large, prominent, with assignee select
+function MilestoneRow({ task, assetId, teamMembers }: { task: TaskWithAssignee; assetId: string; teamMembers: TeamMemberOption[] }) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const done = task.status === 'done';
+
+  function toggle() {
+    startTransition(async () => {
+      const result = await updateTaskStatus(task.id, assetId, done ? 'todo' : 'done');
+      if (result.ok) router.refresh();
+    });
+  }
+
+  function reassign(memberId: string) {
+    startTransition(async () => {
+      const result = await updateTaskAssignee(task.id, assetId, memberId || null);
+      if (result.ok) router.refresh();
+    });
+  }
+
+  return (
+    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${done ? 'bg-green-50 border-green-100 dark:bg-green-950/20 dark:border-green-900' : 'bg-card border-border'}`}>
+      <button onClick={toggle} disabled={isPending} className="shrink-0 disabled:opacity-40">
+        {done
+          ? <CheckCircle2 className="h-5 w-5 text-green-500" />
+          : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
+      </button>
+      <span className={`flex-1 text-sm font-medium ${done ? 'line-through text-muted-foreground' : ''}`}>
+        {task.title}
+      </span>
+      <select
+        value={task.assigned_to ?? ''}
+        onChange={(e) => reassign(e.target.value)}
+        disabled={isPending}
+        className="h-7 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px] disabled:opacity-40"
+      >
+        <option value="">Unassigned</option>
+        {teamMembers.map((m) => (
+          <option key={m.id} value={m.id}>{m.full_name}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
   assetId: string;
   tasks: TaskWithAssignee[];
@@ -212,8 +257,9 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  // Filter out the admin account (omkarac02@gmail.com) from assignee options
-  const assignableMembers = teamMembers.filter((m) => m.email !== 'omkarac02@gmail.com');
+  const milestones = tasks.filter((t) => t.is_milestone);
+  const openTasks = tasks.filter((t) => !t.is_milestone && t.status !== 'done' && t.status !== 'cancelled');
+  const completedTasks = tasks.filter((t) => !t.is_milestone && (t.status === 'done' || t.status === 'cancelled'));
 
   function submitTask() {
     if (!title.trim()) return;
@@ -229,8 +275,19 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
   }
 
   return (
-    <div className="flex flex-col gap-2 p-3">
-      {/* Quick-add */}
+    <div className="flex flex-col gap-3 p-3">
+
+      {/* ── Milestones ───────────────────────────────────────────── */}
+      {milestones.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-0.5">Key Milestones</p>
+          {milestones.map((t) => (
+            <MilestoneRow key={t.id} task={t} assetId={assetId} teamMembers={teamMembers} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Quick-add ────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-1.5">
         <Input
           value={title}
@@ -254,7 +311,7 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
           className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px]"
         >
           <option value="">Assign to self</option>
-          {assignableMembers.map((m) => (
+          {teamMembers.map((m) => (
             <option key={m.id} value={m.id}>{m.full_name}</option>
           ))}
         </select>
@@ -269,13 +326,34 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
         </Button>
       </div>
 
-      {tasks.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">No tasks yet.</p>
-      ) : (
+      {/* ── Open tasks ───────────────────────────────────────────── */}
+      {openTasks.length === 0 && milestones.length === 0 && (
+        <p className="text-xs text-muted-foreground text-center py-2">No tasks yet.</p>
+      )}
+      {openTasks.length > 0 && (
         <div className="flex flex-col">
-          {tasks.map((task) => (
+          {openTasks.map((task) => (
             <TaskRow key={task.id} task={task} assetId={assetId} />
           ))}
+        </div>
+      )}
+
+      {/* ── Completed history ────────────────────────────────────── */}
+      {completedTasks.length > 0 && (
+        <div className="flex flex-col gap-1 pt-1 border-t">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-0.5 pt-1">Completed</p>
+          <div className="flex flex-col gap-1.5">
+            {completedTasks.map((task) => (
+              <div key={task.id} className="self-end flex flex-col items-end gap-0.5 max-w-[85%]">
+                <div className="rounded-2xl rounded-br-sm bg-green-100 dark:bg-green-900/30 px-3 py-1.5 text-sm text-green-800 dark:text-green-200 line-through">
+                  {task.title}
+                </div>
+                <span className="text-xs text-muted-foreground px-1">
+                  {task.assignee?.full_name ?? 'Someone'} · {task.completed_at ? formatTimeAgo(task.completed_at) : 'completed'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -293,7 +371,10 @@ function TaskRow({ task, assetId }: { task: TaskWithAssignee; assetId: string })
       }`}
     >
       <button
-        onClick={() => startTransition(async () => { await updateTaskStatus(task.id, assetId, STATUS_CYCLE[task.status]); router.refresh(); })}
+        onClick={() => startTransition(async () => {
+          const result = await updateTaskStatus(task.id, assetId, STATUS_CYCLE[task.status]);
+          if (result.ok) router.refresh();
+        })}
         disabled={isPending}
         className="shrink-0 disabled:opacity-40"
       >

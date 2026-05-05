@@ -56,11 +56,36 @@ export async function updateTaskStatus(
     summary: `Task status changed to ${status}`,
     mutation: async (actorId) => {
       const service = createServiceClient();
-      const update: Record<string, unknown> = { status, updated_by: actorId };
-      if (status === 'done') update.completed_at = new Date().toISOString();
-      if (status !== 'done') update.completed_at = null;
+      const patch: Record<string, unknown> = { status, updated_by: actorId };
+      if (status === 'done') patch.completed_at = new Date().toISOString();
+      else patch.completed_at = null;
 
-      const { error } = await service.from('tasks').update(update).eq('id', taskId);
+      const { error } = await service.from('tasks').update(patch).eq('id', taskId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  return result;
+}
+
+export async function updateTaskAssignee(
+  taskId: string,
+  assetId: string,
+  assignedTo: string | null
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'task',
+    entityId: taskId,
+    assetId,
+    summary: assignedTo ? 'Task reassigned' : 'Task unassigned',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('tasks')
+        .update({ assigned_to: assignedTo, updated_by: actorId })
+        .eq('id', taskId);
       if (error) throw new Error(error.message);
     },
   });
@@ -91,4 +116,38 @@ export async function deleteTask(
 
   if (result.ok) revalidatePath(`/assets/${assetId}`);
   return result;
+}
+
+export async function createMilestoneTasks(assetId: string): Promise<void> {
+  const service = createServiceClient();
+  const { data: actor } = await service
+    .from('team_members')
+    .select('id')
+    .eq('is_active', true)
+    .order('created_at')
+    .limit(1)
+    .single();
+  if (!actor) return;
+
+  const titles = ['Feasibility', 'Information Memorandum (IM)'];
+  for (const title of titles) {
+    const { data: existing } = await service
+      .from('tasks')
+      .select('id')
+      .eq('asset_id', assetId)
+      .eq('title', title)
+      .eq('is_milestone', true)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (!existing) {
+      await service.from('tasks').insert({
+        asset_id: assetId,
+        title,
+        is_milestone: true,
+        status: 'todo',
+        priority: 'high',
+        created_by: actor.id,
+      });
+    }
+  }
 }

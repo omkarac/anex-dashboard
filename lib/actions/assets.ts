@@ -6,6 +6,7 @@ import { AssetCreateSchema } from '@/lib/schemas/asset';
 import type { AssetStatus, AssetTemperature, Asset } from '@/lib/schemas/asset';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
+import { createMilestoneTasks } from '@/lib/actions/tasks';
 
 // Status transition rules (members only — admins can do anything)
 const ALLOWED_TRANSITIONS: Record<AssetStatus, AssetStatus[]> = {
@@ -72,7 +73,10 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
     },
   });
 
-  if (result.ok) revalidatePath('/assets');
+  if (result.ok) {
+    revalidatePath('/assets');
+    if (result.data) await createMilestoneTasks((result.data as { id: string }).id);
+  }
   return result;
 }
 
