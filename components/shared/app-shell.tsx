@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   UserCircle,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +33,8 @@ import { signOut } from '@/lib/actions/auth';
 import type { TeamMember } from '@/lib/rbac';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
+  { href: '/sales-marketing', label: 'Sales & Marketing', icon: Megaphone, exact: true },
   { href: '/assets', label: 'Assets', icon: Building2 },
   { href: '/developers', label: 'Developers', icon: Users2 },
   { href: '/logs', label: 'Activity Logs', icon: ScrollText },

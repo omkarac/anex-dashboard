@@ -14,7 +14,7 @@ import { DeveloperSharesWidget } from '@/components/dashboard/developer-shares-w
 import { TeamWorkloadWidget } from '@/components/dashboard/team-workload-widget';
 import { RecentActivityWidget } from '@/components/dashboard/recent-activity-widget';
 
-export const metadata: Metadata = { title: 'Dashboard — Anex' };
+export const metadata: Metadata = { title: 'Capital Markets — Anex' };
 
 export const revalidate = 30;
 
@@ -32,8 +32,8 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col h-full overflow-auto">
       <div className="border-b px-6 py-4 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Overview of the Anex pipeline.</p>
+        <h1 className="text-xl font-semibold tracking-tight">Capital Markets</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Overview of the Anex capital markets pipeline.</p>
       </div>
 
       <div className="flex-1 p-6 flex flex-col gap-4">
