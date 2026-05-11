@@ -1,6 +1,6 @@
 import { Megaphone, ScrollText, UsersRound } from 'lucide-react';
 import { AppShell } from '@/components/shared/app-shell';
-import { getAuthenticatedMember } from '@/app/(dashboard)/layout';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 
 const SM_NAV = [
   { href: '/sales-marketing', label: 'Sales & Marketing', icon: Megaphone, exact: true },

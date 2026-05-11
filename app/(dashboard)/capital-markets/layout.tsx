@@ -1,6 +1,6 @@
 import { LayoutDashboard, Building2, Users2, ScrollText, UsersRound } from 'lucide-react';
 import { AppShell } from '@/components/shared/app-shell';
-import { getAuthenticatedMember } from '@/app/(dashboard)/layout';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 
 const CM_NAV = [
   { href: '/capital-markets', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
