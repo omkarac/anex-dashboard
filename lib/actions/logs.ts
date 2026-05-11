@@ -31,6 +31,6 @@ export async function deleteActivityLog(
     },
   });
 
-  if (result.ok) revalidatePath('/logs');
+  if (result.ok) revalidatePath('/capital-markets/logs'); revalidatePath('/sales-marketing/logs');
   return result;
 }

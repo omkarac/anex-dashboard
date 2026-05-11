@@ -23,7 +23,7 @@ export async function updateMemberRole(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) revalidatePath('/team');
+  if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
   return result;
 }
 
@@ -45,7 +45,7 @@ export async function setMemberActive(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) revalidatePath('/team');
+  if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
   return result;
 }
 
@@ -70,6 +70,6 @@ export async function updateMemberName(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) revalidatePath('/team');
+  if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
   return result;
 }

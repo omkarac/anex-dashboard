@@ -50,6 +50,6 @@ export async function convertToEngagement(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }

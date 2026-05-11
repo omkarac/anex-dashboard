@@ -39,7 +39,7 @@ export function PipelineWidget({ counts }: { counts: StatusCount[] }) {
         {rows.map(({ status, count }) => (
           <div key={status} className="flex items-center gap-2">
             <Link
-              href={`/assets?status=${status}`}
+              href={`/capital-markets/assets?status=${status}`}
               className="w-36 shrink-0 text-xs text-right text-muted-foreground hover:text-foreground transition-colors truncate"
             >
               {ASSET_STATUS_LABELS[status]}

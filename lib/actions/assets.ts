@@ -74,7 +74,7 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
   });
 
   if (result.ok) {
-    revalidatePath('/assets');
+    revalidatePath('/capital-markets/assets');
     if (result.data) await createMilestoneTasks((result.data as { id: string }).id);
   }
   return result;
@@ -129,7 +129,7 @@ export async function updateAssetStatus(
     },
   });
 
-  if (result.ok) revalidatePath('/assets');
+  if (result.ok) revalidatePath('/capital-markets/assets');
   return result;
 }
 
@@ -153,7 +153,7 @@ export async function updateAssetTemperature(
     },
   });
 
-  if (result.ok) revalidatePath('/assets');
+  if (result.ok) revalidatePath('/capital-markets/assets');
   return result;
 }
 
@@ -177,7 +177,7 @@ export async function updateAssetNextStep(
     },
   });
 
-  if (result.ok) revalidatePath('/assets');
+  if (result.ok) revalidatePath('/capital-markets/assets');
   return result;
 }
 
@@ -211,7 +211,7 @@ export async function updateAssetFinancials(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 
@@ -239,7 +239,7 @@ export async function softDeleteAsset(assetId: string): Promise<ActionResult<voi
     },
   });
 
-  if (result.ok) revalidatePath('/assets');
+  if (result.ok) revalidatePath('/capital-markets/assets');
   return result;
 }
 
@@ -278,8 +278,8 @@ export async function assignAsset(
     },
   });
   if (result.ok) {
-    revalidatePath('/assets');
-    revalidatePath(`/assets/${assetId}`);
+    revalidatePath('/capital-markets/assets');
+    revalidatePath(`/capital-markets/assets/${assetId}`);
   }
   return result;
 }

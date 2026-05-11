@@ -39,7 +39,7 @@ export async function createTask(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 
@@ -69,7 +69,7 @@ export async function updateTaskStatus(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 
@@ -94,7 +94,7 @@ export async function setTaskFileUrl(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 
@@ -119,7 +119,7 @@ export async function updateTaskAssignee(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 
@@ -143,7 +143,7 @@ export async function deleteTask(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 

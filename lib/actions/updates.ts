@@ -29,7 +29,7 @@ export async function createUpdate(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
 
@@ -53,6 +53,6 @@ export async function deleteUpdate(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }

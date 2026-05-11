@@ -21,7 +21,7 @@ export function TemperatureWidget({ counts }: { counts: TempCount[] }) {
           return (
             <Link
               key={temp}
-              href={`/assets?temperature=${temp}`}
+              href={`/capital-markets/assets?temperature=${temp}`}
               className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted/40 transition-colors group"
             >
               <div className="flex items-center gap-2">

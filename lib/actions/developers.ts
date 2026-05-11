@@ -31,7 +31,7 @@ export async function createDeveloper(formData: FormData): Promise<ActionResult<
     },
   });
 
-  if (result.ok) revalidatePath('/developers');
+  if (result.ok) revalidatePath('/capital-markets/developers');
   return result;
 }
 
@@ -61,7 +61,7 @@ export async function updateDeveloper(
     },
   });
 
-  if (result.ok) revalidatePath('/developers');
+  if (result.ok) revalidatePath('/capital-markets/developers');
   return result;
 }
 
@@ -90,8 +90,8 @@ export async function shareWithDeveloper(
   });
 
   if (result.ok) {
-    revalidatePath(`/assets/${assetId}`);
-    revalidatePath('/developers');
+    revalidatePath(`/capital-markets/assets/${assetId}`);
+    revalidatePath('/capital-markets/developers');
   }
   return result;
 }
@@ -112,7 +112,7 @@ export async function deleteDeveloper(developerId: string, name: string): Promis
     },
   });
 
-  if (result.ok) revalidatePath('/developers');
+  if (result.ok) revalidatePath('/capital-markets/developers');
   return result;
 }
 
@@ -137,7 +137,7 @@ export async function updateShareNotes(
     },
   });
 
-  if (result.ok) revalidatePath('/developers');
+  if (result.ok) revalidatePath('/capital-markets/developers');
   return result;
 }
 
@@ -162,6 +162,6 @@ export async function updateShareOutcome(
     },
   });
 
-  if (result.ok) revalidatePath(`/assets/${assetId}`);
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
   return result;
 }
