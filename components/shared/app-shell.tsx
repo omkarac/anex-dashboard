@@ -7,6 +7,12 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
+  LayoutDashboard,
+  Building2,
+  Users2,
+  ScrollText,
+  UsersRound,
+  Megaphone,
   LogOut,
   ChevronRight,
   PanelLeftClose,
@@ -26,12 +32,21 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { signOut } from '@/lib/actions/auth';
 import type { TeamMember } from '@/lib/rbac';
 
-export type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-  exact?: boolean;
-  adminOnly?: boolean;
+export type Vertical = 'capital_markets' | 'sales_marketing';
+
+const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: React.ElementType; exact?: boolean; adminOnly?: boolean }[]> = {
+  capital_markets: [
+    { href: '/capital-markets', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
+    { href: '/capital-markets/assets', label: 'Assets', icon: Building2 },
+    { href: '/capital-markets/developers', label: 'Developers', icon: Users2 },
+    { href: '/capital-markets/logs', label: 'Activity Logs', icon: ScrollText },
+    { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
+  ],
+  sales_marketing: [
+    { href: '/sales-marketing', label: 'Sales & Marketing', icon: Megaphone, exact: true },
+    { href: '/sales-marketing/logs', label: 'Activity Logs', icon: ScrollText },
+    { href: '/sales-marketing/team', label: 'Team', icon: UsersRound, adminOnly: true },
+  ],
 };
 
 function initials(name: string) {
@@ -94,16 +109,16 @@ function AnexLogo({ collapsed }: { collapsed: boolean }) {
 
 export function AppShell({
   member,
-  navItems,
+  vertical,
   children,
 }: {
   member: TeamMember;
-  navItems: NavItem[];
+  vertical: Vertical;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const visibleNav = navItems.filter((item) => !item.adminOnly || member.role === 'admin');
+  const visibleNav = NAV_ITEMS[vertical].filter((item) => !item.adminOnly || member.role === 'admin');
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
