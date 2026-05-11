@@ -15,6 +15,7 @@ import {
   Megaphone,
   LogOut,
   ChevronRight,
+  ChevronsLeft,
   PanelLeftClose,
   PanelLeftOpen,
   UserCircle,
@@ -170,6 +171,15 @@ export function AppShell({
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+          <Link
+            href="/"
+            title={collapsed ? 'Switch vertical' : undefined}
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-150 mb-1"
+          >
+            <ChevronsLeft className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Switch vertical</span>}
+          </Link>
+          <div className="border-t mb-1.5" />
           {visibleNav.map((item) => (
             <NavLink
               key={item.href}
