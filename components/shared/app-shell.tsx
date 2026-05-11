@@ -7,17 +7,11 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard,
-  Building2,
-  Users2,
-  ScrollText,
-  UsersRound,
   LogOut,
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
   UserCircle,
-  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,14 +26,13 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { signOut } from '@/lib/actions/auth';
 import type { TeamMember } from '@/lib/rbac';
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
-  { href: '/sales-marketing', label: 'Sales & Marketing', icon: Megaphone, exact: true },
-  { href: '/assets', label: 'Assets', icon: Building2 },
-  { href: '/developers', label: 'Developers', icon: Users2 },
-  { href: '/logs', label: 'Activity Logs', icon: ScrollText },
-  { href: '/team', label: 'Team', icon: UsersRound, adminOnly: true },
-];
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact?: boolean;
+  adminOnly?: boolean;
+};
 
 function initials(name: string) {
   return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -99,10 +92,18 @@ function AnexLogo({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-export function AppShell({ member, children }: { member: TeamMember; children: React.ReactNode }) {
+export function AppShell({
+  member,
+  navItems,
+  children,
+}: {
+  member: TeamMember;
+  navItems: NavItem[];
+  children: React.ReactNode;
+}) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const visibleNav = NAV_ITEMS.filter((item) => !item.adminOnly || member.role === 'admin');
+  const visibleNav = navItems.filter((item) => !item.adminOnly || member.role === 'admin');
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

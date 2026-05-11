@@ -13,7 +13,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ENTITY_LINKS: Record<string, (id: string) => string | null> = {
-  asset: (id) => `/assets/${id}`,
+  asset: (id) => `/capital-markets/assets/${id}`,
 };
 
 export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
@@ -23,7 +23,7 @@ export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Recent Activity
         </h2>
-        <Link href="/logs" className="text-xs text-primary hover:underline">
+        <Link href="/capital-markets/logs" className="text-xs text-primary hover:underline">
           View all
         </Link>
       </div>

@@ -50,7 +50,6 @@ export default async function AssetDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? '';
 
-  // .catch(() => []) / null ensures a missing table never 500s the page
   const [asset, updates, tasks, history, activity, shares, developers, engagement, teamMembers] = await Promise.all([
     getAsset(id),
     getUpdatesForAsset(id).catch(() => []),
@@ -67,10 +66,9 @@ export default async function AssetDetailPage({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="border-b px-6 py-4">
         <Link
-          href="/assets"
+          href="/capital-markets/assets"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -96,10 +94,8 @@ export default async function AssetDetailPage({
         </div>
       </div>
 
-      {/* Body */}
       <div className="flex-1 overflow-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column — core facts */}
           <div className="lg:col-span-1 space-y-4">
             <section className="rounded-lg border p-4">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
@@ -167,7 +163,6 @@ export default async function AssetDetailPage({
             </section>
           </div>
 
-          {/* Right 2/3 — bento panels */}
           <div className="lg:col-span-2">
             <DetailPanels
               assetId={id}

@@ -6,14 +6,14 @@ import { LogTable } from '@/components/logs/log-table';
 
 export const metadata: Metadata = { title: 'Activity Logs — Anex' };
 
-export default async function LogsPage({
+export default async function CMLogsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
   const params = await searchParams;
-
   const page = Math.max(0, parseInt(params.page ?? '0', 10) || 0);
+
   const filters = {
     q: params.q || undefined,
     actor_id: params.actor_id || undefined,
@@ -23,11 +23,12 @@ export default async function LogsPage({
     to: params.to || undefined,
     show_deleted: params.deleted === '1',
     page,
+    vertical: 'capital_markets' as const,
   };
 
   const [{ logs, total }, filterOptions] = await Promise.all([
     listLogs(filters).catch(() => ({ logs: [], total: 0, page: 0 })),
-    getLogFilterOptions().catch(() => ({ actors: [], actions: [], entityTypes: [] })),
+    getLogFilterOptions('capital_markets').catch(() => ({ actors: [], actions: [], entityTypes: [] })),
   ]);
 
   return (
@@ -35,7 +36,7 @@ export default async function LogsPage({
       <div className="border-b px-6 py-4">
         <h1 className="text-xl font-semibold tracking-tight">Activity Logs</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Audit trail of all actions in the system.
+          Capital Markets audit trail.
         </p>
       </div>
 

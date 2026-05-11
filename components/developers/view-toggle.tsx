@@ -12,7 +12,7 @@ export function ViewToggle({ active }: { active: 'list' | 'shares' }) {
         size="sm"
         variant={active === 'list' ? 'default' : 'ghost'}
         className="h-7 px-2.5"
-        onClick={() => router.push('/developers?view=list')}
+        onClick={() => router.push('/capital-markets/developers?view=list')}
       >
         <Building2 className="mr-1.5 h-3.5 w-3.5" />
         Developers
@@ -21,7 +21,7 @@ export function ViewToggle({ active }: { active: 'list' | 'shares' }) {
         size="sm"
         variant={active === 'shares' ? 'default' : 'ghost'}
         className="h-7 px-2.5"
-        onClick={() => router.push('/developers?view=shares')}
+        onClick={() => router.push('/capital-markets/developers?view=shares')}
       >
         <Share2 className="mr-1.5 h-3.5 w-3.5" />
         All Shares

@@ -56,7 +56,7 @@ export function AssetSearchInput() {
       params.delete('q');
     }
     params.delete('page');
-    router.push(`/assets?${params.toString()}`);
+    router.push(`/capital-markets/assets?${params.toString()}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -74,7 +74,7 @@ export function AssetSearchInput() {
   function selectSuggestion(item: { id: string; property_name: string }) {
     setValue(item.property_name);
     setOpen(false);
-    router.push(`/assets/${item.id}`);
+    router.push(`/capital-markets/assets/${item.id}`);
   }
 
   const highlight = (text: string, q: string) => {

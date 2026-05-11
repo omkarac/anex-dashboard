@@ -1,9 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { AppShell } from '@/components/shared/app-shell';
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export async function getAuthenticatedMember() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,7 +16,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq('id', user.id)
     .single();
 
-  // Safety net: provision row if callback insert was missed
   if (!member) {
     const { data: inserted } = await service
       .from('team_members')
@@ -36,5 +34,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!member || !member.is_active) redirect('/login');
 
-  return <AppShell member={member}>{children}</AppShell>;
+  return member;
+}
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await getAuthenticatedMember();
+  return <>{children}</>;
 }

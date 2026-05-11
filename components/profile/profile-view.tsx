@@ -272,7 +272,7 @@ export function ProfileView({
         <div className="rounded-xl border bg-card flex flex-col">
           <div className="flex items-center justify-between px-5 py-4 border-b">
             <h2 className="text-sm font-semibold">My Assigned Assets</h2>
-            <Link href="/assets" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <Link href="/capital-markets/assets" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
               View all <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
@@ -282,7 +282,7 @@ export function ProfileView({
             <ul className="divide-y">
               {assets.map((a) => (
                 <li key={a.id}>
-                  <Link href={`/assets/${a.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-muted/40 transition-colors group">
+                  <Link href={`/capital-markets/assets/${a.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-muted/40 transition-colors group">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{a.property_name}</p>
                       {a.location && <p className="text-xs text-muted-foreground truncate">{a.location}</p>}
@@ -308,7 +308,7 @@ export function ProfileView({
             <ul className="divide-y">
               {tasks.map((t) => (
                 <li key={t.id}>
-                  <Link href={`/assets/${t.asset_id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-muted/40 transition-colors group">
+                  <Link href={`/capital-markets/assets/${t.asset_id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-muted/40 transition-colors group">
                     <div className={`mt-0.5 shrink-0 h-2 w-2 rounded-full ${PRIORITY_STYLES[t.priority] ?? 'text-muted-foreground'} bg-current`} title={t.priority} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{t.title}</p>

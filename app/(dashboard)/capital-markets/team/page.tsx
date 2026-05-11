@@ -1,6 +1,4 @@
 import { Metadata } from 'next';
-import { requireAdmin } from '@/lib/rbac';
-import { currentUser } from '@/lib/rbac';
 import { createClient } from '@/lib/supabase/server';
 import { listTeamMembers } from '@/lib/queries/team';
 import { MemberRow } from '@/components/team/member-row';
@@ -12,7 +10,6 @@ export default async function TeamPage() {
   const { data: { session } } = await supabase.auth.getSession();
   const currentUserId = session?.user.id ?? '';
 
-  // Fetch current user's role to check admin status
   const { data: me } = await supabase
     .from('team_members')
     .select('role')
@@ -20,10 +17,7 @@ export default async function TeamPage() {
     .single();
 
   const isAdmin = me?.role === 'admin';
-
-  // Non-admins can see the page but can only edit their own name
   const members = await listTeamMembers().catch(() => []);
-
   const active = members.filter((m) => m.is_active);
   const inactive = members.filter((m) => !m.is_active);
 
@@ -55,12 +49,7 @@ export default async function TeamPage() {
             </thead>
             <tbody>
               {active.map((m) => (
-                <MemberRow
-                  key={m.id}
-                  member={m}
-                  currentUserId={currentUserId}
-                  isCurrentUserAdmin={isAdmin}
-                />
+                <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
               ))}
             </tbody>
           </table>
@@ -76,12 +65,7 @@ export default async function TeamPage() {
             <table className="w-full text-sm">
               <tbody>
                 {inactive.map((m) => (
-                  <MemberRow
-                    key={m.id}
-                    member={m}
-                    currentUserId={currentUserId}
-                    isCurrentUserAdmin={isAdmin}
-                  />
+                  <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
                 ))}
               </tbody>
             </table>

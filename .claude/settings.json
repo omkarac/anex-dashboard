@@ -8,10 +8,19 @@
       "Bash(supabase --version)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Read(//Users/omkar/anex-dashboard/**)",
+      "Bash(git -C ~/anex-dashboard log --oneline)",
+      "Read(//Users/omkar/anex-platform/**)",
+      "Bash(git -C ~/anex-platform log --oneline)",
+      "Read(//Users/omkar/anex-frontline/**)",
+      "Bash(git -C ~/anex-frontline log --oneline)",
+      "Bash(gh run *)",
+      "Bash(vercel ls *)"
     ],
     "additionalDirectories": [
-      "/Users/omkar/anex-dashboard-1/app/auth"
+      "/Users/omkar/anex-dashboard-1/app/auth",
+      "/Users/omkar/anex-dashboard-1/app/(dashboard)/capital-markets/assets"
     ]
   }
 }
