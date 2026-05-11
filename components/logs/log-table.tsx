@@ -21,7 +21,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ENTITY_LINKS: Record<string, (id: string) => string | null> = {
-  asset: (id) => `/assets/${id}`,
+  asset: (id) => `/capital-markets/assets/${id}`,
   update: () => null,
   task: () => null,
   developer_share: () => null,
@@ -164,7 +164,7 @@ export function LogTable({ logs, total, page }: Props) {
                   <td className="px-3 py-2 text-xs max-w-[180px] truncate">
                     {log.asset ? (
                       <Link
-                        href={`/assets/${log.asset.id}`}
+                        href={`/capital-markets/assets/${log.asset.id}`}
                         className="text-primary hover:underline font-medium"
                       >
                         {log.asset.property_name}

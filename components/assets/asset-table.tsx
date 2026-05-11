@@ -26,7 +26,7 @@ function buildColumns(teamMembers: TeamMemberOption[]): ColumnDef<Asset>[] {
     header: 'Property',
     cell: ({ row }) => (
       <Link
-        href={`/assets/${row.original.id}`}
+        href={`/capital-markets/assets/${row.original.id}`}
         className="font-medium hover:underline underline-offset-2 max-w-52 line-clamp-1 block"
       >
         {row.original.property_name}
@@ -108,7 +108,7 @@ function buildColumns(teamMembers: TeamMemberOption[]): ColumnDef<Asset>[] {
           {truncated ? text.slice(0, 60).trimEnd() + '…' : text}
           {truncated && (
             <Link
-              href={`/assets/${row.original.id}`}
+              href={`/capital-markets/assets/${row.original.id}`}
               className="ml-1 text-foreground hover:underline underline-offset-2 whitespace-nowrap"
             >
               read more

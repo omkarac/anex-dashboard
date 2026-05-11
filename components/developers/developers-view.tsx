@@ -199,7 +199,7 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <Link
-            href={`/assets/${share.asset_id}`}
+            href={`/capital-markets/assets/${share.asset_id}`}
             className="font-medium text-sm hover:underline underline-offset-2 flex items-center gap-1 group/link"
           >
             {share.asset_name}

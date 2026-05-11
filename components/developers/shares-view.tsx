@@ -35,7 +35,7 @@ export function SharesView({ shares }: { shares: ShareWithDetails[] }) {
             <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
               <td className="px-4 py-3">
                 <Link
-                  href={`/assets/${s.asset_id}`}
+                  href={`/capital-markets/assets/${s.asset_id}`}
                   className="font-medium hover:underline underline-offset-2 max-w-48 line-clamp-1 block"
                 >
                   {s.asset_name}
