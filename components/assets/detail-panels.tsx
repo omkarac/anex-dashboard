@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -571,7 +572,12 @@ function SharesPanel({ shares }: { shares: ShareWithDetails[] }) {
       {shares.map((s) => (
         <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{s.developer_name}</p>
+            <Link
+              href={`/capital-markets/developers/${s.developer_id}`}
+              className="text-sm font-medium truncate hover:underline underline-offset-2 block"
+            >
+              {s.developer_name}
+            </Link>
             <p className="text-xs text-muted-foreground">by {s.shared_by_name} · {_formatDate(s.shared_at)}</p>
           </div>
           <span className={`text-xs capitalize font-medium shrink-0 ${OUTCOME_COLORS[s.outcome ?? ''] ?? 'text-muted-foreground'}`}>

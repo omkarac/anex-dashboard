@@ -1,12 +1,8 @@
 import { z } from 'zod';
 
 export const AssetStatusEnum = z.enum([
-  'new',
-  'initial_assessment',
   'evaluating',
   'evaluated',
-  'shared_with_developer',
-  'on_hold',
   'won',
   'dropped',
 ]);

@@ -44,26 +44,26 @@ const service = createClient(
 const STATUS_MAP: Record<string, string> = {
   'active': 'evaluating',
   'closed': 'dropped',
-  'cold': 'on_hold',
+  'cold': 'evaluating',
   'dropped': 'dropped',
   'dropped by us in the past': 'dropped',
   'droppped': 'dropped',
   'evaluated': 'evaluated',
-  'ff': 'on_hold',
+  'ff': 'evaluating',
   'feasibility done': 'evaluated',
-  'feasibility done on hold': 'on_hold',
+  'feasibility done on hold': 'evaluating',
   'feasibility in process': 'evaluating',
-  'initial assessment': 'initial_assessment',
+  'initial assessment': 'evaluating',
   'not active': 'dropped',
-  'pending': 'initial_assessment',
-  'project status to be understood': 'initial_assessment',
-  'revive': 'on_hold',
-  'slow cooking': 'on_hold',
-  'slow cooking ': 'on_hold',
-  'to be evaluated': 'initial_assessment',
-  'to be figured': 'initial_assessment',
-  'to be revived': 'on_hold',
-  'to be understood if feasibility done previously': 'initial_assessment',
+  'pending': 'evaluating',
+  'project status to be understood': 'evaluating',
+  'revive': 'evaluating',
+  'slow cooking': 'evaluating',
+  'slow cooking ': 'evaluating',
+  'to be evaluated': 'evaluating',
+  'to be figured': 'evaluating',
+  'to be revived': 'evaluating',
+  'to be understood if feasibility done previously': 'evaluating',
   'wip': 'evaluating',
   'won': 'won',
 };
@@ -136,7 +136,7 @@ function parseNum(v: unknown): number | null {
 
 function mapStatus(raw: string): string {
   const key = raw.toLowerCase().trim();
-  return STATUS_MAP[key] ?? 'initial_assessment';
+  return STATUS_MAP[key] ?? 'evaluating';
 }
 
 function mapType(raw: string): string | null {

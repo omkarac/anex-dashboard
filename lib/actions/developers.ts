@@ -61,7 +61,10 @@ export async function updateDeveloper(
     },
   });
 
-  if (result.ok) revalidatePath('/capital-markets/developers');
+  if (result.ok) {
+    revalidatePath('/capital-markets/developers');
+    revalidatePath(`/capital-markets/developers/${developerId}`);
+  }
   return result;
 }
 

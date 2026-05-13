@@ -161,6 +161,57 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
   }));
 }
 
+export async function getDeveloperById(id: string): Promise<DeveloperWithStats | null> {
+  const service = createServiceClient();
+
+  const { data: dev } = await service
+    .from('developers')
+    .select('*')
+    .eq('id', id)
+    .eq('is_active', true)
+    .single();
+
+  if (!dev) return null;
+
+  const { data: rawShares } = await service
+    .from('developer_shares')
+    .select('*, asset:assets!asset_id(property_name)')
+    .eq('developer_id', id)
+    .is('deleted_at', null)
+    .order('shared_at', { ascending: false });
+
+  const actorIds = [...new Set((rawShares ?? []).map((s) => s.shared_by))];
+  const { data: members } = actorIds.length
+    ? await service.from('team_members').select('id, full_name').in('id', actorIds)
+    : { data: [] };
+  const memberMap = new Map((members ?? []).map((m) => [m.id, m.full_name]));
+
+  const shares: DeveloperShareFull[] = (rawShares ?? []).map((s) => ({
+    id: s.id,
+    asset_id: s.asset_id,
+    asset_name: (s.asset as { property_name: string } | null)?.property_name ?? 'Unknown',
+    shared_at: s.shared_at,
+    shared_by_name: memberMap.get(s.shared_by) ?? 'Unknown',
+    outcome: s.outcome,
+    outcome_at: s.outcome_at ?? null,
+    notes: s.notes,
+  }));
+
+  const outcome_counts: Record<string, number> = {};
+  for (const s of shares) {
+    const key = s.outcome ?? 'pending';
+    outcome_counts[key] = (outcome_counts[key] ?? 0) + 1;
+  }
+
+  return {
+    ...(dev as import('@/lib/schemas/developer').Developer),
+    share_count: shares.length,
+    last_shared_at: shares[0]?.shared_at ?? null,
+    outcome_counts,
+    shares,
+  };
+}
+
 export type DeveloperOption = { id: string; name: string };
 
 export async function getDeveloperOptions(): Promise<DeveloperOption[]> {

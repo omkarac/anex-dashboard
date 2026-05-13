@@ -10,14 +10,10 @@ import { createMilestoneTasks } from '@/lib/actions/tasks';
 
 // Status transition rules (members only — admins can do anything)
 const ALLOWED_TRANSITIONS: Record<AssetStatus, AssetStatus[]> = {
-  new: ['initial_assessment'],
-  initial_assessment: ['evaluating'],
-  evaluating: ['evaluated'],
-  evaluated: ['shared_with_developer', 'won', 'dropped', 'on_hold'],
-  shared_with_developer: ['won', 'dropped', 'on_hold'],
-  on_hold: ['new', 'initial_assessment', 'evaluating', 'evaluated', 'shared_with_developer', 'won', 'dropped'],
+  evaluating: ['evaluated', 'won', 'dropped'],
+  evaluated: ['evaluating', 'won', 'dropped'],
   won: [],
-  dropped: [],
+  dropped: ['evaluating'],
 };
 
 function canTransition(from: AssetStatus, to: AssetStatus, isAdmin: boolean): boolean {
@@ -29,7 +25,7 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
   const raw = {
     property_name: formData.get('property_name'),
     location: formData.get('location') || null,
-    status: formData.get('status') || 'new',
+    status: formData.get('status') || 'evaluating',
     temperature: formData.get('temperature') || 'none',
     asset_type: formData.get('asset_type') || null,
     spoc_agent: formData.get('spoc_agent') || null,

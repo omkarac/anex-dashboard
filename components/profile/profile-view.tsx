@@ -43,20 +43,14 @@ function initials(name: string) {
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
-  new: 'bg-slate-100 text-slate-600',
-  initial_assessment: 'bg-blue-100 text-blue-700',
-  evaluating: 'bg-indigo-100 text-indigo-700',
-  evaluated: 'bg-violet-100 text-violet-700',
-  shared_with_developer: 'bg-amber-100 text-amber-700',
-  on_hold: 'bg-gray-100 text-gray-500',
+  evaluating: 'bg-amber-100 text-amber-700',
+  evaluated: 'bg-orange-100 text-orange-700',
   won: 'bg-emerald-100 text-emerald-700',
   dropped: 'bg-red-100 text-red-600',
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  new: 'New', initial_assessment: 'Initial Assessment', evaluating: 'Evaluating',
-  evaluated: 'Evaluated', shared_with_developer: 'Shared', on_hold: 'On Hold',
-  won: 'Won', dropped: 'Dropped',
+  evaluating: 'Evaluating', evaluated: 'Evaluated', won: 'Won', dropped: 'Dropped',
 };
 
 const PRIORITY_STYLES: Record<string, string> = {

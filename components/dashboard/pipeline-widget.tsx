@@ -3,23 +3,15 @@ import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import type { StatusCount } from '@/lib/queries/dashboard';
 
 const STATUS_ORDER = [
-  'new',
-  'initial_assessment',
   'evaluating',
   'evaluated',
-  'shared_with_developer',
-  'on_hold',
   'won',
   'dropped',
 ] as const;
 
 const STATUS_BAR_COLORS: Record<string, string> = {
-  new: 'bg-slate-300',
-  initial_assessment: 'bg-blue-300',
   evaluating: 'bg-amber-300',
   evaluated: 'bg-orange-300',
-  shared_with_developer: 'bg-purple-300',
-  on_hold: 'bg-gray-300',
   won: 'bg-green-400',
   dropped: 'bg-red-300',
 };

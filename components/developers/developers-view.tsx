@@ -14,6 +14,8 @@ import { updateShareOutcome, updateShareNotes, updateDeveloper, deleteDeveloper 
 import { DeveloperCreateSheet } from './developer-create-sheet';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
+// DeveloperPanel kept for edit/delete access from the list — click card navigates to detail page
+
 // ─── Outcome config ───────────────────────────────────────────────────────────
 
 const OUTCOME_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
@@ -88,7 +90,7 @@ function Avatar({ name, logoUrl, size = 'md' }: { name: string; logoUrl?: string
 
 // ─── Developer card ───────────────────────────────────────────────────────────
 
-function DeveloperCard({ dev, onClick }: { dev: DeveloperWithStats; onClick: () => void }) {
+function DeveloperCard({ dev }: { dev: DeveloperWithStats }) {
   const p = palette(dev.name);
   const outcomeEntries = Object.entries(dev.outcome_counts)
     .filter(([k, n]) => n > 0 && k !== 'pending')
@@ -96,8 +98,8 @@ function DeveloperCard({ dev, onClick }: { dev: DeveloperWithStats; onClick: () 
   const pendingCount = dev.outcome_counts['pending'] ?? 0;
 
   return (
-    <button
-      onClick={onClick}
+    <Link
+      href={`/capital-markets/developers/${dev.id}`}
       className="group w-full text-left rounded-2xl border bg-card hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* Top accent strip */}
@@ -150,7 +152,7 @@ function DeveloperCard({ dev, onClick }: { dev: DeveloperWithStats; onClick: () 
           )}
         </div>
       </div>
-    </button>
+    </Link>
   );
 }
 
@@ -568,7 +570,6 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
 
 export function DevelopersView({ developers }: { developers: DeveloperWithStats[] }) {
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<DeveloperWithStats | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -613,18 +614,9 @@ export function DevelopersView({ developers }: { developers: DeveloperWithStats[
       {/* Card grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((dev) => (
-          <DeveloperCard key={dev.id} dev={dev} onClick={() => setSelected(dev)} />
+          <DeveloperCard key={dev.id} dev={dev} />
         ))}
       </div>
-
-      {/* Detail panel */}
-      {selected && (
-        <DeveloperPanel
-          dev={selected}
-          onClose={() => setSelected(null)}
-          onSave={(patch) => setSelected((prev) => prev ? { ...prev, ...patch } : null)}
-        />
-      )}
     </>
   );
 }
