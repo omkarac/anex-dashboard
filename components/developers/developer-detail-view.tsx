@@ -8,6 +8,40 @@ import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
 import { updateShareOutcome, updateShareNotes } from '@/lib/actions/developers';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
+function useDominantColor(imageUrl: string | null | undefined): string | null {
+  const [rgb, setRgb] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!imageUrl) { setRgb(null); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 80; canvas.height = 80;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, 80, 80);
+        const { data } = ctx.getImageData(0, 0, 80, 80);
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 128) continue;
+          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          if (brightness > 235 || brightness < 20) continue;
+          r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+        }
+        if (n > 20) setRgb(`${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)}`);
+      } catch {
+        // CORS-tainted canvas — skip colour extraction
+      }
+    };
+    img.onerror = () => setRgb(null);
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  return rgb;
+}
+
 const OUTCOME_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
   interested: { label: 'Interested', badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
   pursuing:   { label: 'Pursuing',   badge: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500'    },
@@ -175,6 +209,7 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
 
 export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
   const p = palette(dev.name);
+  const dominantRgb = useDominantColor(dev.logo_url);
 
   const outcomeEntries = Object.entries(dev.outcome_counts)
     .filter(([, n]) => n > 0)
@@ -182,36 +217,65 @@ export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b px-6 py-4">
-        <Link
-          href="/capital-markets/developers"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Developers
-        </Link>
-
-        <div className="flex items-start gap-4">
-          <DeveloperAvatar name={dev.name} logoUrl={dev.logo_url} size="lg" />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight">{dev.name}</h1>
-            {dev.contact_person && (
-              <p className="text-sm text-muted-foreground mt-0.5">{dev.contact_person}</p>
+      {/* Hero header */}
+      <div className="relative border-b shrink-0 overflow-hidden">
+        {/* Blurred background layer */}
+        {dev.logo_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={dev.logo_url}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+              style={{ filter: 'blur(28px) saturate(180%)', transform: 'scale(1.5)', opacity: 0.35 }}
+            />
+            <div className="absolute inset-0 bg-background/55" />
+            {dominantRgb && (
+              <div
+                className="absolute inset-0"
+                style={{ background: `linear-gradient(135deg, rgba(${dominantRgb},0.22) 0%, rgba(${dominantRgb},0.06) 100%)` }}
+              />
             )}
-            <div className="flex flex-wrap items-center gap-3 mt-1.5">
-              {dev.contact_email && (
-                <a href={`mailto:${dev.contact_email}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2">
-                  <Mail className="h-3 w-3" />
-                  {dev.contact_email}
-                </a>
+          </>
+        ) : (
+          <div className={`absolute inset-0 opacity-40 ${p.bg}`} />
+        )}
+
+        {/* Foreground content */}
+        <div className="relative px-6 pt-4 pb-6">
+          <Link
+            href="/capital-markets/developers"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Developers
+          </Link>
+
+          <div className="flex items-end gap-5">
+            <DeveloperAvatar name={dev.name} logoUrl={dev.logo_url} size="lg" />
+            <div className="flex-1 min-w-0 pb-0.5">
+              <h1 className="text-2xl font-bold tracking-tight leading-tight">{dev.name}</h1>
+              {dev.contact_person && (
+                <p className="text-sm text-muted-foreground mt-0.5">{dev.contact_person}</p>
               )}
-              {dev.contact_phone && (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <Phone className="h-3 w-3" />
-                  {dev.contact_phone}
-                </span>
-              )}
+              <div className="flex flex-wrap items-center gap-4 mt-2">
+                {dev.contact_email && (
+                  <a
+                    href={`mailto:${dev.contact_email}`}
+                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    {dev.contact_email}
+                  </a>
+                )}
+                {dev.contact_phone && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5" />
+                    {dev.contact_phone}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
