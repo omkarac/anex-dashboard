@@ -283,6 +283,27 @@ export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-3xl mx-auto flex flex-col gap-6">
+          {/* Contact */}
+          <section className="rounded-xl border p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Contact</p>
+            <div className="flex flex-col divide-y">
+              {[
+                { label: 'Contact Person', value: dev.contact_person },
+                { label: 'Email', value: dev.contact_email
+                    ? <a href={`mailto:${dev.contact_email}`} className="text-primary hover:underline underline-offset-2 inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5 shrink-0" />{dev.contact_email}</a>
+                    : null },
+                { label: 'Phone', value: dev.contact_phone
+                    ? <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />{dev.contact_phone}</span>
+                    : null },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center gap-4 py-2">
+                  <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
+                  <span className="text-sm">{value ?? <span className="text-muted-foreground">—</span>}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl border bg-card p-4 text-center">
