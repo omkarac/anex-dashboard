@@ -3,9 +3,13 @@
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Phone, ExternalLink, ChevronLeft, Building2 } from 'lucide-react';
+import { Mail, Phone, ExternalLink, ChevronLeft, Building2, Pencil, X, Check } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
-import { updateShareOutcome, updateShareNotes } from '@/lib/actions/developers';
+import { updateShareOutcome, updateShareNotes, updateDeveloper } from '@/lib/actions/developers';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
 function useDominantColor(imageUrl: string | null | undefined): string | null {
@@ -208,23 +212,76 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
 }
 
 export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: dev.name,
+    contact_person: dev.contact_person ?? '',
+    contact_email: dev.contact_email ?? '',
+    contact_phone: dev.contact_phone ?? '',
+    logo_url: dev.logo_url ?? '',
+    notes: dev.notes ?? '',
+  });
+
   const p = palette(dev.name);
-  const dominantRgb = useDominantColor(dev.logo_url);
+  const activeLogoUrl = editing ? (form.logo_url.trim() || null) : dev.logo_url;
+  const dominantRgb = useDominantColor(activeLogoUrl);
 
   const outcomeEntries = Object.entries(dev.outcome_counts)
     .filter(([, n]) => n > 0)
     .sort(([a], [b]) => a.localeCompare(b));
+
+  function field(key: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  }
+
+  function cancelEdit() {
+    setForm({
+      name: dev.name,
+      contact_person: dev.contact_person ?? '',
+      contact_email: dev.contact_email ?? '',
+      contact_phone: dev.contact_phone ?? '',
+      logo_url: dev.logo_url ?? '',
+      notes: dev.notes ?? '',
+    });
+    setEditing(false);
+    setError(null);
+  }
+
+  function saveEdit() {
+    const patch = {
+      name: form.name.trim() || dev.name,
+      contact_person: form.contact_person.trim() || null,
+      contact_email: form.contact_email.trim() || null,
+      contact_phone: form.contact_phone.trim() || null,
+      logo_url: form.logo_url.trim() || null,
+      notes: form.notes.trim() || null,
+    };
+    startTransition(async () => {
+      const result = await updateDeveloper(dev.id, patch);
+      if (result.ok) {
+        setEditing(false);
+        setError(null);
+        router.refresh();
+      } else {
+        setError(result.error);
+      }
+    });
+  }
 
   return (
     <div className="flex flex-col h-full">
       {/* Hero header */}
       <div className="relative border-b shrink-0 overflow-hidden">
         {/* Blurred background layer */}
-        {dev.logo_url ? (
+        {activeLogoUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={dev.logo_url}
+              src={activeLogoUrl}
               alt=""
               aria-hidden
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
@@ -244,65 +301,135 @@ export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
 
         {/* Foreground content */}
         <div className="relative px-6 pt-4 pb-6">
-          <Link
-            href="/capital-markets/developers"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Developers
-          </Link>
+          <div className="flex items-center justify-between mb-4">
+            <Link
+              href="/capital-markets/developers"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Developers
+            </Link>
 
-          <div className="flex items-end gap-5">
-            <DeveloperAvatar name={dev.name} logoUrl={dev.logo_url} size="lg" />
-            <div className="flex-1 min-w-0 pb-0.5">
-              <h1 className="text-2xl font-bold tracking-tight leading-tight">{dev.name}</h1>
-              {dev.contact_person && (
-                <p className="text-sm text-muted-foreground mt-0.5">{dev.contact_person}</p>
+            {/* Edit / Save / Cancel controls */}
+            <div className="flex items-center gap-1.5">
+              {editing ? (
+                <>
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={cancelEdit} disabled={isPending}>
+                    <X className="h-3.5 w-3.5 mr-1" />Cancel
+                  </Button>
+                  <Button size="sm" className="h-7 px-3" onClick={saveEdit} disabled={isPending}>
+                    <Check className="h-3.5 w-3.5 mr-1" />Save
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" className="h-7 px-2.5 text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+                </Button>
               )}
-              <div className="flex flex-wrap items-center gap-4 mt-2">
-                {dev.contact_email && (
-                  <a
-                    href={`mailto:${dev.contact_email}`}
-                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    {dev.contact_email}
-                  </a>
-                )}
-                {dev.contact_phone && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Phone className="h-3.5 w-3.5" />
-                    {dev.contact_phone}
-                  </span>
-                )}
-              </div>
             </div>
           </div>
+
+          <div className="flex items-end gap-5">
+            <DeveloperAvatar
+              name={editing ? (form.name || dev.name) : dev.name}
+              logoUrl={activeLogoUrl}
+              size="lg"
+            />
+            <div className="flex-1 min-w-0 pb-0.5">
+              {editing ? (
+                <Input
+                  value={form.name}
+                  onChange={field('name')}
+                  className="h-9 text-lg font-bold bg-white/70 border-white/60 mb-1"
+                  placeholder="Company name"
+                />
+              ) : (
+                <h1 className="text-2xl font-bold tracking-tight leading-tight">{dev.name}</h1>
+              )}
+              {!editing && dev.contact_person && (
+                <p className="text-sm text-muted-foreground mt-0.5">{dev.contact_person}</p>
+              )}
+              {!editing && (
+                <div className="flex flex-wrap items-center gap-4 mt-2">
+                  {dev.contact_email && (
+                    <a href={`mailto:${dev.contact_email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <Mail className="h-3.5 w-3.5" />{dev.contact_email}
+                    </a>
+                  )}
+                  {dev.contact_phone && (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />{dev.contact_phone}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {error && <p className="relative text-xs text-destructive mt-2">{error}</p>}
         </div>
       </div>
 
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-3xl mx-auto flex flex-col gap-6">
-          {/* Contact */}
+
+          {/* Contact — view or edit */}
           <section className="rounded-xl border p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Contact</p>
-            <div className="flex flex-col divide-y">
-              {[
-                { label: 'Contact Person', value: dev.contact_person },
-                { label: 'Email', value: dev.contact_email
-                    ? <a href={`mailto:${dev.contact_email}`} className="text-primary hover:underline underline-offset-2 inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5 shrink-0" />{dev.contact_email}</a>
-                    : null },
-                { label: 'Phone', value: dev.contact_phone
-                    ? <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />{dev.contact_phone}</span>
-                    : null },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center gap-4 py-2">
-                  <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
-                  <span className="text-sm">{value ?? <span className="text-muted-foreground">—</span>}</span>
+
+            {editing ? (
+              <div className="flex flex-col gap-3">
+                {(
+                  [
+                    { key: 'contact_person' as const, label: 'Contact Person', type: 'text',  placeholder: 'Full name' },
+                    { key: 'contact_email'  as const, label: 'Email',          type: 'email', placeholder: 'email@company.com' },
+                    { key: 'contact_phone'  as const, label: 'Phone',          type: 'text',  placeholder: '+91 98…' },
+                    { key: 'logo_url'       as const, label: 'Logo URL',       type: 'url',   placeholder: 'https://company.com/logo.png' },
+                  ] as const
+                ).map(({ key, label, type, placeholder }) => (
+                  <div key={key} className="flex flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">{label}</Label>
+                    <Input value={form[key]} onChange={field(key)} type={type} placeholder={placeholder} className="h-8 text-sm" />
+                  </div>
+                ))}
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-muted-foreground">Notes</Label>
+                  <Textarea value={form.notes} onChange={field('notes')} placeholder="Any relevant context…" className="text-sm resize-none min-h-[72px]" />
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y">
+                {[
+                  { label: 'Contact Person', value: dev.contact_person },
+                  {
+                    label: 'Email',
+                    value: dev.contact_email
+                      ? <a href={`mailto:${dev.contact_email}`} className="text-primary hover:underline underline-offset-2 inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5 shrink-0" />{dev.contact_email}</a>
+                      : null,
+                  },
+                  {
+                    label: 'Phone',
+                    value: dev.contact_phone
+                      ? <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />{dev.contact_phone}</span>
+                      : null,
+                  },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-center gap-4 py-2">
+                    <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
+                    <span className="text-sm">{value ?? <span className="text-muted-foreground">—</span>}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
+
+          {/* Notes (view only — editing is inside the contact card above) */}
+          {!editing && dev.notes && (
+            <section className="rounded-xl border p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Notes</p>
+              <p className="text-sm text-muted-foreground">{dev.notes}</p>
+            </section>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -319,21 +446,13 @@ export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
                 </div>
               );
             })}
-            {dev.outcome_counts['pending'] > 0 && (
+            {(dev.outcome_counts['pending'] ?? 0) > 0 && (
               <div className="rounded-xl border p-4 text-center bg-amber-50 text-amber-700">
                 <p className="text-2xl font-bold tabular-nums">{dev.outcome_counts['pending']}</p>
                 <p className="text-xs mt-0.5 opacity-80">Pending</p>
               </div>
             )}
           </div>
-
-          {/* Notes */}
-          {dev.notes && (
-            <section className="rounded-xl border p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Notes</p>
-              <p className="text-sm text-muted-foreground">{dev.notes}</p>
-            </section>
-          )}
 
           {/* Shared assets */}
           <section>
