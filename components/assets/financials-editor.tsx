@@ -21,15 +21,7 @@ const num = (v: number | null | undefined) =>
   v != null ? v.toLocaleString('en-IN') : '—';
 
 const FIELDS: NumericField[] = [
-  { key: 'plot_size_sqm',               label: 'Plot Size',              format: num,  unit: 'sq.m.' },
-  { key: 'fsi_potential',               label: 'FSI Potential',          format: (v) => v != null ? (v as number).toFixed(3) : '—' },
-  { key: 'development_potential_sqm',   label: 'Development Potential',  format: num,  unit: 'sq.m.' },
-  { key: 'rehab_area_sqm',              label: 'Rehab Area',             format: num,  unit: 'sq.m.' },
-  { key: 'sale_area_sqm',               label: 'Sale Area',              format: num,  unit: 'sq.m.' },
-  { key: 'sale_rate_psf',               label: 'Sale Rate',              format: num,  unit: '/sq.ft.' },
-  { key: 'initial_investment_cr',       label: 'Initial Investment',     format: (v) => toCr(v as number)?.toLocaleString('en-IN') ?? '—', unit: 'Cr', isCr: true },
-  { key: 'topline_cr',                  label: 'Topline',                format: (v) => toCr(v as number)?.toLocaleString('en-IN') ?? '—', unit: 'Cr', isCr: true },
-  { key: 'profit_cr',                   label: 'Profit',                 format: (v) => toCr(v as number)?.toLocaleString('en-IN') ?? '—', unit: 'Cr', isCr: true },
+  { key: 'plot_size_sqm', label: 'Plot Size', format: num, unit: 'sq.m.' },
 ];
 
 export function FinancialsEditor({ asset }: { asset: Asset }) {
@@ -82,7 +74,7 @@ export function FinancialsEditor({ asset }: { asset: Asset }) {
     <section className="rounded-lg border p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Feasibility Numbers
+          Site
         </h2>
         {!editing ? (
           <Button variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground" onClick={() => setEditing(true)}>

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getAsset } from '@/lib/queries/assets';
-import { getUpdatesForAsset, getStatusHistoryForAsset, getActivityLogsForAsset } from '@/lib/queries/updates';
+import { getUpdatesForAsset, getActivityLogsForAsset } from '@/lib/queries/updates';
 import { getTasksForAsset, getTeamMembers } from '@/lib/queries/tasks';
 import { StatusBadge } from '@/components/assets/status-badge';
 import { TemperatureBadge } from '@/components/assets/temperature-badge';
@@ -11,6 +11,8 @@ import { DetailPanels } from '@/components/assets/detail-panels';
 import { ShareDialog } from '@/components/assets/share-dialog';
 import { getSharesForAsset, getDeveloperOptions } from '@/lib/queries/developers';
 import { getFilesForAsset } from '@/lib/queries/asset-files';
+import { getScenariosForAsset } from '@/lib/queries/asset-scenarios';
+import { ScenariosPanel } from '@/components/assets/scenarios-panel';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { formatDate } from '@/lib/utils/formatters';
 import { FinancialsEditor } from '@/components/assets/financials-editor';
@@ -48,16 +50,16 @@ export default async function AssetDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? '';
 
-  const [asset, updates, tasks, history, activity, shares, developers, files, teamMembers] = await Promise.all([
+  const [asset, updates, tasks, activity, shares, developers, files, teamMembers, scenarios] = await Promise.all([
     getAsset(id),
     getUpdatesForAsset(id).catch(() => []),
     getTasksForAsset(id).catch(() => []),
-    getStatusHistoryForAsset(id).catch(() => []),
     getActivityLogsForAsset(id).catch(() => []),
     getSharesForAsset(id).catch(() => []),
     getDeveloperOptions().catch(() => []),
     getFilesForAsset(id).catch(() => []),
     getTeamMembers().catch(() => []),
+    getScenariosForAsset(id).catch(() => []),
   ]);
 
   if (!asset) notFound();
@@ -121,6 +123,8 @@ export default async function AssetDetailPage({
 
             <FinancialsEditor asset={asset} />
 
+            <ScenariosPanel assetId={id} initialScenarios={scenarios} />
+
             {(asset.regulations.length > 0 || asset.regulation_notes) && (
               <section className="rounded-lg border p-4">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
@@ -156,7 +160,6 @@ export default async function AssetDetailPage({
               currentUserId={currentUserId}
               updates={updates}
               tasks={tasks}
-              history={history}
               activity={activity}
               shares={shares}
               teamMembers={teamMembers}

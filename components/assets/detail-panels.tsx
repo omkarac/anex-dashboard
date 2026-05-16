@@ -7,14 +7,13 @@ import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/lib/enums/task';
 import { formatTimeAgo, formatDate } from '@/lib/utils/formatters';
 import { createUpdate } from '@/lib/actions/updates';
 import { deleteUpdate } from '@/lib/actions/updates';
 import { createTask, updateTaskStatus, updateTaskAssignee, setTaskFileUrl, deleteTask } from '@/lib/actions/tasks';
 import { formatDate as _formatDate } from '@/lib/utils/formatters';
-import type { UpdateWithAuthor, StatusHistoryEntry, ActivityLogEntry } from '@/lib/queries/updates';
+import type { UpdateWithAuthor, ActivityLogEntry } from '@/lib/queries/updates';
 import type { TaskWithAssignee } from '@/lib/queries/tasks';
 import type { ShareWithDetails } from '@/lib/queries/developers';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
@@ -25,7 +24,6 @@ type Props = {
   currentUserId: string;
   updates: UpdateWithAuthor[];
   tasks: TaskWithAssignee[];
-  history: StatusHistoryEntry[];
   activity: ActivityLogEntry[];
   shares: ShareWithDetails[];
   teamMembers: TeamMemberOption[];
@@ -592,36 +590,6 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
   );
 }
 
-// ─── History panel ────────────────────────────────────────────────────────────
-
-function HistoryPanel({ history }: { history: StatusHistoryEntry[] }) {
-  if (history.length === 0) return <p className="text-xs text-muted-foreground text-center py-6 px-3">No changes yet.</p>;
-  return (
-    <div className="flex flex-col p-3 gap-0">
-      {history.map((entry, i) => (
-        <div key={entry.id} className="flex gap-2.5">
-          <div className="flex flex-col items-center">
-            <div className="mt-1 h-2 w-2 rounded-full bg-border shrink-0" />
-            {i < history.length - 1 && <div className="w-px flex-1 bg-border mt-1 mb-0" />}
-          </div>
-          <div className="pb-3 flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-1 text-xs">
-              {entry.from_status && (
-                <><span className="text-muted-foreground">{ASSET_STATUS_LABELS[entry.from_status]}</span><span className="text-muted-foreground">→</span></>
-              )}
-              <span className="font-medium">{ASSET_STATUS_LABELS[entry.to_status]}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {entry.actor?.full_name ?? 'Unknown'} · {formatTimeAgo(entry.changed_at)}
-            </p>
-            {entry.note && <p className="text-xs text-muted-foreground italic mt-0.5">"{entry.note}"</p>}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── Activity panel ───────────────────────────────────────────────────────────
 
 const ACTION_LABELS: Record<string, string> = {
@@ -681,7 +649,7 @@ function SharesPanel({ shares }: { shares: ShareWithDetails[] }) {
 
 // ─── Root export ──────────────────────────────────────────────────────────────
 
-export function DetailPanels({ assetId, currentUserId, updates, tasks, history, activity, shares, teamMembers }: Props) {
+export function DetailPanels({ assetId, currentUserId, updates, tasks, activity, shares, teamMembers }: Props) {
   const openTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled').length;
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -696,16 +664,11 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, history, 
         </PanelShell>
       </div>
       <div className="flex flex-col" style={{ maxHeight: '300px' }}>
-        <PanelShell title="History" count={history.length}>
-          <HistoryPanel history={history} />
-        </PanelShell>
-      </div>
-      <div className="flex flex-col" style={{ maxHeight: '300px' }}>
         <PanelShell title="Activity" count={activity.length}>
           <ActivityPanel activity={activity} />
         </PanelShell>
       </div>
-      <div className="md:col-span-2" style={{ maxHeight: '280px' }}>
+      <div className="flex flex-col" style={{ maxHeight: '280px' }}>
         <PanelShell title="Developer Shares" count={shares.length}>
           <SharesPanel shares={shares} />
         </PanelShell>
