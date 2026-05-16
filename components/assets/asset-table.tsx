@@ -18,7 +18,7 @@ import type { Asset } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { LatestUpdateSummary } from '@/lib/queries/updates';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { toCr, formatTimeAgo } from '@/lib/utils/formatters';
+import { toCr } from '@/lib/utils/formatters';
 
 function buildColumns(
   teamMembers: TeamMemberOption[],
@@ -107,14 +107,10 @@ function buildColumns(
       const u = latestUpdates.get(row.original.id);
       if (!u) return <span className="text-muted-foreground text-xs">—</span>;
       const text = u.update_task ?? u.body;
-      const truncated = text.length > 55;
       return (
         <Link href={`/capital-markets/assets/${row.original.id}`} className="block group max-w-56">
           <span className="text-xs text-foreground leading-snug line-clamp-2 group-hover:underline underline-offset-2">
-            {truncated ? text.slice(0, 55).trimEnd() + '…' : text}
-          </span>
-          <span className="text-[11px] text-muted-foreground mt-0.5 block">
-            {u.author?.full_name ?? 'Unknown'} · {formatTimeAgo(u.created_at)}
+            {text.length > 80 ? text.slice(0, 80).trimEnd() + '…' : text}
           </span>
         </Link>
       );
