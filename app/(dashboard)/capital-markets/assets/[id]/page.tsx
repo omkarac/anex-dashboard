@@ -10,14 +10,12 @@ import { TemperatureBadge } from '@/components/assets/temperature-badge';
 import { DetailPanels } from '@/components/assets/detail-panels';
 import { ShareDialog } from '@/components/assets/share-dialog';
 import { getSharesForAsset, getDeveloperOptions } from '@/lib/queries/developers';
-import { getEngagementForAsset } from '@/lib/queries/engagements';
+import { getFilesForAsset } from '@/lib/queries/asset-files';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
-import { ENGAGEMENT_KIND_LABELS } from '@/lib/enums/engagement';
-import { formatSqm, formatPsf, formatDate, toCr } from '@/lib/utils/formatters';
-import { ConvertDialog } from '@/components/assets/convert-dialog';
+import { formatDate } from '@/lib/utils/formatters';
 import { FinancialsEditor } from '@/components/assets/financials-editor';
-import { NextStepEditor } from '@/components/assets/next-step-editor';
 import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
+import { FileDrawer } from '@/components/assets/file-drawer';
 import { ChevronLeft } from 'lucide-react';
 
 export async function generateMetadata({
@@ -50,7 +48,7 @@ export default async function AssetDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? '';
 
-  const [asset, updates, tasks, history, activity, shares, developers, engagement, teamMembers] = await Promise.all([
+  const [asset, updates, tasks, history, activity, shares, developers, files, teamMembers] = await Promise.all([
     getAsset(id),
     getUpdatesForAsset(id).catch(() => []),
     getTasksForAsset(id).catch(() => []),
@@ -58,7 +56,7 @@ export default async function AssetDetailPage({
     getActivityLogsForAsset(id).catch(() => []),
     getSharesForAsset(id).catch(() => []),
     getDeveloperOptions().catch(() => []),
-    getEngagementForAsset(id).catch(() => null),
+    getFilesForAsset(id).catch(() => []),
     getTeamMembers().catch(() => []),
   ]);
 
@@ -84,9 +82,6 @@ export default async function AssetDetailPage({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            {asset.status === 'won' && !asset.converted_to_engagement_id && (
-              <ConvertDialog assetId={id} />
-            )}
             <ShareDialog assetId={id} developers={developers} />
             {shares.length > 0 && (
               <span className="inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 border-purple-200">
@@ -144,20 +139,7 @@ export default async function AssetDetailPage({
               </section>
             )}
 
-            <NextStepEditor assetId={id} initialValue={asset.next_step} />
-
-            {engagement && (
-              <section className="rounded-lg border border-green-200 bg-green-50/50 p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-green-700 mb-3">
-                  Engagement
-                </h2>
-                <Field label="Type" value={ENGAGEMENT_KIND_LABELS[engagement.kind]} />
-                <Field label="Started" value={formatDate(engagement.started_at)} />
-                {engagement.ended_at && <Field label="Ended" value={formatDate(engagement.ended_at)} />}
-                {engagement.notes && <Field label="Notes" value={engagement.notes} />}
-                <Field label="By" value={engagement.actor?.full_name ?? 'Unknown'} />
-              </section>
-            )}
+            <FileDrawer assetId={id} initialFiles={files} />
 
             <section className="rounded-lg border p-4">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
