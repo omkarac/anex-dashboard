@@ -1,17 +1,17 @@
 import { Metadata } from 'next';
 import {
-  getDashboardTotals,
-  getPipelineCounts,
-  getTemperatureCounts,
-  getDeveloperShareStats,
+  getCommandStats,
+  getPipelineWithValue,
+  getDealAging,
+  getAttentionSignals,
   getTeamWorkload,
   getRecentActivity,
 } from '@/lib/queries/dashboard';
-import { StatTiles } from '@/components/dashboard/stat-tiles';
-import { PipelineWidget } from '@/components/dashboard/pipeline-widget';
-import { TemperatureWidget } from '@/components/dashboard/temperature-widget';
-import { DeveloperSharesWidget } from '@/components/dashboard/developer-shares-widget';
-import { TeamWorkloadWidget } from '@/components/dashboard/team-workload-widget';
+import { CommandHeader } from '@/components/dashboard/command-header';
+import { PipelineFunnel } from '@/components/dashboard/pipeline-funnel';
+import { AttentionPanel } from '@/components/dashboard/attention-panel';
+import { DealAgingWidget } from '@/components/dashboard/deal-aging';
+import { TeamBandwidth } from '@/components/dashboard/team-bandwidth';
 import { RecentActivityWidget } from '@/components/dashboard/recent-activity-widget';
 
 export const metadata: Metadata = { title: 'Capital Markets — Anex' };
@@ -19,37 +19,46 @@ export const metadata: Metadata = { title: 'Capital Markets — Anex' };
 export const revalidate = 30;
 
 export default async function CapitalMarketsDashboardPage() {
-  const [totals, pipeline, temperatures, { totalShares, top5 }, workload, recentLogs] =
-    await Promise.all([
-      getDashboardTotals().catch(() => ({ total: 0, active: 0, screenedThisMonth: 0, wonThisQuarter: 0 })),
-      getPipelineCounts().catch(() => []),
-      getTemperatureCounts().catch(() => []),
-      getDeveloperShareStats().catch(() => ({ totalShares: 0, top5: [] })),
-      getTeamWorkload().catch(() => []),
-      getRecentActivity().catch(() => []),
-    ]);
+  const [stats, pipeline, aging, signals, workload, recentLogs] = await Promise.all([
+    getCommandStats().catch(() => ({
+      activePipelineValue: 0,
+      activeCount: 0,
+      hotCount: 0,
+      winRate: 0,
+      wonCountQ: 0,
+    })),
+    getPipelineWithValue().catch(() => []),
+    getDealAging().catch(() => ({ under7: 0, d7to30: 0, d30to60: 0, over60: 0 })),
+    getAttentionSignals().catch(() => []),
+    getTeamWorkload().catch(() => []),
+    getRecentActivity().catch(() => []),
+  ]);
 
   return (
     <div className="flex flex-col h-full overflow-auto">
       <div className="border-b px-6 py-4 shrink-0">
         <h1 className="text-xl font-semibold tracking-tight">Capital Markets</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Overview of the Anex capital markets pipeline.</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Pipeline overview — Anex Advisory</p>
       </div>
 
-      <div className="flex-1 p-6 flex flex-col gap-4">
-        <StatTiles totals={totals} />
+      <CommandHeader stats={stats} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <PipelineWidget counts={pipeline} />
+      <div className="flex-1 p-6 flex flex-col gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="lg:col-span-3">
+            <PipelineFunnel stages={pipeline} />
           </div>
-          <TemperatureWidget counts={temperatures} />
+          <div className="lg:col-span-2">
+            <AttentionPanel signals={signals} />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <DeveloperSharesWidget totalShares={totalShares} top5={top5} />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-2">
-            <TeamWorkloadWidget workload={workload} />
+            <DealAgingWidget aging={aging} />
+          </div>
+          <div className="lg:col-span-3">
+            <TeamBandwidth workload={workload} />
           </div>
         </div>
 

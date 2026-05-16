@@ -1,145 +1,221 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import type { AssetStatus, AssetTemperature } from '@/lib/schemas/asset';
+import type { AssetStatus } from '@/lib/schemas/asset';
 
-// ─── Totals ───────────────────────────────────────────────────────────────────
+// ─── Command stats (headline bar) ────────────────────────────────────────────
 
-export type DashboardTotals = {
-  total: number;
-  active: number;
-  screenedThisMonth: number;
-  wonThisQuarter: number;
+export type CommandStats = {
+  activePipelineValue: number;
+  activeCount: number;
+  hotCount: number;
+  winRate: number;
+  wonCountQ: number;
 };
 
-export async function getDashboardTotals(): Promise<DashboardTotals> {
+export async function getCommandStats(): Promise<CommandStats> {
   const service = createServiceClient();
-
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const quarter = Math.floor(now.getMonth() / 3);
   const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1).toISOString();
 
-  const [totalRes, activeRes, screenedRes, wonRes] = await Promise.all([
+  const [activeRes, hotRes, wonRes, droppedRes] = await Promise.all([
     service
       .from('assets')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null),
+      .select('topline_cr')
+      .is('deleted_at', null)
+      .not('status', 'in', '("dropped","won")'),
     service
       .from('assets')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .eq('temperature', 'hot')
+      .not('status', 'in', '("dropped","won")'),
+    service
+      .from('status_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('to_status', 'won')
+      .gte('changed_at', startOfQuarter),
+    service
+      .from('status_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('to_status', 'dropped')
+      .gte('changed_at', startOfQuarter),
+  ]);
+
+  const assets = activeRes.data ?? [];
+  const activePipelineValue = assets.reduce((sum, a) => sum + (Number(a.topline_cr) || 0), 0);
+  const activeCount = assets.length;
+  const hotCount = hotRes.count ?? 0;
+  const wonCountQ = wonRes.count ?? 0;
+  const droppedCountQ = droppedRes.count ?? 0;
+  const totalClosed = wonCountQ + droppedCountQ;
+  const winRate = totalClosed > 0 ? Math.round((wonCountQ / totalClosed) * 100) : 0;
+
+  return { activePipelineValue, activeCount, hotCount, winRate, wonCountQ };
+}
+
+// ─── Pipeline with value ──────────────────────────────────────────────────────
+
+export type PipelineStage = {
+  status: AssetStatus;
+  count: number;
+  value: number;
+};
+
+const PIPELINE_ORDER: AssetStatus[] = ['open', 'evaluating', 'screened', 'won', 'dropped'];
+
+export async function getPipelineWithValue(): Promise<PipelineStage[]> {
+  const service = createServiceClient();
+  const { data } = await service
+    .from('assets')
+    .select('status, topline_cr')
+    .is('deleted_at', null);
+
+  if (!data) return [];
+
+  const map = new Map<string, { count: number; value: number }>();
+  for (const row of data) {
+    const entry = map.get(row.status) ?? { count: 0, value: 0 };
+    map.set(row.status, {
+      count: entry.count + 1,
+      value: entry.value + (Number(row.topline_cr) || 0),
+    });
+  }
+
+  return PIPELINE_ORDER.map((status) => ({
+    status,
+    ...(map.get(status) ?? { count: 0, value: 0 }),
+  }));
+}
+
+// ─── Deal aging (time in current stage) ──────────────────────────────────────
+
+export type DealAging = {
+  under7: number;
+  d7to30: number;
+  d30to60: number;
+  over60: number;
+};
+
+export async function getDealAging(): Promise<DealAging> {
+  const service = createServiceClient();
+
+  const [assetsRes, historyRes] = await Promise.all([
+    service
+      .from('assets')
+      .select('id, created_at')
       .is('deleted_at', null)
       .not('status', 'in', '("dropped","won")'),
     service
       .from('status_history')
-      .select('asset_id', { count: 'exact', head: true })
-      .eq('to_status', 'screened')
-      .gte('changed_at', startOfMonth),
-    service
-      .from('status_history')
-      .select('asset_id', { count: 'exact', head: true })
-      .eq('to_status', 'won')
-      .gte('changed_at', startOfQuarter),
+      .select('asset_id, changed_at')
+      .order('changed_at', { ascending: false }),
   ]);
 
-  return {
-    total: totalRes.count ?? 0,
-    active: activeRes.count ?? 0,
-    screenedThisMonth: screenedRes.count ?? 0,
-    wonThisQuarter: wonRes.count ?? 0,
-  };
-}
+  const assets = assetsRes.data ?? [];
 
-// ─── Pipeline by status ───────────────────────────────────────────────────────
-
-export type StatusCount = { status: AssetStatus; count: number };
-
-export async function getPipelineCounts(): Promise<StatusCount[]> {
-  const service = createServiceClient();
-  const { data } = await service
-    .from('assets')
-    .select('status')
-    .is('deleted_at', null);
-
-  if (!data) return [];
-  const map = new Map<string, number>();
-  for (const row of data) {
-    map.set(row.status, (map.get(row.status) ?? 0) + 1);
+  const latestMap = new Map<string, string>();
+  for (const h of historyRes.data ?? []) {
+    if (!latestMap.has(h.asset_id)) latestMap.set(h.asset_id, h.changed_at);
   }
-  return Array.from(map.entries()).map(([status, count]) => ({
-    status: status as AssetStatus,
-    count,
-  }));
-}
 
-// ─── Temperature breakdown ────────────────────────────────────────────────────
+  const now = Date.now();
+  const buckets: DealAging = { under7: 0, d7to30: 0, d30to60: 0, over60: 0 };
 
-export type TempCount = { temperature: AssetTemperature; count: number };
-
-export async function getTemperatureCounts(): Promise<TempCount[]> {
-  const service = createServiceClient();
-  const { data } = await service
-    .from('assets')
-    .select('temperature')
-    .is('deleted_at', null)
-    .not('status', 'in', '("dropped","won")');
-
-  if (!data) return [];
-  const map = new Map<string, number>();
-  for (const row of data) {
-    map.set(row.temperature, (map.get(row.temperature) ?? 0) + 1);
+  for (const asset of assets) {
+    const ref = latestMap.get(asset.id) ?? asset.created_at;
+    const days = Math.floor((now - new Date(ref).getTime()) / 86_400_000);
+    if (days < 7) buckets.under7++;
+    else if (days < 30) buckets.d7to30++;
+    else if (days < 60) buckets.d30to60++;
+    else buckets.over60++;
   }
-  return Array.from(map.entries()).map(([temperature, count]) => ({
-    temperature: temperature as AssetTemperature,
-    count,
-  }));
+
+  return buckets;
 }
 
-// ─── Developer shares ─────────────────────────────────────────────────────────
+// ─── Attention signals ────────────────────────────────────────────────────────
 
-export type DeveloperShareStat = {
-  developer_id: string;
-  developer_name: string;
-  share_count: number;
+export type AttentionSignal = {
+  id: string;
+  property_name: string;
+  status: AssetStatus;
+  reason: 'hot_unassigned' | 'hot_silent' | 'stale_stage';
+  detail: string;
+  severity: 'high' | 'medium';
 };
 
-export async function getDeveloperShareStats(): Promise<{
-  totalShares: number;
-  top5: DeveloperShareStat[];
-}> {
+export async function getAttentionSignals(): Promise<AttentionSignal[]> {
   const service = createServiceClient();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const fortyFiveDaysAgo = new Date(Date.now() - 45 * 86_400_000).toISOString();
 
-  const { data: shares, count } = await service
-    .from('developer_shares')
-    .select('developer_id', { count: 'exact' });
+  const [assetsRes, recentActivityRes, historyRes] = await Promise.all([
+    service
+      .from('assets')
+      .select('id, property_name, status, temperature, assigned_to')
+      .is('deleted_at', null)
+      .not('status', 'in', '("dropped","won")'),
+    service
+      .from('activity_logs')
+      .select('entity_id')
+      .eq('entity_type', 'asset')
+      .gte('created_at', sevenDaysAgo)
+      .is('deleted_at', null),
+    service
+      .from('status_history')
+      .select('asset_id, changed_at')
+      .order('changed_at', { ascending: false }),
+  ]);
 
-  if (!shares) return { totalShares: 0, top5: [] };
+  const assets = assetsRes.data ?? [];
+  const recentSet = new Set((recentActivityRes.data ?? []).map((r) => r.entity_id));
 
-  const countMap = new Map<string, number>();
-  for (const s of shares) {
-    countMap.set(s.developer_id, (countMap.get(s.developer_id) ?? 0) + 1);
+  const latestMap = new Map<string, string>();
+  for (const h of historyRes.data ?? []) {
+    if (!latestMap.has(h.asset_id)) latestMap.set(h.asset_id, h.changed_at);
   }
 
-  const sorted = Array.from(countMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  const signals: AttentionSignal[] = [];
 
-  if (sorted.length === 0) return { totalShares: count ?? 0, top5: [] };
+  for (const asset of assets) {
+    const lastChange = latestMap.get(asset.id);
+    const isStale = lastChange ? lastChange < fortyFiveDaysAgo : false;
+    const hasRecentActivity = recentSet.has(asset.id);
 
-  const devIds = sorted.map(([id]) => id);
-  const { data: devs } = await service
-    .from('developers')
-    .select('id, name')
-    .in('id', devIds);
+    if (asset.temperature === 'hot' && !asset.assigned_to) {
+      signals.push({
+        id: asset.id,
+        property_name: asset.property_name,
+        status: asset.status as AssetStatus,
+        reason: 'hot_unassigned',
+        detail: 'Hot deal — no owner assigned',
+        severity: 'high',
+      });
+    } else if (asset.temperature === 'hot' && !hasRecentActivity) {
+      signals.push({
+        id: asset.id,
+        property_name: asset.property_name,
+        status: asset.status as AssetStatus,
+        reason: 'hot_silent',
+        detail: 'Hot deal — no activity in 7+ days',
+        severity: 'high',
+      });
+    } else if (isStale && (asset.status === 'evaluating' || asset.status === 'screened')) {
+      const days = Math.floor((Date.now() - new Date(lastChange!).getTime()) / 86_400_000);
+      signals.push({
+        id: asset.id,
+        property_name: asset.property_name,
+        status: asset.status as AssetStatus,
+        reason: 'stale_stage',
+        detail: `${days}d in ${asset.status}`,
+        severity: 'medium',
+      });
+    }
+  }
 
-  const devMap = new Map((devs ?? []).map((d) => [d.id, d.name]));
-
-  return {
-    totalShares: count ?? 0,
-    top5: sorted.map(([id, share_count]) => ({
-      developer_id: id,
-      developer_name: devMap.get(id) ?? 'Unknown',
-      share_count,
-    })),
-  };
+  return signals
+    .sort((a, b) => (a.severity === 'high' && b.severity !== 'high' ? -1 : 1))
+    .slice(0, 8);
 }
 
 // ─── Team workload ────────────────────────────────────────────────────────────
