@@ -15,9 +15,9 @@ import { getScenariosForAsset } from '@/lib/queries/asset-scenarios';
 import { ScenariosPanel } from '@/components/assets/scenarios-panel';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { formatDate } from '@/lib/utils/formatters';
-import { FinancialsEditor } from '@/components/assets/financials-editor';
 import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
 import { FileDrawer } from '@/components/assets/file-drawer';
+import { RegulationsEditor } from '@/components/assets/regulations-editor';
 import { ChevronLeft } from 'lucide-react';
 
 export async function generateMetadata({
@@ -121,27 +121,13 @@ export default async function AssetDetailPage({
               {asset.handover_notes && <Field label="Handover Notes" value={asset.handover_notes} />}
             </section>
 
-            <FinancialsEditor asset={asset} />
+            <ScenariosPanel assetId={id} initialScenarios={scenarios} plotSizeSqm={asset.plot_size_sqm} />
 
-            <ScenariosPanel assetId={id} initialScenarios={scenarios} />
-
-            {(asset.regulations.length > 0 || asset.regulation_notes) && (
-              <section className="rounded-lg border p-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                  Regulations
-                </h2>
-                {asset.regulations.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {asset.regulations.map((r) => (
-                      <span key={r} className="rounded bg-muted px-2 py-0.5 text-xs font-mono">{r}</span>
-                    ))}
-                  </div>
-                )}
-                {asset.regulation_notes && (
-                  <p className="text-xs text-muted-foreground">{asset.regulation_notes}</p>
-                )}
-              </section>
-            )}
+            <RegulationsEditor
+              assetId={id}
+              regulations={asset.regulations}
+              regulationNotes={asset.regulation_notes}
+            />
 
             <FileDrawer assetId={id} initialFiles={files} />
 

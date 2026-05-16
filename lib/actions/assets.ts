@@ -212,6 +212,31 @@ export async function updateAssetFinancials(
   return result;
 }
 
+export async function updateAssetRegulations(
+  assetId: string,
+  regulations: string[],
+  regulationNotes: string | null,
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'asset',
+    entityId: assetId,
+    assetId,
+    summary: 'Regulations updated',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('assets')
+        .update({ regulations, regulation_notes: regulationNotes, updated_by: actorId })
+        .eq('id', assetId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
+  return result;
+}
+
 export async function softDeleteAsset(assetId: string): Promise<ActionResult<void>> {
   const result = await withAudit({
     action: 'delete',
