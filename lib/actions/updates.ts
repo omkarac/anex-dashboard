@@ -41,7 +41,10 @@ export async function createUpdate(
     },
   });
 
-  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
+  if (result.ok) {
+    revalidatePath(`/capital-markets/assets/${assetId}`);
+    revalidatePath('/capital-markets/assets');
+  }
   return result;
 }
 

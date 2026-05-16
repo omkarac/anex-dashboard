@@ -40,6 +40,50 @@ export type ActivityLogEntry = {
   actor: { full_name: string } | null;
 };
 
+export type LatestUpdateSummary = {
+  asset_id: string;
+  body: string;
+  update_task: string | null;
+  created_at: string;
+  author: { full_name: string } | null;
+};
+
+export async function getLatestUpdatesForAssets(
+  assetIds: string[],
+): Promise<Map<string, LatestUpdateSummary>> {
+  if (assetIds.length === 0) return new Map();
+
+  const service = createServiceClient();
+  const { data } = await service
+    .from('updates')
+    .select('asset_id, body, update_task, created_at, author:team_members!created_by(full_name)')
+    .in('asset_id', assetIds)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  type RawRow = {
+    asset_id: string;
+    body: string;
+    update_task: string | null;
+    created_at: string;
+    author: { full_name: string }[] | null;
+  };
+
+  const map = new Map<string, LatestUpdateSummary>();
+  for (const row of (data ?? []) as RawRow[]) {
+    if (!map.has(row.asset_id)) {
+      map.set(row.asset_id, {
+        asset_id: row.asset_id,
+        body: row.body,
+        update_task: row.update_task,
+        created_at: row.created_at,
+        author: row.author?.[0] ?? null,
+      });
+    }
+  }
+  return map;
+}
+
 export async function getUpdatesForAsset(assetId: string): Promise<UpdateWithAuthor[]> {
   const service = createServiceClient();
   const { data, error } = await service

@@ -16,10 +16,14 @@ import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
 import { formatDate, formatSqm } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
+import type { LatestUpdateSummary } from '@/lib/queries/updates';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { toCr } from '@/lib/utils/formatters';
+import { toCr, formatTimeAgo } from '@/lib/utils/formatters';
 
-function buildColumns(teamMembers: TeamMemberOption[]): ColumnDef<Asset>[] {
+function buildColumns(
+  teamMembers: TeamMemberOption[],
+  latestUpdates: Map<string, LatestUpdateSummary>,
+): ColumnDef<Asset>[] {
   return [
   {
     accessorKey: 'property_name',
@@ -97,24 +101,22 @@ function buildColumns(teamMembers: TeamMemberOption[]): ColumnDef<Asset>[] {
     ),
   },
   {
-    accessorKey: 'next_step',
-    header: 'Next Step',
+    id: 'last_update',
+    header: 'Last Update',
     cell: ({ row }) => {
-      const text = row.original.next_step;
-      if (!text) return <span className="text-muted-foreground text-xs">—</span>;
-      const truncated = text.length > 60;
+      const u = latestUpdates.get(row.original.id);
+      if (!u) return <span className="text-muted-foreground text-xs">—</span>;
+      const text = u.update_task ?? u.body;
+      const truncated = text.length > 55;
       return (
-        <span className="text-xs text-muted-foreground">
-          {truncated ? text.slice(0, 60).trimEnd() + '…' : text}
-          {truncated && (
-            <Link
-              href={`/capital-markets/assets/${row.original.id}`}
-              className="ml-1 text-foreground hover:underline underline-offset-2 whitespace-nowrap"
-            >
-              read more
-            </Link>
-          )}
-        </span>
+        <Link href={`/capital-markets/assets/${row.original.id}`} className="block group max-w-56">
+          <span className="text-xs text-foreground leading-snug line-clamp-2 group-hover:underline underline-offset-2">
+            {truncated ? text.slice(0, 55).trimEnd() + '…' : text}
+          </span>
+          <span className="text-[11px] text-muted-foreground mt-0.5 block">
+            {u.author?.full_name ?? 'Unknown'} · {formatTimeAgo(u.created_at)}
+          </span>
+        </Link>
       );
     },
   },
@@ -145,12 +147,13 @@ type AssetTableProps = {
   pageCount: number;
   page: number;
   teamMembers: TeamMemberOption[];
+  latestUpdates: Map<string, LatestUpdateSummary>;
 };
 
-export function AssetTable({ data, count, pageCount, page, teamMembers }: AssetTableProps) {
+export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates }: AssetTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const columns = useMemo(() => buildColumns(teamMembers), [teamMembers]);
+  const columns = useMemo(() => buildColumns(teamMembers, latestUpdates), [teamMembers, latestUpdates]);
 
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams.toString());
