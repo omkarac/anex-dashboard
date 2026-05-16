@@ -43,14 +43,15 @@ function initials(name: string) {
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
+  open: 'bg-sky-100 text-sky-700',
   evaluating: 'bg-amber-100 text-amber-700',
-  evaluated: 'bg-orange-100 text-orange-700',
+  screened: 'bg-violet-100 text-violet-700',
   won: 'bg-emerald-100 text-emerald-700',
   dropped: 'bg-red-100 text-red-600',
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  evaluating: 'Evaluating', evaluated: 'Evaluated', won: 'Won', dropped: 'Dropped',
+  open: 'Open', evaluating: 'Evaluating', screened: 'Screened', won: 'Won', dropped: 'Dropped',
 };
 
 const PRIORITY_STYLES: Record<string, string> = {

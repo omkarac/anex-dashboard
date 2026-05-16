@@ -21,7 +21,7 @@ export const revalidate = 30;
 export default async function CapitalMarketsDashboardPage() {
   const [totals, pipeline, temperatures, { totalShares, top5 }, workload, recentLogs] =
     await Promise.all([
-      getDashboardTotals().catch(() => ({ total: 0, active: 0, evaluatedThisMonth: 0, wonThisQuarter: 0 })),
+      getDashboardTotals().catch(() => ({ total: 0, active: 0, screenedThisMonth: 0, wonThisQuarter: 0 })),
       getPipelineCounts().catch(() => []),
       getTemperatureCounts().catch(() => []),
       getDeveloperShareStats().catch(() => ({ totalShares: 0, top5: [] })),

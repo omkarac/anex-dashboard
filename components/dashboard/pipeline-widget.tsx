@@ -3,15 +3,17 @@ import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import type { StatusCount } from '@/lib/queries/dashboard';
 
 const STATUS_ORDER = [
+  'open',
   'evaluating',
-  'evaluated',
+  'screened',
   'won',
   'dropped',
 ] as const;
 
 const STATUS_BAR_COLORS: Record<string, string> = {
+  open: 'bg-sky-300',
   evaluating: 'bg-amber-300',
-  evaluated: 'bg-orange-300',
+  screened: 'bg-violet-300',
   won: 'bg-green-400',
   dropped: 'bg-red-300',
 };

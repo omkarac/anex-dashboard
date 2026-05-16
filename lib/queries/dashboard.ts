@@ -6,7 +6,7 @@ import type { AssetStatus, AssetTemperature } from '@/lib/schemas/asset';
 export type DashboardTotals = {
   total: number;
   active: number;
-  evaluatedThisMonth: number;
+  screenedThisMonth: number;
   wonThisQuarter: number;
 };
 
@@ -18,7 +18,7 @@ export async function getDashboardTotals(): Promise<DashboardTotals> {
   const quarter = Math.floor(now.getMonth() / 3);
   const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1).toISOString();
 
-  const [totalRes, activeRes, evaluatedRes, wonRes] = await Promise.all([
+  const [totalRes, activeRes, screenedRes, wonRes] = await Promise.all([
     service
       .from('assets')
       .select('*', { count: 'exact', head: true })
@@ -31,7 +31,7 @@ export async function getDashboardTotals(): Promise<DashboardTotals> {
     service
       .from('status_history')
       .select('asset_id', { count: 'exact', head: true })
-      .eq('to_status', 'evaluated')
+      .eq('to_status', 'screened')
       .gte('changed_at', startOfMonth),
     service
       .from('status_history')
@@ -43,7 +43,7 @@ export async function getDashboardTotals(): Promise<DashboardTotals> {
   return {
     total: totalRes.count ?? 0,
     active: activeRes.count ?? 0,
-    evaluatedThisMonth: evaluatedRes.count ?? 0,
+    screenedThisMonth: screenedRes.count ?? 0,
     wonThisQuarter: wonRes.count ?? 0,
   };
 }

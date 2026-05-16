@@ -1,15 +1,17 @@
 import type { AssetStatus, AssetTemperature, AssetType } from '@/lib/schemas/asset';
 
 export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
+  open: 'Open',
   evaluating: 'Evaluating',
-  evaluated: 'Evaluated',
+  screened: 'Screened',
   won: 'Won',
   dropped: 'Dropped',
 };
 
 export const ASSET_STATUS_COLORS: Record<AssetStatus, string> = {
+  open: 'bg-sky-50 text-sky-700 border-sky-200',
   evaluating: 'bg-amber-50 text-amber-700 border-amber-200',
-  evaluated: 'bg-orange-50 text-orange-700 border-orange-200',
+  screened: 'bg-violet-50 text-violet-700 border-violet-200',
   won: 'bg-green-50 text-green-700 border-green-200',
   dropped: 'bg-red-50 text-red-600 border-red-200',
 };

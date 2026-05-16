@@ -15,7 +15,7 @@ export function StatTiles({ totals }: { totals: DashboardTotals }) {
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Tile label="Total Assets" value={totals.total} />
       <Tile label="Active" value={totals.active} sub="not won or dropped" />
-      <Tile label="Evaluated" value={totals.evaluatedThisMonth} sub="this month" />
+      <Tile label="Screened" value={totals.screenedThisMonth} sub="this month" />
       <Tile label="Won" value={totals.wonThisQuarter} sub="this quarter" />
     </div>
   );
