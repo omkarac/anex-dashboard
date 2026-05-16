@@ -68,7 +68,10 @@ function UpdatesPanel({
   function submit() {
     if (!body.trim()) return;
     startTransition(async () => {
-      const result = await createUpdate(assetId, body);
+      const result = await createUpdate(assetId, {
+        update_date: new Date().toISOString().split('T')[0],
+        update_task: body.trim(),
+      });
       if (result.ok) { setBody(''); router.refresh(); }
     });
   }

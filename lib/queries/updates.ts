@@ -5,6 +5,9 @@ export type UpdateWithAuthor = {
   id: string;
   asset_id: string;
   body: string;
+  update_date: string | null;
+  update_task: string | null;
+  comment: string | null;
   created_at: string;
   created_by: string;
   deleted_at: string | null;

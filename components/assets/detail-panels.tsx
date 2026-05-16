@@ -3,14 +3,15 @@
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon } from 'lucide-react';
+import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/lib/enums/task';
 import { formatTimeAgo, formatDate } from '@/lib/utils/formatters';
-import { createUpdate, deleteUpdate } from '@/lib/actions/updates';
+import { createUpdate } from '@/lib/actions/updates';
+import { deleteUpdate } from '@/lib/actions/updates';
 import { createTask, updateTaskStatus, updateTaskAssignee, setTaskFileUrl, deleteTask } from '@/lib/actions/tasks';
 import { formatDate as _formatDate } from '@/lib/utils/formatters';
 import type { UpdateWithAuthor, StatusHistoryEntry, ActivityLogEntry } from '@/lib/queries/updates';
@@ -50,128 +51,217 @@ function PanelShell({ title, count, children, chatMode }: {
 
 // ─── Updates panel ────────────────────────────────────────────────────────────
 
-function UpdatesPanel({ assetId, currentUserId, updates }: {
-  assetId: string; currentUserId: string; updates: UpdateWithAuthor[];
+function todayIso(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function UpdateCard({ update, currentUserId, onDelete }: {
+  update: UpdateWithAuthor; currentUserId: string; onDelete: (id: string) => void;
 }) {
-  const [body, setBody] = useState('');
-  const [, startTransition] = useTransition();
-  const router = useRouter();
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Optimistic messages — cleared when server data arrives
-  const [optimistic, setOptimistic] = useState<UpdateWithAuthor[]>([]);
-  useEffect(() => { setOptimistic([]); }, [updates]);
-
-  const sorted = [...updates, ...optimistic].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [sorted.length]);
-
-  // Optimistically hidden IDs (pending delete)
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
-
-  function submit() {
-    const text = body.trim();
-    if (!text) return;
-
-    // Add to local list immediately
-    const tempId = `optimistic-${Date.now()}`;
-    const tempMsg: UpdateWithAuthor = {
-      id: tempId,
-      asset_id: assetId,
-      body: text,
-      created_at: new Date().toISOString(),
-      created_by: currentUserId,
-      author: null,
-      deleted_at: null,
-      deleted_by: null,
-    };
-    setOptimistic((prev) => [...prev, tempMsg]);
-    setBody('');
-    textareaRef.current?.focus();
-
-    startTransition(async () => {
-      const result = await createUpdate(assetId, text);
-      if (result.ok) {
-        router.refresh(); // syncs in background; useEffect clears optimistic
-      } else {
-        setOptimistic((prev) => prev.filter((m) => m.id !== tempId));
-        setBody(text); // restore on failure
-      }
-    });
-  }
-
-  function handleDelete(updateId: string) {
-    setHiddenIds((prev) => new Set([...prev, updateId])); // hide immediately
-    startTransition(async () => {
-      const result = await deleteUpdate(updateId, assetId);
-      if (result.ok) {
-        router.refresh();
-      } else {
-        setHiddenIds((prev) => { const n = new Set(prev); n.delete(updateId); return n; }); // restore on failure
-      }
-    });
-  }
-
-  const visible = sorted.filter((u) => !hiddenIds.has(u.id));
+  const isOwn = update.created_by === currentUserId;
+  const isOptimistic = update.id.startsWith('optimistic-');
+  const authorName = update.author?.full_name ?? (isOwn ? 'You' : 'Unknown');
+  const initial = authorName[0].toUpperCase();
+  const isStructured = !!update.update_task;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 min-h-0">
-        {visible.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center my-auto">No updates yet. Start the conversation.</p>
-        ) : (
-          visible.map((u) => (
-            <UpdateBubble key={u.id} update={u} currentUserId={currentUserId} onDelete={handleDelete} />
-          ))
+    <div className={`group rounded-md border bg-white flex flex-col overflow-hidden transition-opacity ${isOptimistic ? 'opacity-60' : 'opacity-100'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50/60">
+        <div className="h-5 w-5 rounded-full bg-slate-800 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+          {initial}
+        </div>
+        <span className="text-xs font-semibold text-slate-800 flex-1 truncate">{authorName}</span>
+        {update.update_date && (
+          <span className="text-[11px] font-medium text-slate-500 shrink-0 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+            {formatDate(update.update_date)}
+          </span>
         )}
-        <div ref={bottomRef} />
+        <span className="text-[11px] text-slate-400 shrink-0">
+          {isOptimistic ? 'Logging…' : formatTimeAgo(update.created_at)}
+        </span>
+        {isOwn && !isOptimistic && (
+          <button
+            onClick={() => onDelete(update.id)}
+            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition-opacity shrink-0"
+            title="Delete"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
       </div>
-      <div className="border-t px-3 py-2.5 shrink-0 flex gap-2 items-end bg-background">
-        <Textarea
-          ref={textareaRef}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Write an update… (⌘↵ to send)"
-          rows={1}
-          className="text-sm resize-none flex-1 min-h-[36px] max-h-[120px]"
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
-        />
-        <Button size="sm" onClick={submit} disabled={!body.trim()} className="shrink-0 h-9">Send</Button>
+
+      <div className="px-3 py-2.5 flex flex-col gap-1.5">
+        {isStructured ? (
+          <>
+            <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">
+              {update.update_task}
+            </p>
+            {update.comment && (
+              <p className="text-[11px] text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-2.5 italic">
+                {update.comment}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{update.body}</p>
+        )}
       </div>
     </div>
   );
 }
 
-function UpdateBubble({ update, currentUserId, onDelete }: {
-  update: UpdateWithAuthor; currentUserId: string; onDelete: (id: string) => void;
+function UpdatesPanel({ assetId, currentUserId, updates, teamMembers }: {
+  assetId: string;
+  currentUserId: string;
+  updates: UpdateWithAuthor[];
+  teamMembers: TeamMemberOption[];
 }) {
-  const isOwn = update.created_by === currentUserId;
-  const isOptimistic = update.id.startsWith('optimistic-');
+  const [updateDate, setUpdateDate] = useState(todayIso);
+  const [updateTask, setUpdateTask] = useState('');
+  const [comment, setComment] = useState('');
+  const [search, setSearch] = useState('');
+  const [, startTransition] = useTransition();
+  const router = useRouter();
+
+  const [optimistic, setOptimistic] = useState<UpdateWithAuthor[]>([]);
+  useEffect(() => { setOptimistic([]); }, [updates]);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+
+  const currentUserName = teamMembers.find((m) => m.id === currentUserId)?.full_name ?? 'You';
+
+  const all = [...updates, ...optimistic].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+
+  const filtered = all.filter((u) => {
+    if (hiddenIds.has(u.id)) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      u.body.toLowerCase().includes(q) ||
+      (u.update_task ?? '').toLowerCase().includes(q) ||
+      (u.comment ?? '').toLowerCase().includes(q) ||
+      (u.author?.full_name ?? '').toLowerCase().includes(q)
+    );
+  });
+
+  function submit() {
+    const task = updateTask.trim();
+    if (!task) return;
+
+    const tempId = `optimistic-${Date.now()}`;
+    const commentVal = comment.trim() || null;
+    const tempMsg: UpdateWithAuthor = {
+      id: tempId,
+      asset_id: assetId,
+      body: commentVal ? `${task}\n${commentVal}` : task,
+      update_date: updateDate,
+      update_task: task,
+      comment: commentVal,
+      created_at: new Date().toISOString(),
+      created_by: currentUserId,
+      author: { full_name: currentUserName },
+      deleted_at: null,
+      deleted_by: null,
+    };
+
+    setOptimistic((prev) => [...prev, tempMsg]);
+    setUpdateTask('');
+    setComment('');
+    setUpdateDate(todayIso());
+
+    startTransition(async () => {
+      const result = await createUpdate(assetId, {
+        update_date: updateDate,
+        update_task: task,
+        comment: comment.trim() || undefined,
+      });
+      if (result.ok) {
+        router.refresh();
+      } else {
+        setOptimistic((prev) => prev.filter((m) => m.id !== tempId));
+        setUpdateTask(task);
+        setComment(comment);
+      }
+    });
+  }
+
+  function handleDelete(updateId: string) {
+    setHiddenIds((prev) => new Set([...prev, updateId]));
+    startTransition(async () => {
+      const result = await deleteUpdate(updateId, assetId);
+      if (result.ok) router.refresh();
+      else setHiddenIds((prev) => { const n = new Set(prev); n.delete(updateId); return n; });
+    });
+  }
 
   return (
-    <div className={`group flex flex-col gap-0.5 max-w-[80%] transition-opacity ${isOptimistic ? 'opacity-60' : 'opacity-100'} ${isOwn ? 'self-end items-end' : 'self-start items-start'}`}>
-      {!isOwn && (
-        <span className="text-xs text-muted-foreground px-1">{update.author?.full_name ?? 'Unknown'}</span>
-      )}
-      <div className={`rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${isOwn ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted text-foreground rounded-bl-sm'}`}>
-        {update.body}
+    <div className="flex flex-col h-full">
+      {/* Search */}
+      <div className="px-3 pt-2.5 pb-2 border-b shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search updates…"
+            className="w-full pl-7 pr-3 h-7 text-xs border border-slate-200 rounded-md outline-none focus:border-slate-400 bg-white placeholder:text-slate-400"
+          />
+        </div>
       </div>
-      <div className={`flex items-center gap-1.5 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
-        {!isOptimistic && <span className="text-xs text-muted-foreground">{formatTimeAgo(update.created_at)}</span>}
-        {isOptimistic && <span className="text-xs text-muted-foreground italic">Sending…</span>}
-        {isOwn && !isOptimistic && (
-          <button
-            onClick={() => onDelete(update.id)}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
+
+      {/* Log entries list — newest first */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 min-h-0">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center my-auto">
+            {search ? 'No updates match your search.' : 'No updates yet. Log the first one below.'}
+          </p>
+        ) : (
+          filtered.map((u) => (
+            <UpdateCard key={u.id} update={u} currentUserId={currentUserId} onDelete={handleDelete} />
+          ))
         )}
+      </div>
+
+      {/* Structured input form */}
+      <div className="border-t px-3 pt-3 pb-2.5 shrink-0 flex flex-col gap-2 bg-muted/20">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0">Date</span>
+          <input
+            type="date"
+            value={updateDate}
+            onChange={(e) => setUpdateDate(e.target.value)}
+            className="h-7 flex-1 rounded border border-slate-200 px-2 text-xs bg-white outline-none focus:border-slate-400"
+          />
+        </div>
+        <div className="flex gap-2">
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0 pt-1.5">Update</span>
+          <Textarea
+            value={updateTask}
+            onChange={(e) => setUpdateTask(e.target.value)}
+            placeholder="What happened or needs to happen…"
+            rows={2}
+            className="text-xs resize-none flex-1 min-h-[48px] bg-white"
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
+          />
+        </div>
+        <div className="flex gap-2">
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0 pt-1.5">Comment</span>
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Additional context (optional)…"
+            rows={1}
+            className="text-xs resize-none flex-1 min-h-[32px] bg-white"
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-slate-400">⌘↵ to submit</span>
+          <Button size="sm" onClick={submit} disabled={!updateTask.trim()} className="h-7 text-xs px-4">
+            Log Update
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -595,9 +685,9 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, history, 
   const openTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled').length;
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="flex flex-col" style={{ height: '480px' }}>
+      <div className="flex flex-col" style={{ height: '560px' }}>
         <PanelShell title="Updates" count={updates.length} chatMode>
-          <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} />
+          <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} teamMembers={teamMembers} />
         </PanelShell>
       </div>
       <div className="flex flex-col" style={{ maxHeight: '480px' }}>

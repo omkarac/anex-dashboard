@@ -5,24 +5,36 @@ import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
 
+export type CreateUpdateInput = {
+  update_date: string;   // YYYY-MM-DD — date the event occurred
+  update_task: string;   // what happened / needs to happen
+  comment?: string;      // additional context (optional)
+};
+
 export async function createUpdate(
   assetId: string,
-  body: string
+  input: CreateUpdateInput,
 ): Promise<ActionResult<void>> {
-  const trimmed = body.trim();
-  if (!trimmed) return { ok: false, error: 'Update body cannot be empty' };
+  const task = input.update_task.trim();
+  if (!task) return { ok: false, error: 'Update description cannot be empty' };
+
+  const comment = input.comment?.trim() || null;
+  const body = comment ? `${task}\n${comment}` : task;
 
   const result = await withAudit({
     action: 'create',
     entityType: 'update',
     entityId: assetId,
     assetId,
-    summary: 'Update added',
+    summary: `Update logged: ${task.slice(0, 80)}${task.length > 80 ? '…' : ''}`,
     mutation: async (actorId) => {
       const service = createServiceClient();
       const { error } = await service.from('updates').insert({
         asset_id: assetId,
-        body: trimmed,
+        body,
+        update_date: input.update_date,
+        update_task: task,
+        comment,
         created_by: actorId,
       });
       if (error) throw new Error(error.message);
@@ -35,7 +47,7 @@ export async function createUpdate(
 
 export async function deleteUpdate(
   updateId: string,
-  assetId: string
+  assetId: string,
 ): Promise<ActionResult<void>> {
   const result = await withAudit({
     action: 'delete',
