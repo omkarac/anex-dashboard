@@ -1,6 +1,6 @@
 import { LoginForm } from '@/components/auth/login-form';
+import { LoginLogoTrigger } from '@/components/auth/login-logo-trigger';
 import { Metadata } from 'next';
-import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: 'Sign in — Anex',
@@ -29,14 +29,7 @@ export default async function LoginPage({
           }}
         />
         <div className="relative z-10 flex flex-col items-center gap-8 text-primary-foreground">
-          <Image
-            src="/logo-white.png"
-            alt="Anex"
-            width={120}
-            height={120}
-            className="object-contain"
-            priority
-          />
+          <LoginLogoTrigger />
           <div className="text-center">
             <h1 className="text-4xl font-semibold tracking-tight">Anex</h1>
             <p className="mt-2 text-primary-foreground/70 text-sm tracking-widest uppercase">
