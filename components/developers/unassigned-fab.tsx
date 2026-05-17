@@ -1,6 +1,22 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+
+const FAB_STYLES = `
+  :root { --fab-c1:18,32,179; --fab-c2:40,60,210; }
+  .dark  { --fab-c1:72,98,232; --fab-c2:110,140,255; }
+  @keyframes fab-ring-out {
+    0%   { transform:scale(1); opacity:0.65; }
+    100% { transform:scale(2.4); opacity:0; }
+  }
+  @keyframes fab-throb {
+    0%,100% { box-shadow:0 4px 18px rgba(var(--fab-c1),0.38), 0 0 0 0px rgba(var(--fab-c1),0.10); }
+    50%     { box-shadow:0 8px 34px rgba(var(--fab-c2),0.62), 0 0 0 6px rgba(var(--fab-c1),0.12); }
+  }
+  .dev-fab-ring { animation:fab-ring-out 2s ease-out infinite; }
+  .fab-throb    { animation:fab-throb 1.8s ease-in-out infinite; }
+  .fab-throb:hover { animation-play-state:paused; }
+`;
 import { useRouter } from 'next/navigation';
 import { X, Zap } from 'lucide-react';
 import { updateShareTaskFields } from '@/lib/actions/developers';
@@ -32,6 +48,7 @@ export function UnassignedFAB({
 
   return (
     <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
+      <style>{FAB_STYLES}</style>
       {/* Slide-up drawer */}
       {open && (
         <div className="dev-drawer w-80 rounded-2xl border border-border bg-card/95 backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/50">
@@ -83,7 +100,7 @@ export function UnassignedFAB({
         {!open && <span className="dev-fab-ring absolute inset-0 rounded-full bg-primary" />}
         <button
           onClick={() => setOpen((o) => !o)}
-          className="relative h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+          className={`relative h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center transition-transform duration-200 hover:scale-105 active:scale-95 ${!open ? 'fab-throb' : 'shadow-lg shadow-primary/25'}`}
           aria-label={open ? 'Close action tray' : `${tasks.length} tasks need assignment`}
         >
           <span

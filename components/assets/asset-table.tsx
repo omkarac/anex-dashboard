@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-table';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { InlineStatusSelect } from '@/components/assets/inline-status-select';
 import { InlineTemperatureSelect } from '@/components/assets/inline-temperature-select';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { formatDate } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { LatestUpdateSummary } from '@/lib/queries/updates';
-import type { UnassignedTask } from '@/lib/queries/developers';
+import type { UnassignedTask, AssetOpenTask } from '@/lib/queries/developers';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toCr } from '@/lib/utils/formatters';
 import { UnassignedFAB } from '@/components/developers/unassigned-fab';
@@ -162,6 +162,16 @@ function buildColumns(
   },
 ];}
 
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+const PRIORITY_DOT: Record<string, string> = {
+  high:   'bg-destructive',
+  medium: 'bg-amber-500',
+  low:    'bg-muted-foreground/50',
+};
+
+type HoveredRow = { id: string; rect: DOMRect };
+
 type AssetTableProps = {
   data: Asset[];
   count: number;
@@ -170,17 +180,29 @@ type AssetTableProps = {
   teamMembers: TeamMemberOption[];
   latestUpdates: Map<string, LatestUpdateSummary>;
   unassignedTasks: UnassignedTask[];
+  openTasks: AssetOpenTask[];
 };
 
-export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates, unassignedTasks }: AssetTableProps) {
+export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates, unassignedTasks, openTasks }: AssetTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [hoveredRow, setHoveredRow] = useState<HoveredRow | null>(null);
 
   const unassignedByAsset = useMemo(() => {
     const m = new Map<string, number>();
     for (const t of unassignedTasks) m.set(t.asset_id, (m.get(t.asset_id) ?? 0) + 1);
     return m;
   }, [unassignedTasks]);
+
+  const openTasksByAsset = useMemo(() => {
+    const m = new Map<string, AssetOpenTask[]>();
+    for (const t of openTasks) {
+      const arr = m.get(t.asset_id) ?? [];
+      arr.push(t);
+      m.set(t.asset_id, arr);
+    }
+    return m;
+  }, [openTasks]);
 
   const columns = useMemo(
     () => buildColumns(teamMembers, latestUpdates, unassignedByAsset),
@@ -231,10 +253,13 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
           <tbody>
             {table.getRowModel().rows.map((row, i) => {
               const isUrgent = unassignedByAsset.has(row.original.id);
+              const hasOpen = openTasksByAsset.has(row.original.id);
               return (
               <tr
                 key={row.id}
                 className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'} ${isUrgent ? 'asset-row-urgent' : ''}`}
+                onMouseEnter={hasOpen ? (e) => setHoveredRow({ id: row.original.id, rect: e.currentTarget.getBoundingClientRect() }) : undefined}
+                onMouseLeave={hasOpen ? () => setHoveredRow(null) : undefined}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-3 py-2.5">
@@ -285,6 +310,61 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
       </div>
 
       <UnassignedFAB tasks={unassignedTasks} members={teamMembers} />
+
+      {/* Hover task preview — fixed overlay, pointer-events-none so it never blocks row events */}
+      {hoveredRow && (() => {
+        const tasks = openTasksByAsset.get(hoveredRow.id) ?? [];
+        if (!tasks.length) return null;
+
+        const today = new Date().toISOString().slice(0, 10);
+        const totalOpen = tasks.length;
+        const dueCount = tasks.filter((t) => t.due_date && t.due_date <= today).length;
+        const top3 = [...tasks]
+          .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1))
+          .slice(0, 3);
+
+        const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
+        const showAbove = hoveredRow.rect.bottom + 230 > viewportH;
+        const top = showAbove ? hoveredRow.rect.top - 230 : hoveredRow.rect.bottom + 4;
+
+        return (
+          <div
+            style={{ position: 'fixed', top, left: hoveredRow.rect.left + 16, zIndex: 200, pointerEvents: 'none', width: 272 }}
+            className="rounded-xl border bg-card/95 backdrop-blur-xl shadow-2xl shadow-black/15 dark:shadow-black/40 overflow-hidden"
+          >
+            {/* Stat bar */}
+            <div className="px-3 py-2.5 border-b border-border/50 flex items-center gap-4 bg-muted/30">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="text-sm font-bold tabular-nums">{totalOpen}</span>
+                <span className="text-xs text-muted-foreground">open task{totalOpen !== 1 ? 's' : ''}</span>
+              </span>
+              {dueCount > 0 && (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                  <span className="text-sm font-bold tabular-nums text-destructive">{dueCount}</span>
+                  <span className="text-xs text-destructive/80">due</span>
+                </span>
+              )}
+            </div>
+
+            {/* Top 3 tasks by priority */}
+            <div className="px-3 py-2.5 flex flex-col gap-2">
+              {top3.map((t) => (
+                <div key={t.id} className="flex items-center gap-2.5 min-w-0">
+                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${PRIORITY_DOT[t.priority] ?? 'bg-muted-foreground/50'}`} />
+                  <span className="text-xs text-foreground truncate leading-none">{t.title}</span>
+                  {t.due_date && t.due_date <= today && (
+                    <span className="ml-auto shrink-0 text-[10px] font-semibold text-destructive">due</span>
+                  )}
+                </div>
+              ))}
+              {tasks.length > 3 && (
+                <p className="text-[10px] text-muted-foreground pl-4">+{tasks.length - 3} more</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

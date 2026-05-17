@@ -376,6 +376,47 @@ export async function getUnassignedTasks(): Promise<UnassignedTask[]> {
   });
 }
 
+export type AssetOpenTask = {
+  id: string;
+  asset_id: string;
+  title: string;
+  priority: string;
+  status: string;
+  due_date: string | null;
+};
+
+export async function getOpenTasksForAssets(assetIds: string[]): Promise<AssetOpenTask[]> {
+  if (!assetIds.length) return [];
+  const service = createServiceClient();
+
+  const { data: shares } = await service
+    .from('developer_shares')
+    .select('id, asset_id')
+    .in('asset_id', assetIds)
+    .is('deleted_at', null);
+
+  if (!shares?.length) return [];
+
+  const shareIds = shares.map((s) => s.id);
+  const shareAssetMap = new Map(shares.map((s) => [s.id, s.asset_id]));
+
+  const { data: tasks } = await service
+    .from('share_tasks')
+    .select('id, share_id, title, priority, status, due_date')
+    .in('share_id', shareIds)
+    .neq('status', 'done')
+    .is('deleted_at', null)
+    .order('created_at');
+
+  if (!tasks?.length) return [];
+
+  return tasks.flatMap((t) => {
+    const assetId = shareAssetMap.get(t.share_id);
+    if (!assetId) return [];
+    return [{ id: t.id, asset_id: assetId, title: t.title, priority: t.priority, status: t.status, due_date: t.due_date ?? null }];
+  });
+}
+
 export type DeveloperOption = { id: string; name: string };
 
 export async function getDeveloperOptions(): Promise<DeveloperOption[]> {
