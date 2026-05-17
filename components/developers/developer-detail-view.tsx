@@ -49,12 +49,12 @@ function useDominantColor(imageUrl: string | null | undefined): string | null {
   return rgb;
 }
 
-const OUTCOME_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
-  interested: { label: 'Interested', badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
-  pursuing:   { label: 'Pursuing',   badge: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500'    },
-  won:        { label: 'Won',        badge: 'bg-purple-100 text-purple-700',   dot: 'bg-purple-500'  },
-  passed:     { label: 'Passed',     badge: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-400'    },
-  pending:    { label: 'Pending',    badge: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400'   },
+const OUTCOME_CONFIG: Record<string, { label: string; badge: string; dot: string; tile: string }> = {
+  interested: { label: 'Interested', badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', tile: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+  pursuing:   { label: 'Pursuing',   badge: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500',    tile: 'bg-blue-50 border-blue-200 text-blue-700'       },
+  won:        { label: 'Won',        badge: 'bg-purple-100 text-purple-700',   dot: 'bg-purple-500',  tile: 'bg-purple-50 border-purple-200 text-purple-700' },
+  passed:     { label: 'Passed',     badge: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-400',    tile: 'bg-gray-50 border-gray-200 text-gray-500'       },
+  pending:    { label: 'Pending',    badge: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400',   tile: 'bg-amber-50 border-amber-200 text-amber-700'    },
 };
 
 const OUTCOME_OPTIONS = ['interested', 'pursuing', 'won', 'passed'];
@@ -85,7 +85,7 @@ function DeveloperAvatar({ name, logoUrl, size = 'lg' }: { name: string; logoUrl
 
   if (logoUrl) {
     return (
-      <div className={`${sz} flex items-center justify-center overflow-hidden border bg-white shrink-0`}>
+      <div className={`${sz} flex items-center justify-center overflow-hidden border bg-white shrink-0 shadow-sm`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={logoUrl}
@@ -98,8 +98,36 @@ function DeveloperAvatar({ name, logoUrl, size = 'lg' }: { name: string; logoUrl
   }
 
   return (
-    <div className={`${sz} flex items-center justify-center font-bold shrink-0 ${p.bg} ${p.text}`}>
+    <div className={`${sz} flex items-center justify-center font-bold shrink-0 shadow-sm ${p.bg} ${p.text}`}>
       {initials(name)}
+    </div>
+  );
+}
+
+function ContactField({ label, value, href }: { label: string; value?: string | null; href?: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-foreground mb-1.5">{label}</p>
+      {value ? (
+        href ? (
+          <a
+            href={href}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold hover:text-primary transition-colors truncate max-w-full"
+          >
+            <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{value}</span>
+          </a>
+        ) : label.toLowerCase() === 'phone' ? (
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            {value}
+          </span>
+        ) : (
+          <p className="text-sm font-semibold">{value}</p>
+        )
+      ) : (
+        <p className="text-sm text-muted-foreground/60">—</p>
+      )}
     </div>
   );
 }
@@ -235,9 +263,11 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Hero header */}
+
+      {/* ── Hero ── */}
       <div className="relative border-b shrink-0 overflow-hidden">
-        {/* Blurred background layer */}
+
+        {/* Background layers */}
         {activeLogoUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -246,23 +276,25 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
               alt=""
               aria-hidden
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-              style={{ filter: 'blur(28px) saturate(180%)', transform: 'scale(1.5)', opacity: 0.35 }}
+              style={{ filter: 'blur(32px) saturate(200%)', transform: 'scale(1.6)', opacity: 0.3 }}
             />
-            <div className="absolute inset-0 bg-background/55" />
+            <div className="absolute inset-0 bg-background/60" />
             {dominantRgb && (
               <div
                 className="absolute inset-0"
-                style={{ background: `linear-gradient(135deg, rgba(${dominantRgb},0.22) 0%, rgba(${dominantRgb},0.06) 100%)` }}
+                style={{ background: `linear-gradient(135deg, rgba(${dominantRgb},0.18) 0%, rgba(${dominantRgb},0.05) 100%)` }}
               />
             )}
           </>
         ) : (
-          <div className={`absolute inset-0 opacity-40 ${p.bg}`} />
+          <div className={`absolute inset-0 opacity-30 ${p.bg}`} />
         )}
 
-        {/* Foreground content */}
-        <div className="relative px-6 pt-4 pb-6">
-          <div className="flex items-center justify-between mb-4">
+        {/* Foreground */}
+        <div className="relative px-6 pt-4">
+
+          {/* Nav + edit controls */}
+          <div className="flex items-center justify-between mb-5">
             <Link
               href="/capital-markets/developers"
               className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -270,8 +302,6 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
               <ChevronLeft className="h-4 w-4" />
               Developers
             </Link>
-
-            {/* Edit / Save / Cancel controls */}
             <div className="flex items-center gap-1.5">
               {editing ? (
                 <>
@@ -290,56 +320,31 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
             </div>
           </div>
 
-          <div className="flex items-end gap-5">
+          {/* Identity row */}
+          <div className="flex items-center gap-4">
             <DeveloperAvatar
               name={editing ? (form.name || dev.name) : dev.name}
               logoUrl={activeLogoUrl}
               size="lg"
             />
-            <div className="flex-1 min-w-0 pb-0.5">
+            <div className="flex-1 min-w-0">
               {editing ? (
                 <Input
                   value={form.name}
                   onChange={field('name')}
-                  className="h-9 text-lg font-bold bg-white/70 border-white/60 mb-1"
+                  className="h-9 text-lg font-bold bg-background/70 border-border/60 backdrop-blur-sm"
                   placeholder="Company name"
                 />
               ) : (
                 <h1 className="text-2xl font-bold tracking-tight leading-tight">{dev.name}</h1>
               )}
-              {!editing && dev.contact_person && (
-                <p className="text-sm text-muted-foreground mt-0.5">{dev.contact_person}</p>
-              )}
-              {!editing && (
-                <div className="flex flex-wrap items-center gap-4 mt-2">
-                  {dev.contact_email && (
-                    <a href={`mailto:${dev.contact_email}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      <Mail className="h-3.5 w-3.5" />{dev.contact_email}
-                    </a>
-                  )}
-                  {dev.contact_phone && (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Phone className="h-3.5 w-3.5" />{dev.contact_phone}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
-          {error && <p className="relative text-xs text-destructive mt-2">{error}</p>}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-3xl mx-auto flex flex-col gap-6">
-
-          {/* Contact — view or edit */}
-          <section className="rounded-xl border p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Contact</p>
-
-            {editing ? (
-              <div className="flex flex-col gap-3">
+          {/* Edit form — replaces contact strip when editing */}
+          {editing && (
+            <div className="mt-5 pb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(
                   [
                     { key: 'contact_person' as const, label: 'Contact Person', type: 'text',  placeholder: 'Full name' },
@@ -349,76 +354,78 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
                   ] as const
                 ).map(({ key, label, type, placeholder }) => (
                   <div key={key} className="flex flex-col gap-1">
-                    <Label className="text-xs text-muted-foreground">{label}</Label>
-                    <Input value={form[key]} onChange={field(key)} type={type} placeholder={placeholder} className="h-8 text-sm" />
+                    <Label className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground">{label}</Label>
+                    <Input
+                      value={form[key]}
+                      onChange={field(key)}
+                      type={type}
+                      placeholder={placeholder}
+                      className="h-8 text-sm bg-background/70 border-border/60 backdrop-blur-sm"
+                    />
                   </div>
                 ))}
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-muted-foreground">Notes</Label>
-                  <Textarea value={form.notes} onChange={field('notes')} placeholder="Any relevant context…" className="text-sm resize-none min-h-[72px]" />
+                <div className="sm:col-span-2 flex flex-col gap-1">
+                  <Label className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground">Notes</Label>
+                  <Textarea
+                    value={form.notes}
+                    onChange={field('notes')}
+                    placeholder="Any relevant context…"
+                    className="text-sm resize-none min-h-[64px] bg-background/70 border-border/60 backdrop-blur-sm"
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col divide-y">
-                {[
-                  { label: 'Contact Person', value: dev.contact_person },
-                  {
-                    label: 'Email',
-                    value: dev.contact_email
-                      ? <a href={`mailto:${dev.contact_email}`} className="text-primary hover:underline underline-offset-2 inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5 shrink-0" />{dev.contact_email}</a>
-                      : null,
-                  },
-                  {
-                    label: 'Phone',
-                    value: dev.contact_phone
-                      ? <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />{dev.contact_phone}</span>
-                      : null,
-                  },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center gap-4 py-2">
-                    <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
-                    <span className="text-sm">{value ?? <span className="text-muted-foreground">—</span>}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Notes (view only — editing is inside the contact card above) */}
-          {!editing && dev.notes && (
-            <section className="rounded-xl border p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Notes</p>
-              <p className="text-sm text-muted-foreground">{dev.notes}</p>
-            </section>
+            </div>
           )}
+
+          {/* Contact strip — view mode only */}
+          {!editing && (
+            <div className="mt-5 border-t border-border/40 pt-4 pb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <ContactField label="Contact" value={dev.contact_person} />
+                <ContactField
+                  label="Email"
+                  value={dev.contact_email}
+                  href={dev.contact_email ? `mailto:${dev.contact_email}` : undefined}
+                />
+                <ContactField label="Phone" value={dev.contact_phone} />
+              </div>
+              {dev.notes && (
+                <p className="mt-4 text-xs text-muted-foreground border-t border-border/30 pt-3 leading-relaxed">
+                  {dev.notes}
+                </p>
+              )}
+            </div>
+          )}
+
+          {error && <p className="relative text-xs text-destructive pb-3 -mt-1">{error}</p>}
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="max-w-3xl mx-auto flex flex-col gap-6">
+
+          {/* KPI tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-muted-foreground mb-2">Assets Shared</p>
+              <p className="text-2xl font-bold tabular-nums">{dev.share_count}</p>
+            </div>
+            {outcomeEntries.map(([outcome, count]) => {
+              const cfg = OUTCOME_CONFIG[outcome] ?? OUTCOME_CONFIG.pending;
+              return (
+                <div key={outcome} className={`rounded-xl border p-4 ${cfg.tile}`}>
+                  <p className="text-[9px] font-bold tracking-[0.14em] uppercase mb-2 opacity-70">{cfg.label}</p>
+                  <p className="text-2xl font-bold tabular-nums">{count}</p>
+                </div>
+              );
+            })}
+          </div>
 
           {/* Investment Appetite */}
           {!editing && (
             <AppetiteSection developerId={dev.id} preferences={dev.preferences} />
           )}
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-2xl font-bold tabular-nums">{dev.share_count}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Assets Shared</p>
-            </div>
-            {outcomeEntries.map(([outcome, count]) => {
-              const cfg = OUTCOME_CONFIG[outcome] ?? OUTCOME_CONFIG.pending;
-              return (
-                <div key={outcome} className={`rounded-xl border p-4 text-center ${cfg.badge}`}>
-                  <p className="text-2xl font-bold tabular-nums">{count}</p>
-                  <p className="text-xs mt-0.5 opacity-80">{cfg.label}</p>
-                </div>
-              );
-            })}
-            {(dev.outcome_counts['pending'] ?? 0) > 0 && (
-              <div className="rounded-xl border p-4 text-center bg-amber-50 text-amber-700">
-                <p className="text-2xl font-bold tabular-nums">{dev.outcome_counts['pending']}</p>
-                <p className="text-xs mt-0.5 opacity-80">Pending</p>
-              </div>
-            )}
-          </div>
 
           {/* Shared assets */}
           <section>
@@ -447,6 +454,7 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
               </div>
             )}
           </section>
+
         </div>
       </div>
     </div>
