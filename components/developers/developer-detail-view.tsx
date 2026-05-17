@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
 import { updateShareOutcome, updateShareNotes, updateDeveloper } from '@/lib/actions/developers';
+import { AppetiteSection } from './appetite-section';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 
 function useDominantColor(imageUrl: string | null | undefined): string | null {
@@ -429,6 +430,11 @@ export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Notes</p>
               <p className="text-sm text-muted-foreground">{dev.notes}</p>
             </section>
+          )}
+
+          {/* Investment Appetite */}
+          {!editing && (
+            <AppetiteSection developerId={dev.id} preferences={dev.preferences} />
           )}
 
           {/* Stats */}

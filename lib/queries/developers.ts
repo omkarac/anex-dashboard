@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import type { Developer } from '@/lib/schemas/developer';
+import type { Developer, DeveloperPreferences } from '@/lib/schemas/developer';
 
 export type DeveloperShareFull = {
   id: string;
@@ -17,6 +17,7 @@ export type DeveloperWithStats = Developer & {
   last_shared_at: string | null;
   outcome_counts: Record<string, number>;
   shares: DeveloperShareFull[];
+  preferences: DeveloperPreferences | null;
 };
 
 export type ShareWithDetails = {
@@ -81,6 +82,7 @@ export async function listDevelopers(): Promise<DeveloperWithStats[]> {
       last_shared_at: shares[0]?.shared_at ?? null,
       outcome_counts,
       shares,
+      preferences: null,
     };
   });
 }
@@ -173,12 +175,19 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
 
   if (!dev) return null;
 
-  const { data: rawShares } = await service
-    .from('developer_shares')
-    .select('*, asset:assets!asset_id(property_name)')
-    .eq('developer_id', id)
-    .is('deleted_at', null)
-    .order('shared_at', { ascending: false });
+  const [{ data: rawShares }, { data: prefs }] = await Promise.all([
+    service
+      .from('developer_shares')
+      .select('*, asset:assets!asset_id(property_name)')
+      .eq('developer_id', id)
+      .is('deleted_at', null)
+      .order('shared_at', { ascending: false }),
+    service
+      .from('developer_preferences')
+      .select('*')
+      .eq('developer_id', id)
+      .maybeSingle(),
+  ]);
 
   const actorIds = [...new Set((rawShares ?? []).map((s) => s.shared_by))];
   const { data: members } = actorIds.length
@@ -209,6 +218,7 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
     last_shared_at: shares[0]?.shared_at ?? null,
     outcome_counts,
     shares,
+    preferences: (prefs as DeveloperPreferences | null) ?? null,
   };
 }
 

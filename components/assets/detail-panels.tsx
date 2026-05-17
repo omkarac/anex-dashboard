@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon, Search } from 'lucide-react';
+import ReactGridLayout, { useContainerWidth, verticalCompactor } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon, Search, GripVertical, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,12 +33,22 @@ type Props = {
   teamMembers: TeamMemberOption[];
 };
 
+const LAYOUT_KEY = 'anex:asset-panels-layout:v1';
+
+const DEFAULT_LAYOUT: Layout = [
+  { i: 'updates',  x: 0, y: 0,  w: 1, h: 11, minW: 1, minH: 6 },
+  { i: 'tasks',    x: 1, y: 0,  w: 1, h: 9,  minW: 1, minH: 5 },
+  { i: 'activity', x: 0, y: 11, w: 1, h: 5,  minW: 1, minH: 4 },
+  { i: 'shares',   x: 1, y: 9,  w: 1, h: 5,  minW: 1, minH: 3 },
+];
+
 function PanelShell({ title, count, children, chatMode }: {
   title: string; count?: number; children: React.ReactNode; chatMode?: boolean;
 }) {
   return (
-    <div className="rounded-lg border flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-muted/30 shrink-0">
+    <div className="rounded-lg border flex flex-col h-full min-h-0 overflow-hidden bg-card">
+      <div className="panel-drag-handle flex items-center gap-2 px-4 py-2.5 border-b bg-muted/30 shrink-0 cursor-grab active:cursor-grabbing select-none">
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
         {count !== undefined && (
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{count}</span>
@@ -651,27 +665,71 @@ function SharesPanel({ shares }: { shares: ShareWithDetails[] }) {
 
 export function DetailPanels({ assetId, currentUserId, updates, tasks, activity, shares, teamMembers }: Props) {
   const openTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled').length;
+  const { width, containerRef, mounted } = useContainerWidth();
+
+  const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LAYOUT_KEY);
+      if (stored) setLayout(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  function handleLayoutChange(newLayout: Layout) {
+    setLayout(newLayout);
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(newLayout)); } catch {}
+  }
+
+  function resetLayout() {
+    setLayout(DEFAULT_LAYOUT);
+    try { localStorage.removeItem(LAYOUT_KEY); } catch {}
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="flex flex-col" style={{ height: '560px' }}>
-        <PanelShell title="Updates" count={updates.length} chatMode>
-          <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} teamMembers={teamMembers} />
-        </PanelShell>
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-muted-foreground">Drag panel headers to rearrange · Drag corner to resize</p>
+        <button
+          onClick={resetLayout}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reset layout
+        </button>
       </div>
-      <div className="flex flex-col" style={{ maxHeight: '480px' }}>
-        <PanelShell title="Tasks" count={openTasks}>
-          <TasksPanel assetId={assetId} tasks={tasks} teamMembers={teamMembers} currentUserId={currentUserId} />
-        </PanelShell>
-      </div>
-      <div className="flex flex-col" style={{ maxHeight: '300px' }}>
-        <PanelShell title="Activity" count={activity.length}>
-          <ActivityPanel activity={activity} />
-        </PanelShell>
-      </div>
-      <div className="flex flex-col" style={{ maxHeight: '280px' }}>
-        <PanelShell title="Developer Shares" count={shares.length}>
-          <SharesPanel shares={shares} />
-        </PanelShell>
+      <div ref={containerRef}>
+        {mounted && (
+          <ReactGridLayout
+            layout={layout}
+            width={width}
+            gridConfig={{ cols: 2, rowHeight: 48, margin: [16, 16] }}
+            dragConfig={{ enabled: true, handle: '.panel-drag-handle' }}
+            resizeConfig={{ enabled: true, handles: ['se', 's'] }}
+            compactor={verticalCompactor}
+            onLayoutChange={handleLayoutChange}
+          >
+            <div key="updates" className="h-full">
+              <PanelShell title="Updates" count={updates.length} chatMode>
+                <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} teamMembers={teamMembers} />
+              </PanelShell>
+            </div>
+            <div key="tasks" className="h-full">
+              <PanelShell title="Tasks" count={openTasks}>
+                <TasksPanel assetId={assetId} tasks={tasks} teamMembers={teamMembers} currentUserId={currentUserId} />
+              </PanelShell>
+            </div>
+            <div key="activity" className="h-full">
+              <PanelShell title="Activity" count={activity.length}>
+                <ActivityPanel activity={activity} />
+              </PanelShell>
+            </div>
+            <div key="shares" className="h-full">
+              <PanelShell title="Developer Shares" count={shares.length}>
+                <SharesPanel shares={shares} />
+              </PanelShell>
+            </div>
+          </ReactGridLayout>
+        )}
       </div>
     </div>
   );

@@ -4,7 +4,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
-import { DeveloperCreateSchema } from '@/lib/schemas/developer';
+import { DeveloperCreateSchema, DeveloperPreferencesUpsertSchema } from '@/lib/schemas/developer';
+import type { DeveloperPreferencesUpsert } from '@/lib/schemas/developer';
 
 export async function createDeveloper(formData: FormData): Promise<ActionResult<void>> {
   const raw = {
@@ -141,6 +142,42 @@ export async function updateShareNotes(
   });
 
   if (result.ok) revalidatePath('/capital-markets/developers');
+  return result;
+}
+
+export async function upsertDeveloperPreferences(
+  developerId: string,
+  data: DeveloperPreferencesUpsert
+): Promise<ActionResult<void>> {
+  const parsed = DeveloperPreferencesUpsertSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
+
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'developer',
+    entityId: developerId,
+    summary: 'Developer appetite profile updated',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('developer_preferences')
+        .upsert(
+          {
+            developer_id: developerId,
+            ...parsed.data,
+            updated_at: new Date().toISOString(),
+            updated_by: actorId,
+          },
+          { onConflict: 'developer_id' }
+        );
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) {
+    revalidatePath('/capital-markets/developers');
+    revalidatePath(`/capital-markets/developers/${developerId}`);
+  }
   return result;
 }
 
