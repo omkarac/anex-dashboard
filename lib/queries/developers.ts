@@ -370,35 +370,37 @@ export type UnassignedTask = {
 export async function getUnassignedTasks(): Promise<UnassignedTask[]> {
   const service = createServiceClient();
 
+  // Fetch all non-deleted shares with their outcome; filter in JS so null != 'passed' works correctly
+  const { data: rawShares } = await service
+    .from('developer_shares')
+    .select('id, developer_id, asset_id, outcome')
+    .is('deleted_at', null);
+
+  const activeShares = (rawShares ?? []).filter((s) => s.outcome !== 'passed');
+  if (!activeShares.length) return [];
+
+  const activeShareIds = activeShares.map((s) => s.id);
+
   const { data: tasks } = await service
     .from('share_tasks')
     .select('id, share_id, title, task_type')
     .eq('status', 'todo')
     .is('assigned_to', null)
     .is('deleted_at', null)
+    .in('share_id', activeShareIds)
     .order('created_at');
 
   if (!tasks?.length) return [];
 
-  const shareIds = [...new Set(tasks.map((t) => t.share_id))];
-  const { data: shares } = await service
-    .from('developer_shares')
-    .select('id, developer_id, asset_id')
-    .in('id', shareIds)
-    .or('outcome.is.null,outcome.neq.passed')
-    .is('deleted_at', null);
-
-  if (!shares?.length) return [];
-
-  const devIds = [...new Set(shares.map((s) => s.developer_id))];
-  const assetIds = [...new Set(shares.map((s) => s.asset_id))];
+  const devIds = [...new Set(activeShares.map((s) => s.developer_id))];
+  const assetIds = [...new Set(activeShares.map((s) => s.asset_id))];
 
   const [{ data: devs }, { data: assets }] = await Promise.all([
     service.from('developers').select('id, name').in('id', devIds),
     service.from('assets').select('id, property_name').in('id', assetIds),
   ]);
 
-  const shareMap = new Map(shares.map((s) => [s.id, s]));
+  const shareMap = new Map(activeShares.map((s) => [s.id, s]));
   const devMap = new Map((devs ?? []).map((d) => [d.id, d.name]));
   const assetMap = new Map((assets ?? []).map((a) => [a.id, a.property_name]));
 
@@ -462,21 +464,23 @@ export async function getMyTasks(userId: string): Promise<MyTask[]> {
   // ── Share tasks ──────────────────────────────────────────────────────────────
   if (shareTasks?.length) {
     const shareIds = [...new Set(shareTasks.map((t) => t.share_id))];
-    const { data: shares } = await service
+    // Fetch with outcome so we can filter in JS — SQL != 'passed' drops NULL rows
+    const { data: rawShares } = await service
       .from('developer_shares')
-      .select('id, developer_id, asset_id')
+      .select('id, developer_id, asset_id, outcome')
       .in('id', shareIds)
-      .or('outcome.is.null,outcome.neq.passed')
       .is('deleted_at', null);
 
-    if (shares?.length) {
-      const devIds = [...new Set(shares.map((s) => s.developer_id))];
-      const assetIds = [...new Set(shares.map((s) => s.asset_id))];
+    const activeShares = (rawShares ?? []).filter((s) => s.outcome !== 'passed');
+
+    if (activeShares.length) {
+      const devIds = [...new Set(activeShares.map((s) => s.developer_id))];
+      const assetIds = [...new Set(activeShares.map((s) => s.asset_id))];
       const [{ data: devs }, { data: shareAssets }] = await Promise.all([
         service.from('developers').select('id, name').in('id', devIds),
         service.from('assets').select('id, property_name').in('id', assetIds),
       ]);
-      const shareMap = new Map(shares.map((s) => [s.id, s]));
+      const shareMap = new Map(activeShares.map((s) => [s.id, s]));
       const devMap = new Map((devs ?? []).map((d) => [d.id, d.name]));
       const assetMap = new Map((shareAssets ?? []).map((a) => [a.id, a.property_name]));
 
@@ -548,14 +552,14 @@ export async function getOpenTasksForAssets(assetIds: string[]): Promise<AssetOp
   if (!assetIds.length) return [];
   const service = createServiceClient();
 
-  const { data: shares } = await service
+  const { data: rawShares } = await service
     .from('developer_shares')
-    .select('id, asset_id')
+    .select('id, asset_id, outcome')
     .in('asset_id', assetIds)
-    .or('outcome.is.null,outcome.neq.passed')
     .is('deleted_at', null);
 
-  if (!shares?.length) return [];
+  const shares = (rawShares ?? []).filter((s) => s.outcome !== 'passed');
+  if (!shares.length) return [];
 
   const shareIds = shares.map((s) => s.id);
   const shareAssetMap = new Map(shares.map((s) => [s.id, s.asset_id]));
@@ -580,13 +584,13 @@ export async function getOpenTasksForAssets(assetIds: string[]): Promise<AssetOp
 export async function getAssetIdsWithOpenTasks(): Promise<string[]> {
   const service = createServiceClient();
 
-  const { data: shares } = await service
+  const { data: rawShares } = await service
     .from('developer_shares')
-    .select('id, asset_id')
-    .or('outcome.is.null,outcome.neq.passed')
+    .select('id, asset_id, outcome')
     .is('deleted_at', null);
 
-  if (!shares?.length) return [];
+  const shares = (rawShares ?? []).filter((s) => s.outcome !== 'passed');
+  if (!shares.length) return [];
 
   const shareIds = shares.map((s) => s.id);
   const shareAssetMap = new Map(shares.map((s) => [s.id, s.asset_id]));
