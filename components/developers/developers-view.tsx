@@ -4,6 +4,7 @@ import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Mail, Phone, ExternalLink, ChevronRight, Building2, Pencil, X, Check, Trash2 } from 'lucide-react';
+import { UnassignedFAB } from './unassigned-fab';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,42 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
 import { updateShareOutcome, updateShareNotes, updateDeveloper, deleteDeveloper } from '@/lib/actions/developers';
 import { DeveloperCreateSheet } from './developer-create-sheet';
-import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
+import type { DeveloperWithStats, DeveloperShareFull, UnassignedTask } from '@/lib/queries/developers';
+import type { TeamMemberSelect } from '@/lib/queries/team';
+
+// ─── Glow animation CSS ───────────────────────────────────────────────────────
+// Light → brand navy rgb(18,32,179) | Dark → brand blue rgb(72,98,232)
+
+const GLOW_STYLES = `
+  :root {
+    --gw1: rgba(18,32,179,0.18); --gw2: rgba(18,32,179,0.50);
+    --gh1: rgba(18,32,179,0.07); --gh2: rgba(18,32,179,0.17);
+    --dev-cs:  0 1px 2px rgba(0,0,0,0.04), 0 4px 14px rgba(18,32,179,0.05);
+    --dev-csh: 0 2px 10px rgba(18,32,179,0.10), 0 14px 32px rgba(0,0,0,0.06);
+  }
+  .dark {
+    --gw1: rgba(72,98,232,0.26); --gw2: rgba(72,98,232,0.60);
+    --gh1: rgba(72,98,232,0.11); --gh2: rgba(72,98,232,0.26);
+    --dev-cs:  0 1px 0 rgba(255,255,255,0.055) inset, 0 2px 8px rgba(0,0,0,0.42);
+    --dev-csh: 0 1px 0 rgba(255,255,255,0.09) inset, 0 8px 28px rgba(0,0,0,0.58);
+  }
+  @keyframes dev-breathe {
+    0%,100% { box-shadow: 0 0 0 1.5px var(--gw1), 0 0 16px 4px var(--gh1), var(--dev-cs); }
+    50%     { box-shadow: 0 0 0 2.5px var(--gw2), 0 0 28px 8px var(--gh2), var(--dev-cs); }
+  }
+  @keyframes dev-fab-ring  { 0% { transform:scale(1); opacity:.55; } 100% { transform:scale(2.7); opacity:0; } }
+  @keyframes dev-slide-up  { from { transform:translateY(16px) scale(0.97); opacity:0; } to { transform:translateY(0) scale(1); opacity:1; } }
+  @keyframes dev-badge-pop { 0% { transform:scale(0.3); opacity:0; } 70% { transform:scale(1.18); } 100% { transform:scale(1); opacity:1; } }
+  .dev-card-base    { box-shadow: var(--dev-cs); transition: box-shadow 0.25s ease, transform 0.2s ease; }
+  .dev-card-base:hover { box-shadow: var(--dev-csh); transform: translateY(-2px); }
+  .dev-card-urgent  { animation: dev-breathe 2.5s ease-in-out infinite; }
+  .dev-card-urgent:hover { animation-play-state: paused; box-shadow: var(--dev-csh); transform: translateY(-2px); }
+  .dev-task-expand  { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease; }
+  .dev-card-urgent:hover .dev-task-expand { max-height: 160px; opacity: 1; }
+  .dev-fab-ring  { animation: dev-fab-ring 2.2s ease-out infinite; }
+  .dev-drawer    { animation: dev-slide-up 0.22s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .dev-bdg       { animation: dev-badge-pop 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+`;
 
 // DeveloperPanel kept for edit/delete access from the list — click card navigates to detail page
 
@@ -90,20 +126,30 @@ function Avatar({ name, logoUrl, size = 'md' }: { name: string; logoUrl?: string
 
 // ─── Developer card ───────────────────────────────────────────────────────────
 
-function DeveloperCard({ dev }: { dev: DeveloperWithStats }) {
+function DeveloperCard({ dev, unassigned }: { dev: DeveloperWithStats; unassigned: UnassignedTask[] }) {
   const p = palette(dev.name);
   const outcomeEntries = Object.entries(dev.outcome_counts)
     .filter(([k, n]) => n > 0 && k !== 'pending')
     .sort(([a], [b]) => a.localeCompare(b));
   const pendingCount = dev.outcome_counts['pending'] ?? 0;
+  const hasUnassigned = unassigned.length > 0;
 
   return (
     <Link
       href={`/capital-markets/developers/${dev.id}`}
-      className="group w-full text-left rounded-2xl border bg-card hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={`group relative w-full text-left rounded-2xl border bg-card overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${hasUnassigned ? 'dev-card-urgent' : 'dev-card-base'}`}
     >
       {/* Top accent strip */}
-      <div className={`h-1 w-full ${p.bg}`} />
+      <div className={`h-[3px] w-full ${p.bg}`} />
+
+      {/* Unassigned badge */}
+      {hasUnassigned && (
+        <div className="dev-bdg absolute top-3.5 right-3.5 z-10 pointer-events-none">
+          <span className="flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/25 text-[9px] font-semibold tracking-wide px-2 py-0.5">
+            {unassigned.length} unassigned
+          </span>
+        </div>
+      )}
 
       <div className="p-5 flex flex-col gap-4">
         {/* Identity */}
@@ -142,6 +188,21 @@ function DeveloperCard({ dev }: { dev: DeveloperWithStats }) {
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic">No assets shared yet</p>
+        )}
+
+        {/* Unassigned task list — expands on hover via CSS */}
+        {hasUnassigned && (
+          <div className="dev-task-expand">
+            <div className="border-t border-primary/15 pt-2.5 flex flex-col gap-1.5">
+              {unassigned.map((t) => (
+                <div key={t.id} className="flex items-center gap-2 text-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
+                  <span className="font-medium text-foreground/75 truncate">{t.title}</span>
+                  <span className="text-muted-foreground/50 text-[10px] ml-auto shrink-0">{t.asset_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Footer meta */}
@@ -568,8 +629,26 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
 
 // ─── Main view ────────────────────────────────────────────────────────────────
 
-export function DevelopersView({ developers }: { developers: DeveloperWithStats[] }) {
+export function DevelopersView({
+  developers,
+  unassignedTasks,
+  members,
+}: {
+  developers: DeveloperWithStats[];
+  unassignedTasks: UnassignedTask[];
+  members: TeamMemberSelect[];
+}) {
   const [query, setQuery] = useState('');
+
+  const unassignedByDev = useMemo(() => {
+    const map = new Map<string, UnassignedTask[]>();
+    for (const t of unassignedTasks) {
+      const arr = map.get(t.developer_id) ?? [];
+      arr.push(t);
+      map.set(t.developer_id, arr);
+    }
+    return map;
+  }, [unassignedTasks]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -584,6 +663,8 @@ export function DevelopersView({ developers }: { developers: DeveloperWithStats[
 
   return (
     <>
+      <style>{GLOW_STYLES}</style>
+
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
@@ -614,9 +695,16 @@ export function DevelopersView({ developers }: { developers: DeveloperWithStats[
       {/* Card grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((dev) => (
-          <DeveloperCard key={dev.id} dev={dev} />
+          <DeveloperCard
+            key={dev.id}
+            dev={dev}
+            unassigned={unassignedByDev.get(dev.id) ?? []}
+          />
         ))}
       </div>
+
+      {/* Floating action tray */}
+      <UnassignedFAB tasks={unassignedTasks} members={members} />
     </>
   );
 }

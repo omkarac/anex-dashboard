@@ -32,6 +32,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isPublicRoute =
     pathname === '/login' ||
+    pathname === '/ui-demo' ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon');
