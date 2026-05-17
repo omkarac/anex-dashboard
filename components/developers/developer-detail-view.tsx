@@ -533,6 +533,7 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
             <LocationSection
               sharedMarkets={dev.sharedMarkets}
               interestedMarkets={dev.interestedMarkets}
+              passedMarkets={dev.passedMarkets}
               appetiteMarkets={dev.preferences?.preferred_micro_markets}
             />
           )}

@@ -16,6 +16,7 @@ export interface LocationMapProps {
   appetiteMarkets: string[];
   sharedMarkets?: string[];
   interestedMarkets?: string[];
+  passedMarkets?: string[];
 }
 
 // ─── Tile URLs ────────────────────────────────────────────────────────────────
@@ -50,6 +51,14 @@ const HEAT_CONFIG = [
       0.3: 'rgba(74,222,128,0.25)',
       0.6: 'rgba(34,197,94,0.65)',
       1.0: 'rgba(22,101,52,0.92)',
+    },
+  },
+  {
+    gradient: {
+      0.0: 'transparent',
+      0.3: 'rgba(148,163,184,0.20)',
+      0.6: 'rgba(100,116,139,0.50)',
+      1.0: 'rgba(71,85,105,0.80)',
     },
   },
 ] as const;
@@ -124,10 +133,12 @@ function markerStyle(
   value: string,
   appetite: Set<string>,
   shared: Set<string>,
-  interested: Set<string>
+  interested: Set<string>,
+  passed: Set<string>
 ): { fill: string; stroke: string; radius: number } | null {
   if (interested.has(value)) return { fill: '#4ade80', stroke: '#16a34a', radius: 6 };
   if (shared.has(value))     return { fill: '#fde047', stroke: '#ca8a04', radius: 5 };
+  if (passed.has(value))     return { fill: '#94a3b8', stroke: '#64748b', radius: 4 };
   if (appetite.has(value))   return { fill: '#f87171', stroke: '#dc2626', radius: 4 };
   return null;
 }
@@ -138,6 +149,7 @@ export default function LocationMapInner({
   appetiteMarkets,
   sharedMarkets = [],
   interestedMarkets = [],
+  passedMarkets = [],
 }: LocationMapProps) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
@@ -152,12 +164,14 @@ export default function LocationMapInner({
     { points: toPoints(appetiteMarkets),   gradient: HEAT_CONFIG[0].gradient },
     { points: toPoints(sharedMarkets),     gradient: HEAT_CONFIG[1].gradient },
     { points: toPoints(interestedMarkets), gradient: HEAT_CONFIG[2].gradient },
+    { points: toPoints(passedMarkets),     gradient: HEAT_CONFIG[3].gradient },
   ];
 
   const allPoints: [number, number][] = [
     ...appetiteMarkets,
     ...sharedMarkets,
     ...interestedMarkets,
+    ...passedMarkets,
   ]
     .map((v) => MICRO_MARKET_COORDS[v])
     .filter(Boolean)
@@ -166,6 +180,7 @@ export default function LocationMapInner({
   const appetiteSet   = new Set(appetiteMarkets);
   const sharedSet     = new Set(sharedMarkets);
   const interestedSet = new Set(interestedMarkets);
+  const passedSet     = new Set(passedMarkets);
 
   return (
     <div className="relative">
@@ -188,7 +203,7 @@ export default function LocationMapInner({
         <FlyInAnimation allPoints={allPoints} />
 
         {MICRO_MARKETS.filter((m) => MICRO_MARKET_COORDS[m.value]).map((m) => {
-          const style = markerStyle(m.value, appetiteSet, sharedSet, interestedSet);
+          const style = markerStyle(m.value, appetiteSet, sharedSet, interestedSet, passedSet);
           if (!style) {
             return (
               <CircleMarker
@@ -235,17 +250,18 @@ export default function LocationMapInner({
         }}
       >
         {[
-          { color: '#f87171', label: 'Appetite' },
-          { color: '#fde047', label: 'Shared' },
-          { color: '#4ade80', label: 'Interested' },
-        ].map(({ color, label }) => (
+          { color: '#fde047', label: 'Shared',     count: sharedMarkets.length },
+          { color: '#4ade80', label: 'Interested',  count: interestedMarkets.length },
+          { color: '#94a3b8', label: 'Passed',      count: passedMarkets.length },
+          { color: '#f87171', label: 'Appetite',    count: appetiteMarkets.length },
+        ].filter(({ count }) => count > 0).map(({ color, label, count }) => (
           <div key={label} className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
             <span
-              className="text-[10px] leading-none"
+              className="text-[10px] leading-none tabular-nums"
               style={{ color: dark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)' }}
             >
-              {label}
+              {count} {label}
             </span>
           </div>
         ))}
