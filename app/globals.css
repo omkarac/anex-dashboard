@@ -150,6 +150,15 @@
   --sidebar-ring: oklch(0.62 0.22 264);
 }
 
+/* Easter egg — logo wobble after "screw removed" */
+@keyframes logo-wobble {
+  0%,  100% { transform: rotate(32deg); }
+  20%        { transform: rotate(28deg); }
+  45%        { transform: rotate(36deg); }
+  65%        { transform: rotate(27.5deg); }
+  85%        { transform: rotate(34.5deg); }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

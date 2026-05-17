@@ -52,25 +52,6 @@ export default async function LoginPage({
 
       {/* Right panel */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        {/* Mobile logo */}
-        <div className="lg:hidden mb-10 flex flex-col items-center gap-3">
-          <Image
-            src="/logo-dark.png"
-            alt="Anex"
-            width={64}
-            height={64}
-            className="object-contain dark:hidden"
-          />
-          <Image
-            src="/logo-white.png"
-            alt="Anex"
-            width={64}
-            height={64}
-            className="object-contain hidden dark:block"
-          />
-          <span className="font-semibold tracking-wide text-lg">Anex</span>
-        </div>
-
         <div className="w-full max-w-sm">
           <div className="mb-8">
             <h2 className="text-2xl font-semibold tracking-tight">
