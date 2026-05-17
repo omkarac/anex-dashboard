@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
 import { updateShareOutcome, updateDeveloper } from '@/lib/actions/developers';
 import { AppetiteSection } from './appetite-section';
+import { LocationSection } from './location-section';
 import { ShareTasksUpdates } from './share-tasks-updates';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
 import type { TeamMemberSelect } from '@/lib/queries/team';
@@ -527,13 +528,20 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
             })}
           </div>
 
+          {/* Deal Geography — independent of appetite, shows actual shared/interested asset locations */}
+          {!editing && (
+            <LocationSection
+              sharedMarkets={dev.sharedMarkets}
+              interestedMarkets={dev.interestedMarkets}
+              appetiteMarkets={dev.preferences?.preferred_micro_markets}
+            />
+          )}
+
           {/* Investment Appetite */}
           {!editing && (
             <AppetiteSection
               developerId={dev.id}
               preferences={dev.preferences}
-              sharedMarkets={dev.sharedMarkets}
-              interestedMarkets={dev.interestedMarkets}
             />
           )}
 

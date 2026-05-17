@@ -62,6 +62,17 @@ const OUTCOME_CONFIG: Record<string, { label: string; cls: string }> = {
   pending:    { label: 'Pending',    cls: 'border border-border/50 text-muted-foreground/50' },
 };
 
+// Stat grid palette — bar color + number color
+const OUTCOME_PALETTE: Record<string, { bar: string; num: string; label: string }> = {
+  interested: { bar: 'bg-emerald-500',     num: 'text-emerald-600 dark:text-emerald-400', label: 'Interested' },
+  pursuing:   { bar: 'bg-blue-500',        num: 'text-blue-600 dark:text-blue-400',       label: 'Pursuing'   },
+  won:        { bar: 'bg-violet-500',      num: 'text-violet-600 dark:text-violet-400',   label: 'Won'        },
+  passed:     { bar: 'bg-border',          num: 'text-muted-foreground/50',               label: 'Passed'     },
+  pending:    { bar: 'bg-amber-400/70',    num: 'text-amber-600/80 dark:text-amber-400/80', label: 'Pending'  },
+};
+
+const OUTCOME_ORDER = ['interested', 'pursuing', 'won', 'passed', 'pending'];
+
 const OUTCOME_OPTIONS = ['interested', 'pursuing', 'won', 'passed'];
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
@@ -126,10 +137,9 @@ function Avatar({ name, logoUrl, size = 'md' }: { name: string; logoUrl?: string
 // ─── Developer card ───────────────────────────────────────────────────────────
 
 function DeveloperCard({ dev, unassigned }: { dev: DeveloperWithStats; unassigned: UnassignedTask[] }) {
-  const outcomeEntries = Object.entries(dev.outcome_counts)
-    .filter(([k, n]) => n > 0 && k !== 'pending')
-    .sort(([a], [b]) => a.localeCompare(b));
-  const pendingCount = dev.outcome_counts['pending'] ?? 0;
+  const statEntries = OUTCOME_ORDER
+    .map((o) => [o, dev.outcome_counts[o] ?? 0] as [string, number])
+    .filter(([, n]) => n > 0);
   const hasUnassigned = unassigned.length > 0;
 
   return (
@@ -163,22 +173,31 @@ function DeveloperCard({ dev, unassigned }: { dev: DeveloperWithStats; unassigne
           <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground mt-0.5 shrink-0 transition-colors" />
         </div>
 
-        {/* Outcome pills */}
+        {/* Outcome stat grid */}
         {dev.share_count > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {outcomeEntries.map(([outcome, count]) => {
-              const cfg = OUTCOME_CONFIG[outcome];
-              return (
-                <span key={outcome} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.cls}`}>
-                  {count} {cfg.label}
-                </span>
-              );
-            })}
-            {pendingCount > 0 && (
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${OUTCOME_CONFIG.pending.cls}`}>
-                {pendingCount} Pending
-              </span>
-            )}
+          <div className="flex flex-col gap-2">
+            {/* Proportional segmented bar */}
+            <div className="flex h-[3px] rounded-full overflow-hidden gap-[2px]">
+              {statEntries.map(([outcome, count]) => (
+                <div
+                  key={outcome}
+                  style={{ flex: count }}
+                  className={OUTCOME_PALETTE[outcome]?.bar ?? 'bg-border'}
+                />
+              ))}
+            </div>
+            {/* Stat row */}
+            <div className="flex items-start gap-5">
+              {statEntries.map(([outcome, count]) => {
+                const pal = OUTCOME_PALETTE[outcome] ?? OUTCOME_PALETTE.pending;
+                return (
+                  <div key={outcome} className="flex flex-col">
+                    <span className={`text-sm font-bold tabular-nums leading-none ${pal.num}`}>{count}</span>
+                    <span className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground/50 mt-0.5">{pal.label}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic">No assets shared yet</p>

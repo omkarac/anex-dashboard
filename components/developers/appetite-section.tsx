@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { upsertDeveloperPreferences } from '@/lib/actions/developers';
-import { MICRO_MARKETS, microMarketsByZone, getMicroMarketLabel } from '@/lib/enums/micro-markets';
-import { LocationMap } from '@/components/developers/location-map';
+import { MICRO_MARKETS, microMarketsByZone } from '@/lib/enums/micro-markets';
 import { ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
 import type { DeveloperPreferences } from '@/lib/schemas/developer';
 
@@ -161,13 +160,9 @@ function RangeInput({ label, unit, minVal, maxVal, onMin, onMax }: {
 function AppetiteView({
   prefs,
   onEdit,
-  sharedMarkets,
-  interestedMarkets,
 }: {
   prefs: DeveloperPreferences | null;
   onEdit: () => void;
-  sharedMarkets: string[];
-  interestedMarkets: string[];
 }) {
   const filled = hasAnyPreference(prefs);
   const zoneMap = microMarketsByZone();
@@ -198,18 +193,12 @@ function AppetiteView({
       {prefs!.preferred_micro_markets.length > 0 && (
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Location Coverage</p>
+            <p className="text-xs font-medium text-muted-foreground">Preferred Markets</p>
             <span className="text-[10px] text-muted-foreground tabular-nums">
               {prefs!.preferred_micro_markets.length} micro-markets
             </span>
           </div>
-          <LocationMap
-            appetiteMarkets={prefs!.preferred_micro_markets}
-            sharedMarkets={sharedMarkets}
-            interestedMarkets={interestedMarkets}
-          />
-          {/* Zone breakdown below the map */}
-          <div className="mt-3 flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
             {[...marketsBySelectedZone.entries()].map(([zone, labels]) => (
               <div key={zone} className="flex flex-wrap items-baseline gap-1.5">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground/50 shrink-0 w-28">{zone}</span>
@@ -398,13 +387,9 @@ function AppetiteForm({
 export function AppetiteSection({
   developerId,
   preferences,
-  sharedMarkets = [],
-  interestedMarkets = [],
 }: {
   developerId: string;
   preferences: DeveloperPreferences | null;
-  sharedMarkets?: string[];
-  interestedMarkets?: string[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -465,12 +450,7 @@ export function AppetiteSection({
       {editing ? (
         <AppetiteForm form={form} setForm={setForm} />
       ) : (
-        <AppetiteView
-          prefs={preferences}
-          onEdit={startEdit}
-          sharedMarkets={sharedMarkets}
-          interestedMarkets={interestedMarkets}
-        />
+        <AppetiteView prefs={preferences} onEdit={startEdit} />
       )}
     </section>
   );
