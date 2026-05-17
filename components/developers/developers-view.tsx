@@ -13,7 +13,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
 import { updateShareOutcome, updateShareNotes, updateDeveloper, deleteDeveloper } from '@/lib/actions/developers';
 import { DeveloperCreateSheet } from './developer-create-sheet';
-import type { DeveloperWithStats, DeveloperShareFull, UnassignedTask } from '@/lib/queries/developers';
+import type { DeveloperWithStats, DeveloperShareFull, UnassignedTask, MyTask } from '@/lib/queries/developers';
 import type { TeamMemberSelect } from '@/lib/queries/team';
 
 // ─── Glow animation CSS ───────────────────────────────────────────────────────
@@ -644,10 +644,12 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
 export function DevelopersView({
   developers,
   unassignedTasks,
+  myTasks,
   members,
 }: {
   developers: DeveloperWithStats[];
   unassignedTasks: UnassignedTask[];
+  myTasks: MyTask[];
   members: TeamMemberSelect[];
 }) {
   const [query, setQuery] = useState('');
@@ -716,7 +718,7 @@ export function DevelopersView({
       </div>
 
       {/* Floating action tray */}
-      <UnassignedFAB tasks={unassignedTasks} members={members} />
+      <UnassignedFAB tasks={unassignedTasks} myTasks={myTasks} members={members} />
     </>
   );
 }

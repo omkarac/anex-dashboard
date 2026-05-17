@@ -3,7 +3,8 @@ import { Suspense } from 'react';
 import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/queries/assets';
 import { getLatestUpdatesForAssets } from '@/lib/queries/updates';
 import { getTeamMembers } from '@/lib/queries/tasks';
-import { getUnassignedTasks, getOpenTasksForAssets, getAssetIdsWithOpenTasks } from '@/lib/queries/developers';
+import { getUnassignedTasks, getMyTasks, getOpenTasksForAssets, getAssetIdsWithOpenTasks } from '@/lib/queries/developers';
+import { currentUser } from '@/lib/rbac';
 import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
@@ -33,12 +34,14 @@ export default async function AssetsPage({
 
   const hasOpenTasksFilter = params.has_open_tasks === '1';
 
-  const [openTaskAssetIdFilter, spocOptions, bounds, teamMembers, unassignedTasks] = await Promise.all([
+  const me = await currentUser();
+  const [openTaskAssetIdFilter, spocOptions, bounds, teamMembers, unassignedTasks, myTasks] = await Promise.all([
     hasOpenTasksFilter ? getAssetIdsWithOpenTasks().catch(() => []) : Promise.resolve(undefined),
     getDistinctSpocAgents(),
     getAssetNumericBounds(),
     getTeamMembers().catch(() => []),
     getUnassignedTasks().catch(() => []),
+    getMyTasks(me.id).catch(() => []),
   ]);
 
   const filters = {
@@ -90,7 +93,7 @@ export default async function AssetsPage({
 
       <div className="flex-1 overflow-auto p-6">
         <Suspense>
-          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} teamMembers={teamMembers} latestUpdates={latestUpdates} unassignedTasks={unassignedTasks} openTasks={openTasks} />
+          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} teamMembers={teamMembers} latestUpdates={latestUpdates} unassignedTasks={unassignedTasks} openTasks={openTasks} myTasks={myTasks} />
         </Suspense>
       </div>
     </div>

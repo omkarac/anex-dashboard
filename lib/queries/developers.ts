@@ -405,6 +405,74 @@ export async function getUnassignedTasks(): Promise<UnassignedTask[]> {
   });
 }
 
+export type MyTask = {
+  id: string;
+  share_id: string;
+  title: string;
+  task_type: string | null;
+  priority: string;
+  status: string;
+  due_date: string | null;
+  developer_id: string;
+  developer_name: string;
+  asset_id: string;
+  asset_name: string;
+};
+
+export async function getMyTasks(userId: string): Promise<MyTask[]> {
+  if (!userId) return [];
+  const service = createServiceClient();
+
+  const { data: tasks } = await service
+    .from('share_tasks')
+    .select('id, share_id, title, task_type, priority, status, due_date')
+    .eq('assigned_to', userId)
+    .neq('status', 'done')
+    .is('deleted_at', null)
+    .order('created_at');
+
+  if (!tasks?.length) return [];
+
+  const shareIds = [...new Set(tasks.map((t) => t.share_id))];
+  const { data: shares } = await service
+    .from('developer_shares')
+    .select('id, developer_id, asset_id')
+    .in('id', shareIds)
+    .is('deleted_at', null);
+
+  if (!shares?.length) return [];
+
+  const devIds = [...new Set(shares.map((s) => s.developer_id))];
+  const assetIds = [...new Set(shares.map((s) => s.asset_id))];
+
+  const [{ data: devs }, { data: assets }] = await Promise.all([
+    service.from('developers').select('id, name').in('id', devIds),
+    service.from('assets').select('id, property_name').in('id', assetIds),
+  ]);
+
+  const shareMap = new Map(shares.map((s) => [s.id, s]));
+  const devMap = new Map((devs ?? []).map((d) => [d.id, d.name]));
+  const assetMap = new Map((assets ?? []).map((a) => [a.id, a.property_name]));
+
+  return tasks.flatMap((t) => {
+    const share = shareMap.get(t.share_id);
+    if (!share) return [];
+    return [{
+      id: t.id,
+      share_id: t.share_id,
+      title: t.title,
+      task_type: t.task_type ?? null,
+      priority: t.priority,
+      status: t.status,
+      due_date: t.due_date ?? null,
+      developer_id: share.developer_id,
+      developer_name: devMap.get(share.developer_id) ?? 'Unknown',
+      asset_id: share.asset_id,
+      asset_name: assetMap.get(share.asset_id) ?? 'Unknown',
+    }];
+  });
+}
+
 export type AssetOpenTask = {
   id: string;
   asset_id: string;

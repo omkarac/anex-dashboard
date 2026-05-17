@@ -17,7 +17,7 @@ import { formatDate } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { LatestUpdateSummary } from '@/lib/queries/updates';
-import type { UnassignedTask, AssetOpenTask } from '@/lib/queries/developers';
+import type { UnassignedTask, AssetOpenTask, MyTask } from '@/lib/queries/developers';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toCr } from '@/lib/utils/formatters';
 import { UnassignedFAB } from '@/components/developers/unassigned-fab';
@@ -184,9 +184,10 @@ type AssetTableProps = {
   latestUpdates: Map<string, LatestUpdateSummary>;
   unassignedTasks: UnassignedTask[];
   openTasks: AssetOpenTask[];
+  myTasks: MyTask[];
 };
 
-export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates, unassignedTasks, openTasks }: AssetTableProps) {
+export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates, unassignedTasks, openTasks, myTasks }: AssetTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
@@ -398,7 +399,7 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
         )}
       </div>
 
-      <UnassignedFAB tasks={unassignedTasks} members={teamMembers} />
+      <UnassignedFAB tasks={unassignedTasks} myTasks={myTasks} members={teamMembers} />
     </div>
   );
 }
