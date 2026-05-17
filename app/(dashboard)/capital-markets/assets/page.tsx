@@ -4,7 +4,7 @@ import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/
 import { getLatestUpdatesForAssets } from '@/lib/queries/updates';
 import { getTeamMembers } from '@/lib/queries/tasks';
 import { getUnassignedTasks, getMyTasks, getOpenTasksForAssets, getAssetIdsWithOpenTasks } from '@/lib/queries/developers';
-import { currentUser } from '@/lib/rbac';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
@@ -34,7 +34,7 @@ export default async function AssetsPage({
 
   const hasOpenTasksFilter = params.has_open_tasks === '1';
 
-  const me = await currentUser();
+  const me = await getAuthenticatedMember();
   const [openTaskAssetIdFilter, spocOptions, bounds, teamMembers, unassignedTasks, myTasks] = await Promise.all([
     hasOpenTasksFilter ? getAssetIdsWithOpenTasks().catch(() => []) : Promise.resolve(undefined),
     getDistinctSpocAgents(),

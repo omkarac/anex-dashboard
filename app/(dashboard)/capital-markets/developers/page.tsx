@@ -1,13 +1,13 @@
 import { Metadata } from 'next';
 import { listDevelopers, getUnassignedTasks, getMyTasks } from '@/lib/queries/developers';
 import { getActiveTeamMembers } from '@/lib/queries/team';
-import { currentUser } from '@/lib/rbac';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 import { DevelopersView } from '@/components/developers/developers-view';
 
 export const metadata: Metadata = { title: 'Developers — Anex' };
 
 export default async function DevelopersPage() {
-  const me = await currentUser();
+  const me = await getAuthenticatedMember();
   const [developers, unassignedTasks, myTasks, members] = await Promise.all([
     listDevelopers().catch(() => []),
     getUnassignedTasks().catch(() => []),
