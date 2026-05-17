@@ -16,10 +16,7 @@ function arcColor(rate: number): string {
 }
 
 export function WinRateWidget({ stats }: { stats: CommandStats }) {
-  const { winRate, wonCountQ } = stats;
-  const droppedCountQ = wonCountQ > 0 && winRate > 0
-    ? Math.round(wonCountQ * (100 - winRate) / winRate)
-    : 0;
+  const { winRate, wonCountQ, droppedCountQ } = stats;
   const total = wonCountQ + droppedCountQ;
   const quarter = getQuarterLabel();
   const pct = winRate / 100;

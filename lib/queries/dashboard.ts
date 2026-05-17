@@ -9,6 +9,7 @@ export type CommandStats = {
   hotCount: number;
   winRate: number;
   wonCountQ: number;
+  droppedCountQ: number;
 };
 
 export async function getCommandStats(): Promise<CommandStats> {
@@ -50,7 +51,7 @@ export async function getCommandStats(): Promise<CommandStats> {
   const totalClosed = wonCountQ + droppedCountQ;
   const winRate = totalClosed > 0 ? Math.round((wonCountQ / totalClosed) * 100) : 0;
 
-  return { activePipelineValue, activeCount, hotCount, winRate, wonCountQ };
+  return { activePipelineValue, activeCount, hotCount, winRate, wonCountQ, droppedCountQ };
 }
 
 // ─── Pipeline with value ──────────────────────────────────────────────────────

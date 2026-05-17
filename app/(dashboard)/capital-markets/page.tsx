@@ -22,6 +22,7 @@ export default async function CapitalMarketsDashboardPage() {
       hotCount: 0,
       winRate: 0,
       wonCountQ: 0,
+      droppedCountQ: 0,
     })),
     getPipelineBoard().catch(() => ({
       stages: [],
