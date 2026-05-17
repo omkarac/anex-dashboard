@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getDeveloperById } from '@/lib/queries/developers';
+import { getActiveTeamMembers } from '@/lib/queries/team';
 import { DeveloperDetailView } from '@/components/developers/developer-detail-view';
 
 export async function generateMetadata({
@@ -19,8 +20,11 @@ export default async function DeveloperDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const dev = await getDeveloperById(id);
+  const [dev, members] = await Promise.all([
+    getDeveloperById(id),
+    getActiveTeamMembers(),
+  ]);
   if (!dev) notFound();
 
-  return <DeveloperDetailView dev={dev} />;
+  return <DeveloperDetailView dev={dev} members={members} />;
 }

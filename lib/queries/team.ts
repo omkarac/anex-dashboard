@@ -1,5 +1,17 @@
 import { createServiceClient } from '@/lib/supabase/service';
 
+export type TeamMemberSelect = { id: string; full_name: string };
+
+export async function getActiveTeamMembers(): Promise<TeamMemberSelect[]> {
+  const service = createServiceClient();
+  const { data } = await service
+    .from('team_members')
+    .select('id, full_name')
+    .eq('is_active', true)
+    .order('full_name');
+  return (data ?? []) as TeamMemberSelect[];
+}
+
 export type TeamMemberWithWorkload = {
   id: string;
   full_name: string;

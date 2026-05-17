@@ -9,9 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { formatDate, formatTimeAgo } from '@/lib/utils/formatters';
-import { updateShareOutcome, updateShareNotes, updateDeveloper } from '@/lib/actions/developers';
+import { updateShareOutcome, updateDeveloper } from '@/lib/actions/developers';
 import { AppetiteSection } from './appetite-section';
+import { ShareTasksUpdates } from './share-tasks-updates';
 import type { DeveloperWithStats, DeveloperShareFull } from '@/lib/queries/developers';
+import type { TeamMemberSelect } from '@/lib/queries/team';
 
 function useDominantColor(imageUrl: string | null | undefined): string | null {
   const [rgb, setRgb] = React.useState<string | null>(null);
@@ -102,12 +104,9 @@ function DeveloperAvatar({ name, logoUrl, size = 'lg' }: { name: string; logoUrl
   );
 }
 
-function ShareRow({ share }: { share: DeveloperShareFull }) {
+function ShareRow({ share, members }: { share: DeveloperShareFull; members: TeamMemberSelect[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [notes, setNotes] = useState(share.notes ?? '');
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   function handleOutcomeChange(outcome: string) {
     startTransition(async () => {
@@ -116,27 +115,11 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
     });
   }
 
-  function startNotesEdit() {
-    setEditingNotes(true);
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  }
-
-  function saveNotes() {
-    const trimmed = notes.trim() || null;
-    setEditingNotes(false);
-    startTransition(async () => {
-      await updateShareNotes(share.id, share.asset_id, trimmed);
-      router.refresh();
-    });
-  }
-
-  function cancelNotes() {
-    setNotes(share.notes ?? '');
-    setEditingNotes(false);
-  }
+  const openCount = share.tasks.filter((t) => t.status !== 'done').length;
+  const totalCount = share.tasks.length;
 
   return (
-    <div className="rounded-xl border p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors">
+    <div className="rounded-xl border p-4 flex flex-col gap-0">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <Link
@@ -146,55 +129,32 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
             {share.asset_name}
             <ExternalLink className="h-3 w-3 opacity-0 group-hover/link:opacity-60 transition-opacity" />
           </Link>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Shared by {share.shared_by_name} · {formatDate(share.shared_at)}
-          </p>
-
-          <div className="mt-1.5">
-            {editingNotes ? (
-              <div className="flex flex-col gap-1">
-                <textarea
-                  ref={textareaRef}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNotes(); }
-                    if (e.key === 'Escape') cancelNotes();
-                  }}
-                  rows={2}
-                  placeholder="Add a note…"
-                  className="w-full resize-none rounded-md border bg-background px-2.5 py-1.5 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <div className="flex gap-1.5">
-                  <button onClick={saveNotes} disabled={isPending} className="text-xs text-primary hover:underline disabled:opacity-50">Save</button>
-                  <span className="text-xs text-muted-foreground">·</span>
-                  <button onClick={cancelNotes} className="text-xs text-muted-foreground hover:underline">Cancel</button>
-                </div>
-              </div>
-            ) : notes ? (
-              <button
-                onClick={startNotesEdit}
-                className="group/note w-full text-left text-xs text-muted-foreground italic bg-muted/40 hover:bg-muted/70 rounded-md px-2.5 py-1.5 transition-colors"
-              >
-                &ldquo;{notes}&rdquo;
-                <span className="ml-1.5 opacity-0 group-hover/note:opacity-60 text-[10px] not-italic transition-opacity">edit</span>
-              </button>
-            ) : (
-              <button onClick={startNotesEdit} className="text-xs text-muted-foreground/40 hover:text-muted-foreground italic transition-colors">
-                + add note
-              </button>
+          <div className="flex items-center gap-3 mt-0.5">
+            <p className="text-xs text-muted-foreground">
+              Shared by {share.shared_by_name} · {formatDate(share.shared_at)}
+            </p>
+            {totalCount > 0 && (
+              <span className="text-[10px] text-muted-foreground/60">
+                {totalCount - openCount}/{totalCount} tasks done
+              </span>
             )}
           </div>
         </div>
 
-        <div className="shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {share.outcome && (
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${OUTCOME_CONFIG[share.outcome]?.badge ?? ''}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${OUTCOME_CONFIG[share.outcome]?.dot ?? ''}`} />
+              {OUTCOME_CONFIG[share.outcome]?.label ?? share.outcome}
+            </span>
+          )}
           <select
             value={share.outcome ?? ''}
             disabled={isPending}
             onChange={(e) => handleOutcomeChange(e.target.value)}
             className="h-7 rounded-full border px-2.5 text-xs bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 cursor-pointer"
           >
-            <option value="" disabled>Pending</option>
+            <option value="" disabled>Set outcome</option>
             {OUTCOME_OPTIONS.map((o) => (
               <option key={o} value={o}>{OUTCOME_CONFIG[o].label}</option>
             ))}
@@ -202,17 +162,17 @@ function ShareRow({ share }: { share: DeveloperShareFull }) {
         </div>
       </div>
 
-      {share.outcome && (
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium w-fit ${OUTCOME_CONFIG[share.outcome]?.badge ?? ''}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${OUTCOME_CONFIG[share.outcome]?.dot ?? ''}`} />
-          {OUTCOME_CONFIG[share.outcome]?.label ?? share.outcome}
-        </span>
-      )}
+      <ShareTasksUpdates
+        shareId={share.id}
+        tasks={share.tasks}
+        updates={share.updates}
+        members={members}
+      />
     </div>
   );
 }
 
-export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
+export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats; members: TeamMemberSelect[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -482,7 +442,7 @@ export function DeveloperDetailView({ dev }: { dev: DeveloperWithStats }) {
             ) : (
               <div className="flex flex-col gap-2.5">
                 {dev.shares.map((s) => (
-                  <ShareRow key={s.id} share={s} />
+                  <ShareRow key={s.id} share={s} members={members} />
                 ))}
               </div>
             )}

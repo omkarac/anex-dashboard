@@ -4,8 +4,17 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
-import { DeveloperCreateSchema, DeveloperPreferencesUpsertSchema } from '@/lib/schemas/developer';
-import type { DeveloperPreferencesUpsert } from '@/lib/schemas/developer';
+import {
+  DeveloperCreateSchema,
+  DeveloperPreferencesUpsertSchema,
+  ShareTaskCreateSchema,
+  ShareUpdateCreateSchema,
+} from '@/lib/schemas/developer';
+import type {
+  DeveloperPreferencesUpsert,
+  ShareTaskCreate,
+  ShareUpdateCreate,
+} from '@/lib/schemas/developer';
 
 export async function createDeveloper(formData: FormData): Promise<ActionResult<void>> {
   const raw = {
@@ -69,6 +78,12 @@ export async function updateDeveloper(
   return result;
 }
 
+const ROUTINE_TASKS = [
+  { title: 'Share Information Memorandum', task_type: 'im_shared', priority: 'medium' },
+  { title: 'Share Financial Feasibility',  task_type: 'ff_shared', priority: 'medium' },
+  { title: 'Issue EOI',                   task_type: 'eoi_issued', priority: 'high'   },
+] as const;
+
 export async function shareWithDeveloper(
   assetId: string,
   developerId: string,
@@ -83,13 +98,29 @@ export async function shareWithDeveloper(
     mutation: async (actorId) => {
       const service = createServiceClient();
 
-      const { error } = await service.from('developer_shares').insert({
-        asset_id: assetId,
-        developer_id: developerId,
-        shared_by: actorId,
-        notes: notes.trim() || null,
-      });
+      const { data: share, error } = await service
+        .from('developer_shares')
+        .insert({
+          asset_id: assetId,
+          developer_id: developerId,
+          shared_by: actorId,
+          notes: notes.trim() || null,
+        })
+        .select('id')
+        .single();
       if (error) throw new Error(error.message);
+
+      const { error: tasksError } = await service.from('share_tasks').insert(
+        ROUTINE_TASKS.map((t) => ({
+          share_id: share.id,
+          title: t.title,
+          task_type: t.task_type,
+          status: 'todo',
+          priority: t.priority,
+          created_by: actorId,
+        }))
+      );
+      if (tasksError) throw new Error(tasksError.message);
     },
   });
 
@@ -97,6 +128,155 @@ export async function shareWithDeveloper(
     revalidatePath(`/capital-markets/assets/${assetId}`);
     revalidatePath('/capital-markets/developers');
   }
+  return result;
+}
+
+const TASK_COMPLETE_LABELS: Record<string, string> = {
+  im_shared: 'Information Memorandum shared',
+  ff_shared: 'Financial Feasibility shared',
+  eoi_issued: 'EOI issued',
+};
+
+export async function completeShareTask(
+  taskId: string,
+  shareId: string,
+  taskType: string | null,
+  taskTitle: string
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'share_task',
+    entityId: taskId,
+    summary: `Share task completed: ${taskTitle}`,
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const now = new Date().toISOString();
+
+      const { error: taskError } = await service
+        .from('share_tasks')
+        .update({ status: 'done', completed_at: now, updated_at: now })
+        .eq('id', taskId);
+      if (taskError) throw new Error(taskError.message);
+
+      const body = taskType ? (TASK_COMPLETE_LABELS[taskType] ?? `${taskTitle} completed`) : `${taskTitle} completed`;
+      const { error: updateError } = await service.from('share_updates').insert({
+        share_id: shareId,
+        body,
+        source: 'task_completed',
+        task_id: taskId,
+        created_by: actorId,
+      });
+      if (updateError) throw new Error(updateError.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/capital-markets/developers');
+  return result;
+}
+
+export async function updateShareTaskFields(
+  taskId: string,
+  data: { assigned_to?: string | null; due_date?: string | null; priority?: string }
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'share_task',
+    entityId: taskId,
+    summary: 'Share task updated',
+    mutation: async () => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('share_tasks')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', taskId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/capital-markets/developers');
+  return result;
+}
+
+export async function createShareTask(
+  shareId: string,
+  data: ShareTaskCreate
+): Promise<ActionResult<void>> {
+  const parsed = ShareTaskCreateSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
+
+  const result = await withAudit({
+    action: 'create',
+    entityType: 'share_task',
+    entityId: shareId,
+    summary: `Custom share task created: ${data.title}`,
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service.from('share_tasks').insert({
+        share_id: shareId,
+        title: parsed.data.title,
+        task_type: 'custom',
+        status: 'todo',
+        priority: parsed.data.priority,
+        assigned_to: parsed.data.assigned_to ?? null,
+        due_date: parsed.data.due_date ?? null,
+        created_by: actorId,
+      });
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/capital-markets/developers');
+  return result;
+}
+
+export async function createShareUpdate(
+  shareId: string,
+  data: ShareUpdateCreate
+): Promise<ActionResult<void>> {
+  const parsed = ShareUpdateCreateSchema.safeParse(data);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
+
+  const result = await withAudit({
+    action: 'create',
+    entityType: 'share_update',
+    entityId: shareId,
+    summary: 'Developer share update added',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service.from('share_updates').insert({
+        share_id: shareId,
+        body: parsed.data.body,
+        source: 'manual',
+        created_by: actorId,
+      });
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/capital-markets/developers');
+  return result;
+}
+
+export async function deleteShareUpdate(
+  updateId: string,
+  shareId: string
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'delete',
+    entityType: 'share_update',
+    entityId: updateId,
+    summary: 'Developer share update deleted',
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('share_updates')
+        .update({ deleted_at: new Date().toISOString(), deleted_by: actorId })
+        .eq('id', updateId);
+      if (error) throw new Error(error.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/capital-markets/developers');
   return result;
 }
 

@@ -59,6 +59,19 @@ export const DeveloperPreferencesUpsertSchema = z.object({
 });
 export type DeveloperPreferencesUpsert = z.infer<typeof DeveloperPreferencesUpsertSchema>;
 
+export const ShareTaskCreateSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  assigned_to: z.string().uuid().nullable().optional(),
+  due_date: z.string().nullable().optional(),
+});
+export type ShareTaskCreate = z.infer<typeof ShareTaskCreateSchema>;
+
+export const ShareUpdateCreateSchema = z.object({
+  body: z.string().min(1, 'Update cannot be empty'),
+});
+export type ShareUpdateCreate = z.infer<typeof ShareUpdateCreateSchema>;
+
 export const DeveloperShareSchema = z.object({
   id: z.string().uuid(),
   asset_id: z.string().uuid(),

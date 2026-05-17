@@ -1,6 +1,31 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import type { Developer, DeveloperPreferences } from '@/lib/schemas/developer';
 
+export type ShareTask = {
+  id: string;
+  share_id: string;
+  title: string;
+  task_type: string | null;
+  status: string;
+  priority: string;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
+export type ShareUpdate = {
+  id: string;
+  share_id: string;
+  body: string;
+  source: string;
+  task_id: string | null;
+  created_at: string;
+  created_by: string;
+  created_by_name: string;
+};
+
 export type DeveloperShareFull = {
   id: string;
   asset_id: string;
@@ -10,6 +35,8 @@ export type DeveloperShareFull = {
   outcome: string | null;
   outcome_at: string | null;
   notes: string | null;
+  tasks: ShareTask[];
+  updates: ShareUpdate[];
 };
 
 export type DeveloperWithStats = Developer & {
@@ -63,6 +90,8 @@ export async function listDevelopers(): Promise<DeveloperWithStats[]> {
       outcome: s.outcome,
       outcome_at: s.outcome_at ?? null,
       notes: s.notes,
+      tasks: [],
+      updates: [],
     };
     const arr = sharesByDev.get(s.developer_id) ?? [];
     arr.push(share);
@@ -189,11 +218,73 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
       .maybeSingle(),
   ]);
 
-  const actorIds = [...new Set((rawShares ?? []).map((s) => s.shared_by))];
-  const { data: members } = actorIds.length
-    ? await service.from('team_members').select('id, full_name').in('id', actorIds)
+  const shareIds = (rawShares ?? []).map((s) => s.id);
+
+  // Fetch tasks and updates for all shares in parallel
+  const [{ data: rawTasks }, { data: rawUpdates }] = shareIds.length
+    ? await Promise.all([
+        service
+          .from('share_tasks')
+          .select('*')
+          .in('share_id', shareIds)
+          .is('deleted_at', null)
+          .order('created_at'),
+        service
+          .from('share_updates')
+          .select('*')
+          .in('share_id', shareIds)
+          .is('deleted_at', null)
+          .order('created_at'),
+      ])
+    : ([{ data: [] }, { data: [] }] as const);
+
+  // Collect all member IDs needed for display names
+  const memberIdSet = new Set<string>();
+  for (const s of rawShares ?? []) memberIdSet.add(s.shared_by);
+  for (const t of rawTasks ?? []) if (t.assigned_to) memberIdSet.add(t.assigned_to);
+  for (const u of rawUpdates ?? []) memberIdSet.add(u.created_by);
+
+  const { data: members } = memberIdSet.size
+    ? await service.from('team_members').select('id, full_name').in('id', [...memberIdSet])
     : { data: [] };
   const memberMap = new Map((members ?? []).map((m) => [m.id, m.full_name]));
+
+  // Group tasks by share
+  const tasksByShare = new Map<string, ShareTask[]>();
+  for (const t of rawTasks ?? []) {
+    const arr = tasksByShare.get(t.share_id) ?? [];
+    arr.push({
+      id: t.id,
+      share_id: t.share_id,
+      title: t.title,
+      task_type: t.task_type ?? null,
+      status: t.status,
+      priority: t.priority,
+      assigned_to: t.assigned_to ?? null,
+      assigned_to_name: t.assigned_to ? (memberMap.get(t.assigned_to) ?? null) : null,
+      due_date: t.due_date ?? null,
+      completed_at: t.completed_at ?? null,
+      created_at: t.created_at,
+    });
+    tasksByShare.set(t.share_id, arr);
+  }
+
+  // Group updates by share
+  const updatesByShare = new Map<string, ShareUpdate[]>();
+  for (const u of rawUpdates ?? []) {
+    const arr = updatesByShare.get(u.share_id) ?? [];
+    arr.push({
+      id: u.id,
+      share_id: u.share_id,
+      body: u.body,
+      source: u.source,
+      task_id: u.task_id ?? null,
+      created_at: u.created_at,
+      created_by: u.created_by,
+      created_by_name: memberMap.get(u.created_by) ?? 'Unknown',
+    });
+    updatesByShare.set(u.share_id, arr);
+  }
 
   const shares: DeveloperShareFull[] = (rawShares ?? []).map((s) => ({
     id: s.id,
@@ -204,6 +295,8 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
     outcome: s.outcome,
     outcome_at: s.outcome_at ?? null,
     notes: s.notes,
+    tasks: tasksByShare.get(s.id) ?? [],
+    updates: updatesByShare.get(s.id) ?? [],
   }));
 
   const outcome_counts: Record<string, number> = {};
@@ -213,7 +306,7 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
   }
 
   return {
-    ...(dev as import('@/lib/schemas/developer').Developer),
+    ...(dev as Developer),
     share_count: shares.length,
     last_shared_at: shares[0]?.shared_at ?? null,
     outcome_counts,
