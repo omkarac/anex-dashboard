@@ -1,22 +1,13 @@
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 import { listTeamMembers } from '@/lib/queries/team';
 import { TeamPanel } from '@/components/team/team-panel';
 
 export const metadata: Metadata = { title: 'Team — Anex' };
 
 export default async function TeamPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const currentUserId = session?.user.id ?? '';
-
-  const { data: me } = await supabase
-    .from('team_members')
-    .select('role')
-    .eq('id', currentUserId)
-    .single();
-
-  const isAdmin = me?.role === 'admin';
+  const me = await getAuthenticatedMember();
+  const isAdmin = me.role === 'admin';
   const members = await listTeamMembers().catch(() => []);
 
   return (
@@ -27,7 +18,7 @@ export default async function TeamPage() {
           {members.length} member{members.length !== 1 ? 's' : ''} · new members join automatically on first login
         </p>
       </div>
-      <TeamPanel members={members} currentUserId={currentUserId} isAdmin={isAdmin} />
+      <TeamPanel members={members} currentUserId={me.id} isAdmin={isAdmin} />
     </div>
   );
 }
