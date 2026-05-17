@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { getUserProjects } from '@/lib/actions/sales/projects';
 import { getPriorityLeads } from '@/lib/actions/sales/analytics';
 import { LeadStatusBadge } from '@/components/sales/LeadStatusBadge';
+import { SalesProjectTabs } from '@/components/sales/SalesProjectTabs';
 import type { LeadStatus, Config } from '@/lib/schemas/sales';
 
 export const metadata: Metadata = { title: 'Priority Leads — Anex Sales' };
@@ -42,11 +43,14 @@ export default async function PriorityLeadsPage({
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="border-b px-6 py-4 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">Priority Leads</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {project?.name} · {filtered.length} follow-up leads
-        </p>
+      <div className="border-b px-6 py-4 shrink-0 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Priority Leads</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {project?.name} · {filtered.length} follow-up leads
+          </p>
+        </div>
+        <SalesProjectTabs projects={projects} currentId={project?.id ?? ''} basePath="/sales-marketing/priority-leads" />
       </div>
 
       {/* Filters */}

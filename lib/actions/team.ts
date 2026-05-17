@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
+import type { MemberDepartment } from '@/lib/queries/team';
 
 export async function updateMemberRole(
   memberId: string,
@@ -46,6 +47,32 @@ export async function setMemberActive(
     },
   });
   if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
+  return result;
+}
+
+export async function updateMemberDepartment(
+  memberId: string,
+  department: MemberDepartment
+): Promise<ActionResult<void>> {
+  const label = department ?? 'unassigned';
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'team_member',
+    entityId: memberId,
+    summary: `Department changed to ${label}`,
+    mutation: async () => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('team_members')
+        .update({ department })
+        .eq('id', memberId);
+      if (error) throw new Error(error.message);
+    },
+  });
+  if (result.ok) {
+    revalidatePath('/capital-markets/team');
+    revalidatePath('/sales-marketing/team');
+  }
   return result;
 }
 

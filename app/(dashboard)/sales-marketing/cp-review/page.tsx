@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { getUserProjects } from '@/lib/actions/sales/projects';
 import { getCpPerformance } from '@/lib/actions/sales/analytics';
 import { CpCategoryBadge } from '@/components/sales/CpCategoryBadge';
+import { SalesProjectTabs } from '@/components/sales/SalesProjectTabs';
 
 export const metadata: Metadata = { title: 'CP Review — Anex Sales' };
 
@@ -22,9 +23,12 @@ export default async function CpReviewPage({
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="border-b px-6 py-4 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">CP Review</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{project?.name} · {data.length} channel partners</p>
+      <div className="border-b px-6 py-4 shrink-0 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">CP Review</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{project?.name} · {data.length} channel partners</p>
+        </div>
+        <SalesProjectTabs projects={projects} currentId={project?.id ?? ''} basePath="/sales-marketing/cp-review" />
       </div>
 
       {/* Filters */}

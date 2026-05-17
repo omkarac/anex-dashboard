@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getUserProjects } from '@/lib/actions/sales/projects';
 import { MeetingTypeBadge } from '@/components/sales/MeetingTypeBadge';
+import { SalesProjectTabs } from '@/components/sales/SalesProjectTabs';
 import type { MeetingType, MeetingCategory } from '@/lib/schemas/sales';
 
 export const metadata: Metadata = { title: 'Meetings DAR — Anex Sales' };
@@ -38,18 +39,23 @@ export default async function MeetingsPage({
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="border-b px-6 py-4 shrink-0 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">CP Meetings (DAR)</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{project?.name} · {rows.length} meetings</p>
+      <div className="border-b px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">CP Meetings (DAR)</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{project?.name} · {rows.length} meetings</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <SalesProjectTabs projects={projects} currentId={project?.id ?? ''} basePath="/sales-marketing/meetings" />
+            <Link
+              href={`/sales-marketing/meetings/new?project=${projectId}`}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-transparent bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Log Meeting
+            </Link>
+          </div>
         </div>
-        <Link
-          href={`/sales-marketing/meetings/new?project=${projectId}`}
-          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-transparent bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Log Meeting
-        </Link>
       </div>
 
       {/* Filters */}

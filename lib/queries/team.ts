@@ -12,11 +12,14 @@ export async function getActiveTeamMembers(): Promise<TeamMemberSelect[]> {
   return (data ?? []) as TeamMemberSelect[];
 }
 
+export type MemberDepartment = 'cm' | 'sm' | 'both' | null;
+
 export type TeamMemberWithWorkload = {
   id: string;
   full_name: string;
   email: string;
   role: 'admin' | 'member';
+  department: MemberDepartment;
   is_active: boolean;
   created_at: string;
   open_tasks: number;

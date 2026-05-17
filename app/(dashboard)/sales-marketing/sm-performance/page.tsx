@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { getUserProjects } from '@/lib/actions/sales/projects';
 import { getSmPerformance } from '@/lib/actions/sales/analytics';
+import { SalesProjectTabs } from '@/components/sales/SalesProjectTabs';
 
 export const metadata: Metadata = { title: 'SM Performance — Anex Sales' };
 
@@ -18,9 +19,12 @@ export default async function SmPerformancePage({
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="border-b px-6 py-4 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">SM Performance</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{project?.name}</p>
+      <div className="border-b px-6 py-4 shrink-0 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">SM Performance</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{project?.name}</p>
+        </div>
+        <SalesProjectTabs projects={projects} currentId={project?.id ?? ''} basePath="/sales-marketing/sm-performance" />
       </div>
 
       <div className="flex-1 p-6 space-y-6">

@@ -4,13 +4,25 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { updateMemberRole, setMemberActive, updateMemberName } from '@/lib/actions/team';
-import type { TeamMemberWithWorkload } from '@/lib/queries/team';
+import { updateMemberRole, setMemberActive, updateMemberName, updateMemberDepartment } from '@/lib/actions/team';
+import type { TeamMemberWithWorkload, MemberDepartment } from '@/lib/queries/team';
 
 type Props = {
   member: TeamMemberWithWorkload;
   currentUserId: string;
   isCurrentUserAdmin: boolean;
+};
+
+const DEPARTMENT_LABELS: Record<NonNullable<MemberDepartment>, string> = {
+  cm: 'Capital Markets',
+  sm: 'Sales & Marketing',
+  both: 'Both',
+};
+
+const DEPARTMENT_BADGE: Record<NonNullable<MemberDepartment>, string> = {
+  cm: 'bg-blue-50 text-blue-700 border border-blue-200',
+  sm: 'bg-violet-50 text-violet-700 border border-violet-200',
+  both: 'bg-teal-50 text-teal-700 border border-teal-200',
 };
 
 export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) {
@@ -25,6 +37,13 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
   function saveRole(role: 'admin' | 'member') {
     startTransition(async () => {
       await updateMemberRole(member.id, role);
+      router.refresh();
+    });
+  }
+
+  function saveDepartment(department: MemberDepartment) {
+    startTransition(async () => {
+      await updateMemberDepartment(member.id, department);
       router.refresh();
     });
   }
@@ -96,6 +115,29 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
           </select>
         ) : (
           <span className="text-xs capitalize">{member.role}</span>
+        )}
+      </td>
+
+      {/* Department */}
+      <td className="px-4 py-3">
+        {isCurrentUserAdmin && !isSelf ? (
+          <select
+            value={member.department ?? ''}
+            onChange={(e) => saveDepartment((e.target.value || null) as MemberDepartment)}
+            disabled={isPending}
+            className="h-7 rounded border border-input bg-background px-2 text-xs disabled:opacity-50"
+          >
+            <option value="">Unassigned</option>
+            <option value="cm">Capital Markets</option>
+            <option value="sm">Sales & Marketing</option>
+            <option value="both">Both</option>
+          </select>
+        ) : member.department ? (
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DEPARTMENT_BADGE[member.department]}`}>
+            {DEPARTMENT_LABELS[member.department]}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
         )}
       </td>
 
