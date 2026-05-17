@@ -13,29 +13,54 @@ import { InlineStatusSelect } from '@/components/assets/inline-status-select';
 import { InlineTemperatureSelect } from '@/components/assets/inline-temperature-select';
 import { Button } from '@/components/ui/button';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
-import { formatDate, formatSqm } from '@/lib/utils/formatters';
+import { formatDate } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { LatestUpdateSummary } from '@/lib/queries/updates';
+import type { UnassignedTask } from '@/lib/queries/developers';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toCr } from '@/lib/utils/formatters';
+import { UnassignedFAB } from '@/components/developers/unassigned-fab';
+
+const GLOW_STYLES = `
+  :root { --aw1:18,32,179; --aw2:40,60,210; --ah1:0.12; --ah2:0.30; }
+  .dark  { --aw1:72,98,232; --aw2:100,130,255; --ah1:0.18; --ah2:0.42; }
+  @keyframes asset-breathe {
+    0%,100% { box-shadow: inset 3px 0 0 rgba(var(--aw1),var(--ah1)); }
+    50%     { box-shadow: inset 3px 0 0 rgba(var(--aw2),var(--ah2)); }
+  }
+  .asset-row-urgent { animation: asset-breathe 2.5s ease-in-out infinite; }
+  .asset-task-bdg {
+    display:inline-flex; align-items:center; padding:1px 6px;
+    border-radius:999px; font-size:10px; font-weight:600; line-height:1.6;
+    background:rgba(var(--aw1),0.09); color:hsl(var(--primary));
+    border:1px solid rgba(var(--aw1),0.22); margin-left:6px; vertical-align:middle;
+  }
+`;
 
 function buildColumns(
   teamMembers: TeamMemberOption[],
   latestUpdates: Map<string, LatestUpdateSummary>,
+  unassignedByAsset: Map<string, number>,
 ): ColumnDef<Asset>[] {
   return [
   {
     accessorKey: 'property_name',
     header: 'Property',
-    cell: ({ row }) => (
-      <Link
-        href={`/capital-markets/assets/${row.original.id}`}
-        className="font-medium hover:underline underline-offset-2 max-w-52 line-clamp-1 block"
-      >
-        {row.original.property_name}
-      </Link>
-    ),
+    cell: ({ row }) => {
+      const urgentCount = unassignedByAsset.get(row.original.id) ?? 0;
+      return (
+        <Link
+          href={`/capital-markets/assets/${row.original.id}`}
+          className="font-medium hover:underline underline-offset-2 max-w-52 line-clamp-1 inline-flex items-center gap-1"
+        >
+          {row.original.property_name}
+          {urgentCount > 0 && (
+            <span className="asset-task-bdg">{urgentCount}</span>
+          )}
+        </Link>
+      );
+    },
   },
   {
     accessorKey: 'location',
@@ -144,12 +169,23 @@ type AssetTableProps = {
   page: number;
   teamMembers: TeamMemberOption[];
   latestUpdates: Map<string, LatestUpdateSummary>;
+  unassignedTasks: UnassignedTask[];
 };
 
-export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates }: AssetTableProps) {
+export function AssetTable({ data, count, pageCount, page, teamMembers, latestUpdates, unassignedTasks }: AssetTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const columns = useMemo(() => buildColumns(teamMembers, latestUpdates), [teamMembers, latestUpdates]);
+
+  const unassignedByAsset = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of unassignedTasks) m.set(t.asset_id, (m.get(t.asset_id) ?? 0) + 1);
+    return m;
+  }, [unassignedTasks]);
+
+  const columns = useMemo(
+    () => buildColumns(teamMembers, latestUpdates, unassignedByAsset),
+    [teamMembers, latestUpdates, unassignedByAsset],
+  );
 
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams.toString());
@@ -175,6 +211,7 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
 
   return (
     <div className="flex flex-col gap-3">
+      <style>{GLOW_STYLES}</style>
       <div className="rounded-lg border overflow-x-auto">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
@@ -192,10 +229,12 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row, i) => (
+            {table.getRowModel().rows.map((row, i) => {
+              const isUrgent = unassignedByAsset.has(row.original.id);
+              return (
               <tr
                 key={row.id}
-                className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
+                className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'} ${isUrgent ? 'asset-row-urgent' : ''}`}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-3 py-2.5">
@@ -203,7 +242,8 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
                   </td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
             {table.getRowModel().rows.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-3 py-12 text-center text-muted-foreground">
@@ -243,6 +283,8 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
           </div>
         )}
       </div>
+
+      <UnassignedFAB tasks={unassignedTasks} members={teamMembers} />
     </div>
   );
 }

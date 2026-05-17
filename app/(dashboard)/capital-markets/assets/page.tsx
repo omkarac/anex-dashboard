@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/queries/assets';
 import { getLatestUpdatesForAssets } from '@/lib/queries/updates';
 import { getTeamMembers } from '@/lib/queries/tasks';
+import { getUnassignedTasks } from '@/lib/queries/developers';
 import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
@@ -47,11 +48,12 @@ export default async function AssetsPage({
     page,
   };
 
-  const [{ assets, count, pageCount }, spocOptions, bounds, teamMembers] = await Promise.all([
+  const [{ assets, count, pageCount }, spocOptions, bounds, teamMembers, unassignedTasks] = await Promise.all([
     listAssets(filters),
     getDistinctSpocAgents(),
     getAssetNumericBounds(),
     getTeamMembers().catch(() => []),
+    getUnassignedTasks().catch(() => []),
   ]);
 
   const latestUpdates = await getLatestUpdatesForAssets(assets.map((a) => a.id));
@@ -77,7 +79,7 @@ export default async function AssetsPage({
 
       <div className="flex-1 overflow-auto p-6">
         <Suspense>
-          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} teamMembers={teamMembers} latestUpdates={latestUpdates} />
+          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} teamMembers={teamMembers} latestUpdates={latestUpdates} unassignedTasks={unassignedTasks} />
         </Suspense>
       </div>
     </div>
