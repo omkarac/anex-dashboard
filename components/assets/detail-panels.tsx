@@ -48,7 +48,9 @@ function PanelShell({ title, count, children, chatMode }: {
   return (
     <div className="rounded-lg border flex flex-col h-full min-h-0 overflow-hidden bg-card">
       <div className="panel-drag-handle flex items-center gap-2 px-4 py-2.5 border-b bg-muted/30 shrink-0 cursor-grab active:cursor-grabbing select-none">
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+        <span title="Drag to rearrange · Drag corner to resize" className="shrink-0 flex">
+          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+        </span>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
         {count !== undefined && (
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{count}</span>
@@ -686,17 +688,15 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, activity,
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-muted-foreground">Drag panel headers to rearrange · Drag corner to resize</p>
-        <button
-          onClick={resetLayout}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <RotateCcw className="h-3 w-3" />
-          Reset layout
-        </button>
-      </div>
+    <div className="relative group/panels">
+      <button
+        onClick={resetLayout}
+        title="Reset layout"
+        className="absolute -top-7 right-0 z-10 flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover/panels:opacity-100 transition-all"
+      >
+        <RotateCcw className="h-3 w-3" />
+        Reset
+      </button>
       <div ref={containerRef}>
         {mounted && (
           <ReactGridLayout
