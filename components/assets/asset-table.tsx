@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -26,23 +26,25 @@ import { UnassignedFAB } from '@/components/developers/unassigned-fab';
 const GRID_COLS = '196px 128px 138px 88px 108px 88px 78px 98px 88px minmax(172px,1fr) 88px 78px';
 
 const ROW_STYLES = `
-  :root { --aw1:18,32,179; --aw2:40,60,210; --ah1:0.14; --ah2:0.42; }
-  .dark  { --aw1:72,98,232; --aw2:100,130,255; --ah1:0.20; --ah2:0.52; }
   @keyframes asset-breathe {
-    0%,100% {
-      box-shadow: inset 3px 0 0 rgba(var(--aw1),var(--ah1));
-    }
-    50% {
-      box-shadow: inset 3px 0 0 rgba(var(--aw2),var(--ah2)),
-                  0 0 28px -10px rgba(var(--aw1),0.22);
-    }
+    0%,100% { box-shadow: inset 4px 0 0 rgba(59,130,246,0.4); }
+    50%      { box-shadow: inset 4px 0 0 rgba(99,102,241,0.85); }
   }
-  .asset-row-urgent { animation: asset-breathe 2.6s ease-in-out infinite; }
+  @keyframes asset-breathe-dark {
+    0%,100% { box-shadow: inset 4px 0 0 rgba(99,102,241,0.5); }
+    50%      { box-shadow: inset 4px 0 0 rgba(129,140,248,0.9); }
+  }
+  .asset-row-urgent {
+    animation: asset-breathe 2s ease-in-out infinite;
+  }
+  .dark .asset-row-urgent {
+    animation-name: asset-breathe-dark;
+  }
   .asset-task-bdg {
     display:inline-flex; align-items:center; padding:1px 6px;
     border-radius:999px; font-size:10px; font-weight:600; line-height:1.6;
-    background:rgba(var(--aw1),0.09); color:hsl(var(--primary));
-    border:1px solid rgba(var(--aw1),0.22); margin-left:6px; vertical-align:middle;
+    background:rgba(59,130,246,0.10); color:rgb(59,130,246);
+    border:1px solid rgba(59,130,246,0.30); margin-left:6px; vertical-align:middle;
   }
 `;
 
@@ -191,6 +193,18 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = new Date().toISOString().slice(0, 10);
 
+  // Inject keyframe styles into <head> — inline <style> in JSX body is unreliable in React 19
+  useEffect(() => {
+    const id = 'asset-row-styles';
+    if (!document.getElementById(id)) {
+      const el = document.createElement('style');
+      el.id = id;
+      el.textContent = ROW_STYLES;
+      document.head.appendChild(el);
+    }
+    return () => { document.getElementById(id)?.remove(); };
+  }, []);
+
   const unassignedByAsset = useMemo(() => {
     const m = new Map<string, number>();
     for (const t of unassignedTasks) m.set(t.asset_id, (m.get(t.asset_id) ?? 0) + 1);
@@ -242,8 +256,6 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
 
   return (
     <div className="flex flex-col gap-3">
-      <style>{ROW_STYLES}</style>
-
       <div className="rounded-lg border overflow-x-auto">
         <div style={{ minWidth: '1100px' }}>
 
@@ -305,16 +317,15 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
                   ))}
                 </div>
 
-                {/* Expandable task detail — grid-template-rows trick for smooth height */}
+                {/* Expandable task detail — max-height transition for reliable cross-browser expand */}
                 {hasTasks && (
                   <div
                     style={{
-                      display: 'grid',
-                      gridTemplateRows: isExpanded ? '1fr' : '0fr',
-                      transition: 'grid-template-rows 0.28s cubic-bezier(0.16,1,0.3,1)',
+                      maxHeight: isExpanded ? '300px' : '0px',
+                      overflow: 'hidden',
+                      transition: 'max-height 0.28s cubic-bezier(0.16,1,0.3,1)',
                     }}
                   >
-                    <div style={{ overflow: 'hidden' }}>
                       <div className="px-4 pt-2 pb-3 flex items-center gap-5 flex-wrap border-t border-border/30">
 
                         {/* Stat pills */}
@@ -355,7 +366,6 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
                         </div>
 
                       </div>
-                    </div>
                   </div>
                 )}
               </div>
