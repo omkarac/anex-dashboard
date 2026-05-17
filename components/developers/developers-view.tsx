@@ -55,11 +55,11 @@ const GLOW_STYLES = `
 // ─── Outcome config ───────────────────────────────────────────────────────────
 
 const OUTCOME_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
-  interested: { label: 'Interested', badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
-  pursuing:   { label: 'Pursuing',   badge: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500'    },
-  won:        { label: 'Won',        badge: 'bg-purple-100 text-purple-700',   dot: 'bg-purple-500'  },
-  passed:     { label: 'Passed',     badge: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-400'    },
-  pending:    { label: 'Pending',    badge: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400'   },
+  interested: { label: 'Interested', badge: 'bg-secondary text-secondary-foreground', dot: 'bg-foreground/30' },
+  pursuing:   { label: 'Pursuing',   badge: 'bg-blue-100 text-blue-700',              dot: 'bg-blue-500'      },
+  won:        { label: 'Won',        badge: 'bg-purple-100 text-purple-700',          dot: 'bg-purple-500'    },
+  passed:     { label: 'Passed',     badge: 'bg-gray-100 text-gray-500',             dot: 'bg-gray-400'      },
+  pending:    { label: 'Pending',    badge: 'bg-secondary text-muted-foreground',     dot: 'bg-muted-foreground/40' },
 };
 
 const OUTCOME_OPTIONS = ['interested', 'pursuing', 'won', 'passed'];
@@ -127,7 +127,6 @@ function Avatar({ name, logoUrl, size = 'md' }: { name: string; logoUrl?: string
 // ─── Developer card ───────────────────────────────────────────────────────────
 
 function DeveloperCard({ dev, unassigned }: { dev: DeveloperWithStats; unassigned: UnassignedTask[] }) {
-  const p = palette(dev.name);
   const outcomeEntries = Object.entries(dev.outcome_counts)
     .filter(([k, n]) => n > 0 && k !== 'pending')
     .sort(([a], [b]) => a.localeCompare(b));
@@ -139,8 +138,6 @@ function DeveloperCard({ dev, unassigned }: { dev: DeveloperWithStats; unassigne
       href={`/capital-markets/developers/${dev.id}`}
       className={`group relative w-full text-left rounded-2xl border bg-card overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${hasUnassigned ? 'dev-card-urgent' : 'dev-card-base'}`}
     >
-      {/* Top accent strip */}
-      <div className={`h-[3px] w-full ${p.bg}`} />
 
       {/* Unassigned badge */}
       {hasUnassigned && (
