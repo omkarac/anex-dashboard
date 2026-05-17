@@ -5,12 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
-import { Mail, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
-const ALLOWED_DOMAIN = '@anexadvisory.com';
-const ADMIN_CLICKS_REQUIRED = 5;
+// ─── Microsoft icon ───────────────────────────────────────────────────────────
 
-function AdminLoginForm({ onClose }: { onClose: () => void }) {
+function MicrosoftIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden>
+      <rect x="1"  y="1"  width="9" height="9" fill="#f25022" />
+      <rect x="11" y="1"  width="9" height="9" fill="#7fba00" />
+      <rect x="1"  y="11" width="9" height="9" fill="#00a4ef" />
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+    </svg>
+  );
+}
+
+// ─── Admin modal ──────────────────────────────────────────────────────────────
+
+function AdminLoginForm({ onClose }: { onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,15 +47,17 @@ function AdminLoginForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className={onClose ? 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm' : ''}>
       <div className="relative w-full max-w-sm rounded-xl border bg-card shadow-2xl p-8">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
 
         <div className="mb-6">
           <h2 className="text-lg font-semibold tracking-tight">Admin access</h2>
@@ -63,7 +77,7 @@ function AdminLoginForm({ onClose }: { onClose: () => void }) {
               id="admin-email"
               name="email"
               type="email"
-              placeholder="admin@example.com"
+              placeholder="admin@anexadvisory.com"
               required
               autoFocus
               className="h-10"
@@ -91,124 +105,73 @@ function AdminLoginForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function LoginForm({ urlError, sent }: { urlError?: string; sent?: boolean }) {
+// ─── Main login form ──────────────────────────────────────────────────────────
+
+interface Props {
+  urlError?: string;
+  /** Rendered inline (no overlay) when page was opened via secret admin link */
+  showAdminForm?: boolean;
+}
+
+export function LoginForm({ urlError, showAdminForm }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(urlError ?? null);
-  const [emailSent, setEmailSent] = useState(sent ?? false);
-  const [sentTo, setSentTo] = useState('');
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [adminClicks, setAdminClicks] = useState(0);
 
-  function handleVersionClick() {
-    const next = adminClicks + 1;
-    setAdminClicks(next);
-    if (next >= ADMIN_CLICKS_REQUIRED) {
-      setAdminOpen(true);
-      setAdminClicks(0);
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleMicrosoftSignIn() {
     setError(null);
-    const fd = new FormData(e.currentTarget);
-    const email = (fd.get('email') as string).trim().toLowerCase();
-
-    if (!email.endsWith(ALLOWED_DOMAIN)) {
-      setError(`Only ${ALLOWED_DOMAIN} emails are allowed.`);
-      return;
-    }
-
     setLoading(true);
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
+    const { error: authError } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'email profile openid',
       },
     });
-
     if (authError) {
       setError(authError.message);
       setLoading(false);
-      return;
     }
-
-    setSentTo(email);
-    setEmailSent(true);
-    setLoading(false);
+    // On success Supabase redirects — no further client action needed
   }
 
-  if (emailSent) {
-    return (
-      <div className="rounded-lg border bg-card p-6 text-center space-y-4">
-        <div className="flex justify-center">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Mail className="h-6 w-6 text-primary" />
-          </div>
-        </div>
-        <div>
-          <p className="font-medium text-sm">Check your email</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            We sent a sign-in link to <span className="font-medium text-foreground">{sentTo}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => { setEmailSent(false); setSentTo(''); }}
-          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
-        >
-          Use a different email
-        </button>
-      </div>
-    );
+  // Secret admin link — render form inline, no overlay chrome
+  if (showAdminForm) {
+    return <AdminLoginForm />;
   }
 
   return (
-    <>
-      {adminOpen && <AdminLoginForm onClose={() => setAdminOpen(false)} />}
-
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {error && (
-          <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2.5 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-medium">
-            Email address
-          </Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder={`you${ALLOWED_DOMAIN}`}
-            required
-            autoFocus
-            className="h-10"
-          />
+    <div className="space-y-5">
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2.5 text-sm text-destructive">
+          {error === 'domain_not_allowed'
+            ? 'Access restricted to @anexadvisory.com accounts.'
+            : error === 'deactivated'
+              ? 'Your account has been deactivated. Contact your administrator.'
+              : error === 'exchange_failed'
+                ? 'Sign-in failed. Please try again.'
+                : error}
         </div>
+      )}
 
-        <Button type="submit" className="w-full h-10 font-medium" disabled={loading}>
-          {loading ? 'Sending link…' : 'Send sign-in link'}
-        </Button>
+      <Button
+        onClick={handleMicrosoftSignIn}
+        disabled={loading}
+        variant="outline"
+        className="w-full h-11 font-medium flex items-center gap-3 border-border hover:bg-muted/60 transition-colors"
+      >
+        {loading ? (
+          <span className="h-4 w-4 rounded-full border-2 border-foreground/20 border-t-foreground animate-spin" />
+        ) : (
+          <MicrosoftIcon />
+        )}
+        {loading ? 'Redirecting…' : 'Sign in with Microsoft'}
+      </Button>
 
-        <p className="text-center text-xs text-muted-foreground">
-          You'll receive a magic link — no password needed.
-        </p>
-
-        <p className="text-center">
-          <button
-            type="button"
-            onClick={handleVersionClick}
-            className="text-[10px] text-muted-foreground/20 hover:text-muted-foreground/20 select-none cursor-default"
-            tabIndex={-1}
-            aria-hidden="true"
-          >
-            v1
-          </button>
-        </p>
-      </form>
-    </>
+      <p className="text-center text-xs text-muted-foreground leading-relaxed">
+        Access restricted to{' '}
+        <span className="font-medium text-foreground">@anexadvisory.com</span> accounts.
+      </p>
+    </div>
   );
 }

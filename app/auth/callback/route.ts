@@ -43,6 +43,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
+  // Domain restriction — enforced server-side regardless of login method
+  const email = user.email ?? '';
+  if (!email.endsWith('@anexadvisory.com')) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/login?error=domain_not_allowed`);
+  }
+
   // Service client bypasses RLS — required for INSERT since only admins
   // can write via RLS, but we need to self-provision on first login.
   const service = createServiceClient();

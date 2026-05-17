@@ -9,16 +9,20 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sent?: string }>;
+  searchParams: Promise<{ error?: string; key?: string }>;
 }) {
-  const { error, sent } = await searchParams;
+  const { error, key } = await searchParams;
+
+  // Compare server-side — secret never reaches the client bundle
+  const adminSecret = process.env.ADMIN_LOGIN_SECRET;
+  const showAdminForm = Boolean(adminSecret && key === adminSecret);
 
   return (
     <div className="min-h-screen flex bg-background">
       {/* Left panel — brand */}
       <div className="hidden lg:flex w-[45%] flex-col items-center justify-center bg-primary px-16 relative overflow-hidden">
-        {/* Subtle geometric texture */}
-        <div className="absolute inset-0 opacity-[0.04]"
+        <div
+          className="absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage: `repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)`,
             backgroundSize: '20px 20px',
@@ -46,7 +50,7 @@ export default async function LoginPage({
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         {/* Mobile logo */}
         <div className="lg:hidden mb-10 flex flex-col items-center gap-3">
@@ -69,12 +73,16 @@ export default async function LoginPage({
 
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h2 className="text-2xl font-semibold tracking-tight">Welcome back</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {showAdminForm ? 'Admin sign in' : 'Welcome back'}
+            </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Sign in with your Anex email address.
+              {showAdminForm
+                ? 'Use your administrator credentials below.'
+                : 'Sign in to your Anex workspace.'}
             </p>
           </div>
-          <LoginForm urlError={error} sent={sent === '1'} />
+          <LoginForm urlError={error} showAdminForm={showAdminForm} />
         </div>
 
         <p className="mt-12 text-xs text-muted-foreground">
