@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateMemberRole, setMemberActive, updateMemberName, updateMemberDepartment } from '@/lib/actions/team';
 import type { TeamMemberWithWorkload, MemberDepartment } from '@/lib/queries/team';
@@ -48,9 +47,9 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
     });
   }
 
-  function toggleActive() {
+  function toggleActive(active: boolean) {
     startTransition(async () => {
-      await setMemberActive(member.id, !member.is_active);
+      await setMemberActive(member.id, active);
       router.refresh();
     });
   }
@@ -151,29 +150,29 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
 
       {/* Status */}
       <td className="px-4 py-3">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-          member.is_active
-            ? 'bg-green-50 text-green-700'
-            : 'bg-gray-100 text-gray-500'
-        }`}>
-          {member.is_active ? 'Active' : 'Inactive'}
-        </span>
-      </td>
-
-      {/* Actions */}
-      <td className="px-4 py-3 text-right">
-        {isCurrentUserAdmin && !isSelf && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+        {isCurrentUserAdmin && !isSelf ? (
+          <select
+            value={member.is_active ? 'active' : 'inactive'}
+            onChange={(e) => toggleActive(e.target.value === 'active')}
             disabled={isPending}
-            onClick={toggleActive}
+            className="h-7 rounded border border-input bg-background px-2 text-xs disabled:opacity-50"
           >
-            {member.is_active ? 'Deactivate' : 'Reactivate'}
-          </Button>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        ) : (
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            member.is_active
+              ? 'bg-green-50 text-green-700'
+              : 'bg-gray-100 text-gray-500'
+          }`}>
+            {member.is_active ? 'Active' : 'Inactive'}
+          </span>
         )}
       </td>
+
+      {/* Actions — empty, controls are inline */}
+      <td className="px-4 py-3" />
     </tr>
   );
 }
