@@ -19,20 +19,20 @@ export function DealAgingWidget({ aging }: { aging: DealAging }) {
   const total = SEGMENTS.reduce((s, seg) => s + aging[seg.key], 0);
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white shadow-sm p-5 flex flex-col gap-5">
+    <div className="border border-border rounded-xl bg-card shadow-sm p-5 flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Time in Stage
         </h2>
-        <span className="text-xs text-slate-400 tabular-nums">
-          <span className="font-semibold text-slate-700">{total}</span> active
+        <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="font-semibold text-foreground">{total}</span> active
         </span>
       </div>
 
       {/* Stacked proportional bar */}
       {total === 0 ? (
-        <div className="h-7 rounded-lg bg-slate-100" />
+        <div className="h-7 rounded-lg bg-muted" />
       ) : (
         <div className="h-7 rounded-lg overflow-hidden flex gap-0.5">
           {SEGMENTS.map((seg) => {
@@ -58,15 +58,15 @@ export function DealAgingWidget({ aging }: { aging: DealAging }) {
             <div key={seg.key} className="flex flex-col gap-0.5">
               <span
                 className={`text-2xl font-bold tabular-nums tracking-tight ${
-                  count > 0 ? seg.countColor : 'text-slate-200'
+                  count > 0 ? seg.countColor : 'text-foreground/20'
                 }`}
               >
                 {count}
               </span>
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 {seg.label}
               </span>
-              <span className="text-[10px] text-slate-300">{seg.sublabel}</span>
+              <span className="text-[10px] text-muted-foreground/50">{seg.sublabel}</span>
             </div>
           );
         })}
@@ -74,7 +74,7 @@ export function DealAgingWidget({ aging }: { aging: DealAging }) {
 
       {/* Warning */}
       {aging.over60 > 0 && (
-        <div className="flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-100 px-3 py-2 -mt-1">
+        <div className="flex items-center gap-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 px-3 py-2 -mt-1">
           <div className="relative flex h-1.5 w-1.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500" />

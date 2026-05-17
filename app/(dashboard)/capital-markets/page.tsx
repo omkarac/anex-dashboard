@@ -35,16 +35,16 @@ export default async function CapitalMarketsDashboardPage() {
   ]);
 
   return (
-    <div className="flex flex-col h-full overflow-auto bg-slate-50/60">
+    <div className="flex flex-col h-full overflow-auto bg-background">
       {/* Page header */}
-      <div className="border-b bg-white shrink-0 px-6 py-4 flex items-center justify-between">
+      <div className="border-b bg-card shrink-0 px-6 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-sm font-semibold text-slate-900 tracking-tight">Capital Markets</h1>
-          <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
+          <h1 className="text-sm font-semibold text-foreground tracking-tight">Capital Markets</h1>
+          <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
             Anex Advisory — Deal Command Center
           </p>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
           <div className="relative flex h-1.5 w-1.5">
             <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />

@@ -57,11 +57,11 @@ function ActivityRow({ log }: { log: RecentLog }) {
     <div className="flex items-start gap-3 py-2.5">
       {/* Actor avatar with action color dot */}
       <div className="relative shrink-0 mt-0.5">
-        <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-bold text-white">
+        <div className="w-6 h-6 rounded-full bg-slate-700 dark:bg-slate-600 flex items-center justify-center text-[10px] font-bold text-white">
           {initial}
         </div>
         <span
-          className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${ac.dot}`}
+          className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-card ${ac.dot}`}
         />
       </div>
 
@@ -70,16 +70,16 @@ function ActivityRow({ log }: { log: RecentLog }) {
         {href ? (
           <Link
             href={href}
-            className="text-xs font-medium text-slate-900 hover:text-indigo-700 transition-colors leading-snug block truncate"
+            className="text-xs font-medium text-foreground hover:text-indigo-500 transition-colors leading-snug block truncate"
           >
             {log.summary}
           </Link>
         ) : (
-          <p className="text-xs text-slate-800 leading-snug truncate">{log.summary}</p>
+          <p className="text-xs text-foreground/90 leading-snug truncate">{log.summary}</p>
         )}
-        <p className="text-[11px] text-slate-400 mt-0.5">
+        <p className="text-[11px] text-muted-foreground mt-0.5">
           {log.actor?.full_name ?? 'System'}
-          <span className="text-slate-200 mx-1">·</span>
+          <span className="text-border mx-1">·</span>
           {relativeTime(log.created_at)}
         </p>
       </div>
@@ -96,10 +96,10 @@ export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
   const groups = groupLogs(logs);
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white shadow-sm p-5 flex flex-col gap-4">
+    <div className="border border-border rounded-xl bg-card shadow-sm p-5 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Recent Activity
         </h2>
         <Link
@@ -111,7 +111,7 @@ export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
       </div>
 
       {logs.length === 0 ? (
-        <p className="text-xs text-slate-400 text-center py-8">No activity recorded yet.</p>
+        <p className="text-xs text-muted-foreground text-center py-8">No activity recorded yet.</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
           {/* Left column — first group or all on mobile */}
@@ -121,10 +121,10 @@ export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
               if (colLogs.length === 0 && gi !== 0) return null;
               return (
                 <div key={group.label}>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-300 mb-1 pt-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1 pt-1">
                     {group.label}
                   </p>
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-border">
                     {(gi === 0 ? colLogs : group.items).map((log) => (
                       <ActivityRow key={log.id} log={log} />
                     ))}
@@ -142,10 +142,10 @@ export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
                 const overflowGroups = groupLogs(overflowLogs);
                 return overflowGroups.map((group) => (
                   <div key={group.label}>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-300 mb-1 pt-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1 pt-1">
                       {group.label}
                     </p>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {group.items.map((log) => (
                         <ActivityRow key={log.id} log={log} />
                       ))}

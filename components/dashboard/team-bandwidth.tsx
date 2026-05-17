@@ -25,7 +25,7 @@ function LoadRing({ load, max }: { load: number; max: number }) {
       aria-hidden
     >
       {/* Track */}
-      <circle cx="20" cy="20" r={RING_RADIUS} fill="none" stroke="#e2e8f0" strokeWidth="2.5" />
+      <circle cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="2.5" className="stroke-slate-200 dark:stroke-slate-700" />
       {/* Arc */}
       {load > 0 && (
         <circle
@@ -59,21 +59,21 @@ export function TeamBandwidth({ workload }: { workload: MemberWorkload[] }) {
   const maxLoad = Math.max(...sorted.map((m) => m.open_tasks + m.spoc_assets), 1);
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white shadow-sm p-5 flex flex-col gap-4">
+    <div className="border border-border rounded-xl bg-card shadow-sm p-5 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Team Bandwidth
         </h2>
-        <span className="text-xs text-slate-400">
-          <span className="font-semibold text-slate-700">{sorted.length}</span> members
+        <span className="text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">{sorted.length}</span> members
         </span>
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-xs text-slate-400 text-center py-6">No team members found.</p>
+        <p className="text-xs text-muted-foreground text-center py-6">No team members found.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-slate-100">
+        <div className="flex flex-col divide-y divide-border">
           {sorted.map((m) => {
             const load = m.open_tasks + m.spoc_assets;
             return (
@@ -90,10 +90,10 @@ export function TeamBandwidth({ workload }: { workload: MemberWorkload[] }) {
 
                 {/* Name + detail */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 truncate">{m.full_name}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5 tabular-nums">
+                  <p className="text-xs font-semibold text-foreground truncate">{m.full_name}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
                     {m.spoc_assets} deal{m.spoc_assets !== 1 ? 's' : ''}
-                    <span className="text-slate-200 mx-1">·</span>
+                    <span className="text-border mx-1">·</span>
                     {m.open_tasks} task{m.open_tasks !== 1 ? 's' : ''}
                   </p>
                 </div>

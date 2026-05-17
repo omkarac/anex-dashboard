@@ -15,10 +15,10 @@ export function AttentionPanel({ signals }: { signals: AttentionSignal[] }) {
   const highCount = signals.filter((s) => s.severity === 'high').length;
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col h-full overflow-hidden">
+    <div className="border border-border rounded-xl bg-card shadow-sm flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Needs Attention
         </h2>
         {signals.length > 0 && (
@@ -40,10 +40,10 @@ export function AttentionPanel({ signals }: { signals: AttentionSignal[] }) {
       <div className="flex-1 overflow-auto px-5 pb-5">
         {signals.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 h-full">
-            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
             </div>
-            <p className="text-xs text-slate-400 font-medium">All deals look healthy</p>
+            <p className="text-xs text-muted-foreground font-medium">All deals look healthy</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -57,8 +57,8 @@ export function AttentionPanel({ signals }: { signals: AttentionSignal[] }) {
                   href={`/capital-markets/assets/${signal.id}`}
                   className={`flex items-start gap-3 p-3 rounded-lg border transition-all hover:shadow-sm group ${
                     isHigh
-                      ? 'bg-rose-50/40 border-rose-200 hover:border-rose-300'
-                      : 'bg-amber-50/30 border-amber-100 hover:border-amber-200'
+                      ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50 hover:border-rose-300 dark:hover:border-rose-800'
+                      : 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/50 hover:border-amber-200 dark:hover:border-amber-800'
                   }`}
                 >
                   {/* Severity indicator */}
@@ -75,10 +75,10 @@ export function AttentionPanel({ signals }: { signals: AttentionSignal[] }) {
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-900 truncate group-hover:text-indigo-700 transition-colors">
+                    <p className="text-xs font-semibold text-foreground truncate group-hover:text-indigo-500 transition-colors">
                       {signal.property_name}
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {ASSET_STATUS_LABELS[signal.status]} · {signal.detail}
                     </p>
                   </div>

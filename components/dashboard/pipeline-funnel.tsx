@@ -22,16 +22,16 @@ export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
   const totalCount    = activeStages.reduce((sum, s) => sum + s.count, 0);
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col h-full overflow-hidden">
+    <div className="border border-border rounded-xl bg-card shadow-sm flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Pipeline Funnel
         </h2>
-        <span className="text-xs text-slate-400 tabular-nums">
-          <span className="font-semibold text-slate-700">{totalCount}</span> active
-          <span className="text-slate-300 mx-1.5">·</span>
-          <span className="font-semibold text-slate-700">{formatCr(totalValue)}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="font-semibold text-foreground">{totalCount}</span> active
+          <span className="text-border mx-1.5">·</span>
+          <span className="font-semibold text-foreground">{formatCr(totalValue)}</span>
         </span>
       </div>
 
@@ -51,12 +51,12 @@ export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
             >
               {/* Stage label row */}
               <div className="flex items-center justify-between mb-1 px-0.5">
-                <span className="text-[11px] font-medium text-slate-500 group-hover:text-slate-800 transition-colors">
+                <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                   {ASSET_STATUS_LABELS[status]}
                 </span>
-                <div className="flex items-center gap-3 text-[11px] text-slate-400 tabular-nums">
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums">
                   <span>{formatCr(value)}</span>
-                  <span className="font-bold text-slate-700 text-sm w-5 text-right">{count}</span>
+                  <span className="font-bold text-foreground/80 text-sm w-5 text-right">{count}</span>
                 </div>
               </div>
 
@@ -75,12 +75,12 @@ export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
         })}
 
         {activeStages.every((s) => s.count === 0) && (
-          <p className="text-xs text-slate-400 text-center py-6">No active deals in pipeline.</p>
+          <p className="text-xs text-muted-foreground text-center py-6">No active deals in pipeline.</p>
         )}
       </div>
 
       {/* Exit stages footer */}
-      <div className="border-t border-dashed border-slate-100 px-5 py-3 flex items-center gap-5 flex-wrap bg-slate-50/50">
+      <div className="border-t border-dashed border-border px-5 py-3 flex items-center gap-5 flex-wrap bg-muted/20">
         {exitStages.map(({ status, count, value }) => {
           const isWon = status === 'won';
           return (
@@ -90,14 +90,14 @@ export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
               className="flex items-center gap-2 group"
             >
               <span
-                className={`w-2 h-2 rounded-full shrink-0 ${isWon ? 'bg-emerald-400' : 'bg-slate-300'}`}
+                className={`w-2 h-2 rounded-full shrink-0 ${isWon ? 'bg-emerald-400' : 'bg-muted-foreground/40'}`}
               />
-              <span className="text-[11px] text-slate-500 group-hover:text-slate-700 transition-colors">
+              <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">
                 {ASSET_STATUS_LABELS[status]}
               </span>
-              <span className="text-[11px] font-semibold tabular-nums text-slate-600">{count}</span>
+              <span className="text-[11px] font-semibold tabular-nums text-foreground/70">{count}</span>
               {value > 0 && (
-                <span className="text-[11px] text-slate-400 tabular-nums">· {formatCr(value)}</span>
+                <span className="text-[11px] text-muted-foreground tabular-nums">· {formatCr(value)}</span>
               )}
             </Link>
           );
