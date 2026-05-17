@@ -54,12 +54,12 @@ const GLOW_STYLES = `
 
 // ─── Outcome config ───────────────────────────────────────────────────────────
 
-const OUTCOME_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
-  interested: { label: 'Interested', badge: 'bg-secondary text-secondary-foreground', dot: 'bg-foreground/30' },
-  pursuing:   { label: 'Pursuing',   badge: 'bg-blue-100 text-blue-700',              dot: 'bg-blue-500'      },
-  won:        { label: 'Won',        badge: 'bg-purple-100 text-purple-700',          dot: 'bg-purple-500'    },
-  passed:     { label: 'Passed',     badge: 'bg-gray-100 text-gray-500',             dot: 'bg-gray-400'      },
-  pending:    { label: 'Pending',    badge: 'bg-secondary text-muted-foreground',     dot: 'bg-muted-foreground/40' },
+const OUTCOME_CONFIG: Record<string, { label: string; cls: string }> = {
+  interested: { label: 'Interested', cls: 'border border-border/70 text-foreground/60'      },
+  pursuing:   { label: 'Pursuing',   cls: 'border border-blue-300/70 text-blue-600/80'      },
+  won:        { label: 'Won',        cls: 'border border-violet-300/70 text-violet-600/80'  },
+  passed:     { label: 'Passed',     cls: 'border border-border/50 text-muted-foreground/50' },
+  pending:    { label: 'Pending',    cls: 'border border-border/50 text-muted-foreground/50' },
 };
 
 const OUTCOME_OPTIONS = ['interested', 'pursuing', 'won', 'passed'];
@@ -92,8 +92,7 @@ function OutcomeBadge({ outcome }: { outcome: string | null }) {
   const key = outcome ?? 'pending';
   const cfg = OUTCOME_CONFIG[key] ?? OUTCOME_CONFIG.pending;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.badge}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.cls}`}>
       {cfg.label}
     </span>
   );
@@ -170,15 +169,13 @@ function DeveloperCard({ dev, unassigned }: { dev: DeveloperWithStats; unassigne
             {outcomeEntries.map(([outcome, count]) => {
               const cfg = OUTCOME_CONFIG[outcome];
               return (
-                <span key={outcome} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${cfg.badge}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                <span key={outcome} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.cls}`}>
                   {count} {cfg.label}
                 </span>
               );
             })}
             {pendingCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${OUTCOME_CONFIG.pending.cls}`}>
                 {pendingCount} Pending
               </span>
             )}
@@ -592,8 +589,7 @@ function DeveloperPanel({ dev, onClose, onSave }: { dev: DeveloperWithStats; onC
                 .map(([outcome, count]) => {
                   const cfg = OUTCOME_CONFIG[outcome] ?? OUTCOME_CONFIG.pending;
                   return (
-                    <span key={outcome} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${cfg.badge}`}>
-                      <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
+                    <span key={outcome} className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${cfg.cls}`}>
                       {count} {cfg.label}
                     </span>
                   );
