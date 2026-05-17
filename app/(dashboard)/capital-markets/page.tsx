@@ -1,14 +1,14 @@
 import { Metadata } from 'next';
 import {
   getCommandStats,
-  getPipelineWithValue,
+  getPipelineBoard,
   getDealAging,
   getAttentionSignals,
   getTeamWorkload,
   getRecentActivity,
 } from '@/lib/queries/dashboard';
 import { CommandHeader } from '@/components/dashboard/command-header';
-import { PipelineFunnel } from '@/components/dashboard/pipeline-funnel';
+import { PipelineBoardWidget } from '@/components/dashboard/pipeline-board';
 import { AttentionPanel } from '@/components/dashboard/attention-panel';
 import { DealAgingWidget } from '@/components/dashboard/deal-aging';
 import { TeamBandwidth } from '@/components/dashboard/team-bandwidth';
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: 'Capital Markets — Anex' };
 export const revalidate = 30;
 
 export default async function CapitalMarketsDashboardPage() {
-  const [stats, pipeline, aging, signals, workload, recentLogs] = await Promise.all([
+  const [stats, board, aging, signals, workload, recentLogs] = await Promise.all([
     getCommandStats().catch(() => ({
       activePipelineValue: 0,
       activeCount: 0,
@@ -27,7 +27,10 @@ export default async function CapitalMarketsDashboardPage() {
       winRate: 0,
       wonCountQ: 0,
     })),
-    getPipelineWithValue().catch(() => []),
+    getPipelineBoard().catch(() => ({
+      stages: [],
+      exits: { won: { count: 0, value: 0 }, dropped: { count: 0, value: 0 } },
+    })),
     getDealAging().catch(() => ({ under7: 0, d7to30: 0, d30to60: 0, over60: 0 })),
     getAttentionSignals().catch(() => []),
     getTeamWorkload().catch(() => []),
@@ -57,29 +60,29 @@ export default async function CapitalMarketsDashboardPage() {
       <CommandHeader stats={stats} />
 
       {/* Main grid */}
-      <div className="flex-1 p-5 flex flex-col gap-4 min-h-0">
-        {/* Row 1: Pipeline + Attention */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0" style={{ minHeight: '280px' }}>
+      <div className="flex-1 p-5 flex flex-col gap-4">
+        {/* Row 1: Pipeline board — full-width hero */}
+        <PipelineBoardWidget board={board} />
+
+        {/* Row 2: Attention + Aging */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-3">
-            <PipelineFunnel stages={pipeline} />
-          </div>
-          <div className="lg:col-span-2">
             <AttentionPanel signals={signals} />
           </div>
-        </div>
-
-        {/* Row 2: Aging + Team */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-2">
             <DealAgingWidget aging={aging} />
           </div>
-          <div className="lg:col-span-3">
-            <TeamBandwidth workload={workload} />
-          </div>
         </div>
 
-        {/* Row 3: Activity feed */}
-        <RecentActivityWidget logs={recentLogs} />
+        {/* Row 3: Team + Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="lg:col-span-2">
+            <TeamBandwidth workload={workload} />
+          </div>
+          <div className="lg:col-span-3">
+            <RecentActivityWidget logs={recentLogs} />
+          </div>
+        </div>
       </div>
     </div>
   );

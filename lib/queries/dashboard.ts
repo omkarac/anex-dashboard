@@ -267,6 +267,107 @@ export async function getTeamWorkload(): Promise<MemberWorkload[]> {
   }));
 }
 
+// ─── Pipeline board (deal-level, urgency-sorted) ─────────────────────────────
+
+export type BoardDeal = {
+  id: string;
+  property_name: string;
+  status: AssetStatus;
+  temperature: string;
+  topline_cr: number;
+  owner: string | null;
+  days_since_activity: number;
+  is_unassigned: boolean;
+  is_hot_silent: boolean;
+};
+
+export type BoardStage = {
+  status: AssetStatus;
+  count: number;
+  value: number;
+  top: BoardDeal[];
+  overflow: number;
+};
+
+export type ExitTotals = { won: { count: number; value: number }; dropped: { count: number; value: number } };
+
+export type PipelineBoard = { stages: BoardStage[]; exits: ExitTotals };
+
+function urgencyScore(d: BoardDeal): number {
+  if (d.temperature === 'hot' && d.is_unassigned) return 100;
+  if (d.is_hot_silent) return 90;
+  if (d.temperature === 'hot') return 50;
+  if (d.days_since_activity >= 14) return 30;
+  return d.days_since_activity;
+}
+
+export async function getPipelineBoard(): Promise<PipelineBoard> {
+  const service = createServiceClient();
+
+  const [assetsRes, activityRes] = await Promise.all([
+    service
+      .from('assets')
+      .select('id, property_name, status, temperature, topline_cr, spoc_agent, assigned_to, created_at, updated_at')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    service
+      .from('activity_logs')
+      .select('entity_id, created_at')
+      .eq('entity_type', 'asset')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1000),
+  ]);
+
+  const assets = assetsRes.data ?? [];
+
+  const lastActivityMap = new Map<string, string>();
+  for (const log of activityRes.data ?? []) {
+    if (!lastActivityMap.has(log.entity_id)) lastActivityMap.set(log.entity_id, log.created_at);
+  }
+
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 86_400_000;
+
+  const allDeals: BoardDeal[] = assets.map((a) => {
+    const ref = lastActivityMap.get(a.id) ?? a.updated_at ?? a.created_at;
+    const days = Math.floor((now - new Date(ref).getTime()) / 86_400_000);
+    const isUnassigned = !a.spoc_agent && !a.assigned_to;
+    const isHotSilent = a.temperature === 'hot' && new Date(ref).getTime() < sevenDaysAgo;
+    return {
+      id: a.id,
+      property_name: a.property_name,
+      status: a.status as AssetStatus,
+      temperature: a.temperature ?? 'none',
+      topline_cr: Number(a.topline_cr) || 0,
+      owner: a.spoc_agent || null,
+      days_since_activity: days,
+      is_unassigned: isUnassigned,
+      is_hot_silent: isHotSilent,
+    };
+  });
+
+  const ACTIVE: AssetStatus[] = ['open', 'evaluating', 'screened'];
+
+  const stages: BoardStage[] = ACTIVE.map((status) => {
+    const bucket = allDeals
+      .filter((d) => d.status === status)
+      .sort((a, b) => urgencyScore(b) - urgencyScore(a));
+    const value = bucket.reduce((s, d) => s + d.topline_cr, 0);
+    return { status, count: bucket.length, value, top: bucket.slice(0, 3), overflow: Math.max(0, bucket.length - 3) };
+  });
+
+  const wonDeals    = allDeals.filter((d) => d.status === ('won' as AssetStatus));
+  const droppedDeals = allDeals.filter((d) => d.status === ('dropped' as AssetStatus));
+
+  const exits: ExitTotals = {
+    won:     { count: wonDeals.length,     value: wonDeals.reduce((s, d) => s + d.topline_cr, 0) },
+    dropped: { count: droppedDeals.length, value: droppedDeals.reduce((s, d) => s + d.topline_cr, 0) },
+  };
+
+  return { stages, exits };
+}
+
 // ─── Recent activity ──────────────────────────────────────────────────────────
 
 export type RecentLog = {
