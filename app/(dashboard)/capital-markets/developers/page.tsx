@@ -1,5 +1,7 @@
 import { Metadata } from 'next';
 import { listDevelopers, getUnassignedTasks, getMyTasks } from '@/lib/queries/developers';
+
+export const dynamic = 'force-dynamic';
 import { getActiveTeamMembers } from '@/lib/queries/team';
 import { getAuthenticatedMember } from '@/lib/auth/member';
 import { DevelopersView } from '@/components/developers/developers-view';

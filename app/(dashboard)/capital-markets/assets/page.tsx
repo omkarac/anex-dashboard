@@ -1,5 +1,7 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
+
+export const dynamic = 'force-dynamic';
 import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/queries/assets';
 import { getLatestUpdatesForAssets } from '@/lib/queries/updates';
 import { getTeamMembers } from '@/lib/queries/tasks';
