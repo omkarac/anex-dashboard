@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Zap, ChevronRight, Sun, Moon } from 'lucide-react';
+import { LocationMap } from '@/components/developers/location-map';
 
 /* ── CSS: glow vars + keyframes ─────────────────────────────────────────────
    Light → brand navy  (#1220B3 = rgb 18,32,179)
@@ -284,6 +285,88 @@ function ActionFAB() {
   );
 }
 
+/* ── Location Map demo section ────────────────────────────────────────────────── */
+
+const MAP_PRESETS = [
+  {
+    label: 'Lodha Group',
+    subtitle: 'South-focused — high-end residential',
+    appetiteMarkets: [
+      'cuffe_parade', 'nariman_point', 'worli', 'lower_parel', 'parel',
+      'bandra_west', 'juhu', 'bkc', 'marine_lines', 'churchgate',
+    ],
+    sharedMarkets: ['worli', 'lower_parel', 'bandra_west', 'bkc'],
+    interestedMarkets: ['worli', 'bkc'],
+  },
+  {
+    label: 'Rustomjee Group',
+    subtitle: 'Western corridor — mid to premium',
+    appetiteMarkets: [
+      'andheri_west', 'jogeshwari', 'goregaon', 'malad', 'kandivali',
+      'borivali', 'dahisar', 'mira_road', 'bhayander', 'santa_cruz_west', 'versova',
+    ],
+    sharedMarkets: ['andheri_west', 'goregaon', 'malad', 'jogeshwari'],
+    interestedMarkets: ['goregaon', 'malad'],
+  },
+  {
+    label: 'Piramal Realty',
+    subtitle: 'Pan-MMR — broad appetite',
+    appetiteMarkets: [
+      'worli', 'lower_parel', 'bkc', 'powai', 'vikhroli', 'ghatkopar',
+      'thane_west', 'ghodbunder_road', 'vashi', 'kharghar', 'belapur',
+      'andheri_east', 'kurla', 'chembur',
+    ],
+    sharedMarkets: ['powai', 'thane_west', 'vashi', 'kurla', 'chembur', 'worli'],
+    interestedMarkets: ['powai', 'thane_west', 'vashi', 'worli'],
+  },
+];
+
+function LocationMapDemoSection() {
+  const [active, setActive] = useState(0);
+  const preset = MAP_PRESETS[active];
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Preset switcher */}
+      <div className="flex flex-wrap gap-2">
+        {MAP_PRESETS.map((p, i) => (
+          <button
+            key={p.label}
+            onClick={() => setActive(i)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors ${
+              i === active
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Map card */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="px-4 pt-4 pb-3 flex items-baseline justify-between">
+          <div>
+            <p className="text-sm font-semibold">{preset.label}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{preset.subtitle}</p>
+          </div>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {preset.appetiteMarkets.length} appetite · {preset.sharedMarkets.length} shared · {preset.interestedMarkets.length} interested
+          </span>
+        </div>
+        <div className="px-4 pb-4">
+          <LocationMap
+            appetiteMarkets={preset.appetiteMarkets}
+            sharedMarkets={preset.sharedMarkets}
+            interestedMarkets={preset.interestedMarkets}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Page ─────────────────────────────────────────────────────────────────────── */
 
 export default function UIDemoPage() {
@@ -350,10 +433,25 @@ export default function UIDemoPage() {
       </div>
 
       {/* Card grid */}
-      <div className="max-w-4xl mx-auto px-6 pb-32">
+      <div className="max-w-4xl mx-auto px-6 pb-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {DEVS.map((d) => <DevCard key={d.id} dev={d} />)}
         </div>
+      </div>
+
+      {/* ── Location Map demo ───────────────────────────────────────────────── */}
+      <div className="max-w-4xl mx-auto px-6 pb-32">
+        <div className="border-t border-border pt-12 mb-8">
+          <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-primary mb-2">Design Preview</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Location Coverage Map</h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl leading-relaxed">
+            Each developer&apos;s investment appetite includes preferred micro-markets visualised as a
+            heatmap layer on the MMR map. Density increases where multiple selected markets cluster;
+            dot markers show precise locations on hover.
+          </p>
+        </div>
+
+        <LocationMapDemoSection />
       </div>
 
       {/* FAB — fixed viewport */}

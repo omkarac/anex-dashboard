@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { upsertDeveloperPreferences } from '@/lib/actions/developers';
 import { MICRO_MARKETS, microMarketsByZone, getMicroMarketLabel } from '@/lib/enums/micro-markets';
+import { LocationMap } from '@/components/developers/location-map';
 import { ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
 import type { DeveloperPreferences } from '@/lib/schemas/developer';
 
@@ -192,11 +193,18 @@ function AppetiteView({
     <div className="flex flex-col gap-5">
       {prefs!.preferred_micro_markets.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2">Preferred Micro-Markets</p>
-          <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="text-xs font-medium text-muted-foreground">Location Coverage</p>
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              {prefs!.preferred_micro_markets.length} micro-markets
+            </span>
+          </div>
+          <LocationMap appetiteMarkets={prefs!.preferred_micro_markets} />
+          {/* Zone breakdown below the map */}
+          <div className="mt-3 flex flex-col gap-1.5">
             {[...marketsBySelectedZone.entries()].map(([zone, labels]) => (
               <div key={zone} className="flex flex-wrap items-baseline gap-1.5">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60 shrink-0 w-28">{zone}</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/50 shrink-0 w-28">{zone}</span>
                 {labels.map((l) => <Chip key={l} label={l} />)}
               </div>
             ))}
