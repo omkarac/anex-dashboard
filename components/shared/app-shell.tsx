@@ -19,6 +19,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   UserCircle,
+  BarChart3,
+  Handshake,
+  ClipboardList,
+  FileText,
+  Star,
+  TrendingUp,
+  TrendingDown,
+  Grid3X3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,9 +52,17 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: React.Ele
     { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
   ],
   sales_marketing: [
-    { href: '/sales-marketing', label: 'Sales & Marketing', icon: Megaphone, exact: true },
+    { href: '/sales-marketing', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { href: '/sales-marketing/channel-partners', label: 'Channel Partners', icon: Handshake },
+    { href: '/sales-marketing/meetings', label: 'Meetings (DAR)', icon: ClipboardList },
+    { href: '/sales-marketing/eod', label: 'EOD Report', icon: FileText },
+    { href: '/sales-marketing/walk-ins', label: 'Walk-ins MIS', icon: UsersRound },
+    { href: '/sales-marketing/priority-leads', label: 'Priority Leads', icon: Star },
+    { href: '/sales-marketing/sm-performance', label: 'SM Performance', icon: BarChart3, adminOnly: true },
+    { href: '/sales-marketing/cp-review', label: 'CP Review', icon: TrendingUp },
+    { href: '/sales-marketing/lost-analysis', label: 'Lost Analysis', icon: TrendingDown },
     { href: '/sales-marketing/logs', label: 'Activity Logs', icon: ScrollText },
-    { href: '/sales-marketing/team', label: 'Team', icon: UsersRound, adminOnly: true },
+    { href: '/sales-marketing/team', label: 'Team', icon: Grid3X3, adminOnly: true },
   ],
 };
 

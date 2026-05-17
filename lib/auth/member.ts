@@ -1,15 +1,14 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import type { TeamMember } from '@/lib/rbac';
 
-export async function getAuthenticatedMember() {
+export async function getAuthenticatedMember(): Promise<TeamMember> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-
   if (!user) redirect('/login');
 
   const service = createServiceClient();
-
   let { data: member } = await service
     .from('team_members')
     .select('id, full_name, email, role, is_active, avatar_url, created_at')
@@ -28,11 +27,9 @@ export async function getAuthenticatedMember() {
       })
       .select('id, full_name, email, role, is_active, avatar_url, created_at')
       .single();
-
     member = inserted;
   }
 
   if (!member || !member.is_active) redirect('/login');
-
-  return member;
+  return member as TeamMember;
 }

@@ -28,7 +28,6 @@ export async function withAudit<T>(params: {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: 'Not authenticated' };
-
     const actorId = user.id;
 
     const service = createServiceClient();

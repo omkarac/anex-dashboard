@@ -193,7 +193,10 @@ export async function updateShareTaskFields(
     },
   });
 
-  if (result.ok) revalidatePath('/capital-markets/developers');
+  if (result.ok) {
+    revalidatePath('/capital-markets/developers');
+    revalidatePath('/capital-markets/assets');
+  }
   return result;
 }
 
@@ -382,6 +385,10 @@ export async function updateShareOutcome(
     },
   });
 
-  if (result.ok) revalidatePath(`/capital-markets/assets/${assetId}`);
+  if (result.ok) {
+    revalidatePath(`/capital-markets/assets/${assetId}`);
+    revalidatePath('/capital-markets/developers');
+    revalidatePath('/capital-markets/assets');
+  }
   return result;
 }

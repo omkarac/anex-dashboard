@@ -2,11 +2,13 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { redirect } from 'next/navigation';
 
+export type TeamMemberRole = 'admin' | 'member' | 'sales_manager' | 'sales_head' | 'sales_admin';
+
 export type TeamMember = {
   id: string;
   full_name: string;
   email: string;
-  role: 'admin' | 'member';
+  role: TeamMemberRole;
   is_active: boolean;
   avatar_url: string | null;
   created_at: string;
@@ -58,4 +60,26 @@ export async function requireAdmin(): Promise<TeamMember> {
 
 export function isAdmin(member: TeamMember) {
   return member.role === 'admin';
+}
+
+export function isSalesRole(member: TeamMember) {
+  return ['admin', 'sales_admin', 'sales_head', 'sales_manager'].includes(member.role);
+}
+
+export function isSalesAdmin(member: TeamMember) {
+  return ['admin', 'sales_admin'].includes(member.role);
+}
+
+export function isSalesHead(member: TeamMember) {
+  return ['admin', 'sales_admin', 'sales_head'].includes(member.role);
+}
+
+export async function requireSalesRole(): Promise<TeamMember> {
+  const member = await currentUser();
+  if (!isSalesRole(member)) redirect('/');
+  return member;
+}
+
+export async function getAuthenticatedMember(): Promise<TeamMember> {
+  return currentUser();
 }
