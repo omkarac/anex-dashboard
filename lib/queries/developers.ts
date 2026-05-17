@@ -385,7 +385,7 @@ export async function getUnassignedTasks(): Promise<UnassignedTask[]> {
     .from('developer_shares')
     .select('id, developer_id, asset_id')
     .in('id', shareIds)
-    .neq('outcome', 'passed')
+    .or('outcome.is.null,outcome.neq.passed')
     .is('deleted_at', null);
 
   if (!shares?.length) return [];
@@ -466,7 +466,7 @@ export async function getMyTasks(userId: string): Promise<MyTask[]> {
       .from('developer_shares')
       .select('id, developer_id, asset_id')
       .in('id', shareIds)
-      .neq('outcome', 'passed')
+      .or('outcome.is.null,outcome.neq.passed')
       .is('deleted_at', null);
 
     if (shares?.length) {
@@ -552,7 +552,7 @@ export async function getOpenTasksForAssets(assetIds: string[]): Promise<AssetOp
     .from('developer_shares')
     .select('id, asset_id')
     .in('asset_id', assetIds)
-    .neq('outcome', 'passed')
+    .or('outcome.is.null,outcome.neq.passed')
     .is('deleted_at', null);
 
   if (!shares?.length) return [];
@@ -583,7 +583,7 @@ export async function getAssetIdsWithOpenTasks(): Promise<string[]> {
   const { data: shares } = await service
     .from('developer_shares')
     .select('id, asset_id')
-    .neq('outcome', 'passed')
+    .or('outcome.is.null,outcome.neq.passed')
     .is('deleted_at', null);
 
   if (!shares?.length) return [];
