@@ -35,16 +35,31 @@ export default async function CapitalMarketsDashboardPage() {
   ]);
 
   return (
-    <div className="flex flex-col h-full overflow-auto">
-      <div className="border-b px-6 py-4 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">Capital Markets</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Pipeline overview — Anex Advisory</p>
+    <div className="flex flex-col h-full overflow-auto bg-slate-50/60">
+      {/* Page header */}
+      <div className="border-b bg-white shrink-0 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-sm font-semibold text-slate-900 tracking-tight">Capital Markets</h1>
+          <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
+            Anex Advisory — Deal Command Center
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+          <div className="relative flex h-1.5 w-1.5">
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+          </div>
+          Live
+        </div>
       </div>
 
+      {/* KPI command bar */}
       <CommandHeader stats={stats} />
 
-      <div className="flex-1 p-6 flex flex-col gap-4">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      {/* Main grid */}
+      <div className="flex-1 p-5 flex flex-col gap-4 min-h-0">
+        {/* Row 1: Pipeline + Attention */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0" style={{ minHeight: '280px' }}>
           <div className="lg:col-span-3">
             <PipelineFunnel stages={pipeline} />
           </div>
@@ -53,6 +68,7 @@ export default async function CapitalMarketsDashboardPage() {
           </div>
         </div>
 
+        {/* Row 2: Aging + Team */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-2">
             <DealAgingWidget aging={aging} />
@@ -62,6 +78,7 @@ export default async function CapitalMarketsDashboardPage() {
           </div>
         </div>
 
+        {/* Row 3: Activity feed */}
         <RecentActivityWidget logs={recentLogs} />
       </div>
     </div>

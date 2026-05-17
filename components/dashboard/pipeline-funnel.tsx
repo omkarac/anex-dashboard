@@ -2,12 +2,10 @@ import Link from 'next/link';
 import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import type { PipelineStage } from '@/lib/queries/dashboard';
 
-const STAGE_CONFIG: Record<string, { bar: string; dot: string }> = {
-  open:       { bar: 'bg-slate-300',   dot: 'bg-slate-400' },
-  evaluating: { bar: 'bg-indigo-400',  dot: 'bg-indigo-500' },
-  screened:   { bar: 'bg-sky-400',     dot: 'bg-sky-500' },
-  won:        { bar: 'bg-emerald-400', dot: 'bg-emerald-500' },
-  dropped:    { bar: 'bg-slate-200',   dot: 'bg-slate-300' },
+const ACTIVE_CONFIG: Record<string, { bar: string; label: string }> = {
+  open:       { bar: 'bg-slate-600/80',   label: 'text-slate-100' },
+  evaluating: { bar: 'bg-indigo-500',     label: 'text-white' },
+  screened:   { bar: 'bg-violet-600',     label: 'text-white' },
 };
 
 function formatCr(v: number): string {
@@ -18,69 +16,88 @@ function formatCr(v: number): string {
 
 export function PipelineFunnel({ stages }: { stages: PipelineStage[] }) {
   const activeStages = stages.filter((s) => s.status !== 'won' && s.status !== 'dropped');
-  const exitStages = stages.filter((s) => s.status === 'won' || s.status === 'dropped');
-  const maxValue = Math.max(...activeStages.map((s) => s.value), 1);
-  const totalActiveValue = activeStages.reduce((sum, s) => sum + s.value, 0);
-  const totalActiveCount = activeStages.reduce((sum, s) => sum + s.count, 0);
+  const exitStages   = stages.filter((s) => s.status === 'won' || s.status === 'dropped');
+  const maxCount      = Math.max(...activeStages.map((s) => s.count), 1);
+  const totalValue    = activeStages.reduce((sum, s) => sum + s.value, 0);
+  const totalCount    = activeStages.reduce((sum, s) => sum + s.count, 0);
 
   return (
-    <div className="border rounded-md p-5 flex flex-col gap-5 h-full">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-400">
-          Pipeline
+    <div className="border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          Pipeline Funnel
         </h2>
-        <span className="text-[11px] text-slate-400 tabular-nums">
-          {totalActiveCount} active · {formatCr(totalActiveValue)}
+        <span className="text-xs text-slate-400 tabular-nums">
+          <span className="font-semibold text-slate-700">{totalCount}</span> active
+          <span className="text-slate-300 mx-1.5">·</span>
+          <span className="font-semibold text-slate-700">{formatCr(totalValue)}</span>
         </span>
       </div>
 
-      <div className="flex flex-col gap-4">
+      {/* Funnel */}
+      <div className="flex flex-col gap-2 px-5 pb-4 flex-1">
         {activeStages.map(({ status, count, value }) => {
-          const cfg = STAGE_CONFIG[status];
-          const barPct = value === 0 ? 0 : Math.max(3, (value / maxValue) * 100);
+          const cfg = ACTIVE_CONFIG[status] ?? { bar: 'bg-slate-400', label: 'text-white' };
+          // Minimum 18% so there's always readable bar; scale up from there
+          const widthPct = count === 0 ? 8 : Math.max(18, (count / maxCount) * 100);
+          const marginPct = (100 - widthPct) / 2;
 
           return (
             <Link
               key={status}
               href={`/capital-markets/assets?status=${status}`}
-              className="group flex flex-col gap-1.5"
+              className="block group"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+              {/* Stage label row */}
+              <div className="flex items-center justify-between mb-1 px-0.5">
+                <span className="text-[11px] font-medium text-slate-500 group-hover:text-slate-800 transition-colors">
                   {ASSET_STATUS_LABELS[status]}
                 </span>
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="tabular-nums">{formatCr(value)}</span>
-                  <span className="tabular-nums font-semibold text-slate-900 w-5 text-right">{count}</span>
+                <div className="flex items-center gap-3 text-[11px] text-slate-400 tabular-nums">
+                  <span>{formatCr(value)}</span>
+                  <span className="font-bold text-slate-700 text-sm w-5 text-right">{count}</span>
                 </div>
               </div>
-              <div className="h-[5px] rounded-full bg-slate-100 overflow-hidden">
+
+              {/* Funnel bar — centered, proportional */}
+              <div className="relative h-8">
                 <div
-                  className={`h-full rounded-full transition-all ${cfg.bar}`}
-                  style={{ width: `${barPct}%` }}
-                />
+                  className={`h-full rounded-md ${cfg.bar} group-hover:brightness-110 transition-all duration-300 flex items-center`}
+                  style={{ marginLeft: `${marginPct}%`, width: `${widthPct}%` }}
+                >
+                  {/* Subtle inner highlight */}
+                  <div className="absolute inset-x-0 top-0 h-px rounded-t-md bg-white/20" />
+                </div>
               </div>
             </Link>
           );
         })}
+
+        {activeStages.every((s) => s.count === 0) && (
+          <p className="text-xs text-slate-400 text-center py-6">No active deals in pipeline.</p>
+        )}
       </div>
 
-      <div className="border-t border-dashed border-slate-200 pt-3 flex items-center gap-5">
+      {/* Exit stages footer */}
+      <div className="border-t border-dashed border-slate-100 px-5 py-3 flex items-center gap-5 flex-wrap bg-slate-50/50">
         {exitStages.map(({ status, count, value }) => {
-          const cfg = STAGE_CONFIG[status];
+          const isWon = status === 'won';
           return (
             <Link
               key={status}
               href={`/capital-markets/assets?status=${status}`}
               className="flex items-center gap-2 group"
             >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
-              <span className="text-xs text-slate-500 group-hover:text-slate-700 transition-colors">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${isWon ? 'bg-emerald-400' : 'bg-slate-300'}`}
+              />
+              <span className="text-[11px] text-slate-500 group-hover:text-slate-700 transition-colors">
                 {ASSET_STATUS_LABELS[status]}
               </span>
-              <span className="text-xs font-semibold tabular-nums text-slate-700">{count}</span>
+              <span className="text-[11px] font-semibold tabular-nums text-slate-600">{count}</span>
               {value > 0 && (
-                <span className="text-xs text-slate-400">· {formatCr(value)}</span>
+                <span className="text-[11px] text-slate-400 tabular-nums">· {formatCr(value)}</span>
               )}
             </Link>
           );

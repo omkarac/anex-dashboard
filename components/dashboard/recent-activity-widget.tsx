@@ -1,42 +1,91 @@
 import Link from 'next/link';
-import { formatTimeAgo } from '@/lib/utils/formatters';
 import type { RecentLog } from '@/lib/queries/dashboard';
 
-const ACTION_CONFIG: Record<string, { label: string; classes: string }> = {
-  create:        { label: 'Added',    classes: 'text-emerald-700 bg-emerald-50' },
-  update:        { label: 'Updated',  classes: 'text-sky-700 bg-sky-50' },
-  status_change: { label: 'Status',   classes: 'text-indigo-700 bg-indigo-50' },
-  share:         { label: 'Shared',   classes: 'text-amber-700 bg-amber-50' },
-  convert:       { label: 'Mandate',  classes: 'text-violet-700 bg-violet-50' },
-  delete:        { label: 'Removed',  classes: 'text-rose-700 bg-rose-50' },
-  delete_log:    { label: 'Log Del.', classes: 'text-slate-500 bg-slate-100' },
+const ACTION_CONFIG: Record<
+  string,
+  { label: string; badge: string; dot: string }
+> = {
+  create:        { label: 'Added',    badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
+  update:        { label: 'Updated',  badge: 'bg-sky-100 text-sky-700',         dot: 'bg-sky-400' },
+  status_change: { label: 'Status',   badge: 'bg-indigo-100 text-indigo-700',   dot: 'bg-indigo-400' },
+  share:         { label: 'Shared',   badge: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400' },
+  convert:       { label: 'Mandate',  badge: 'bg-violet-100 text-violet-700',   dot: 'bg-violet-400' },
+  delete:        { label: 'Removed',  badge: 'bg-rose-100 text-rose-700',       dot: 'bg-rose-400' },
+  delete_log:    { label: 'Log Del.', badge: 'bg-slate-100 text-slate-500',     dot: 'bg-slate-300' },
 };
 
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+type Group = { label: string; items: RecentLog[] };
+
+function groupLogs(logs: RecentLog[]): Group[] {
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const yestStr = new Date(now.getTime() - 86_400_000).toDateString();
+
+  const map = new Map<string, RecentLog[]>();
+  for (const log of logs) {
+    const d = new Date(log.created_at).toDateString();
+    const label = d === todayStr ? 'Today' : d === yestStr ? 'Yesterday' : 'Earlier';
+    map.set(label, [...(map.get(label) ?? []), log]);
+  }
+
+  return (['Today', 'Yesterday', 'Earlier'] as const)
+    .filter((l) => map.has(l))
+    .map((label) => ({ label, items: map.get(label)! }));
+}
+
 function ActivityRow({ log }: { log: RecentLog }) {
-  const ac = ACTION_CONFIG[log.action] ?? { label: log.action, classes: 'text-slate-500 bg-slate-100' };
-  const href = log.entity_type === 'asset' ? `/capital-markets/assets/${log.entity_id}` : null;
+  const ac = ACTION_CONFIG[log.action] ?? {
+    label: log.action,
+    badge: 'bg-slate-100 text-slate-500',
+    dot: 'bg-slate-300',
+  };
+  const href =
+    log.entity_type === 'asset' ? `/capital-markets/assets/${log.entity_id}` : null;
+  const initial = (log.actor?.full_name ?? '?')[0].toUpperCase();
 
   return (
-    <div className="flex items-start gap-3 py-3">
-      <div className="h-6 w-6 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-semibold text-white shrink-0 mt-0.5">
-        {(log.actor?.full_name ?? '?')[0].toUpperCase()}
+    <div className="flex items-start gap-3 py-2.5">
+      {/* Actor avatar with action color dot */}
+      <div className="relative shrink-0 mt-0.5">
+        <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-bold text-white">
+          {initial}
+        </div>
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${ac.dot}`}
+        />
       </div>
+
+      {/* Content */}
       <div className="flex-1 min-w-0">
         {href ? (
           <Link
             href={href}
-            className="text-xs font-medium text-slate-900 hover:text-indigo-700 transition-colors leading-snug block"
+            className="text-xs font-medium text-slate-900 hover:text-indigo-700 transition-colors leading-snug block truncate"
           >
             {log.summary}
           </Link>
         ) : (
-          <p className="text-xs text-slate-800 leading-snug">{log.summary}</p>
+          <p className="text-xs text-slate-800 leading-snug truncate">{log.summary}</p>
         )}
         <p className="text-[11px] text-slate-400 mt-0.5">
-          {log.actor?.full_name ?? 'System'} · {formatTimeAgo(log.created_at)}
+          {log.actor?.full_name ?? 'System'}
+          <span className="text-slate-200 mx-1">·</span>
+          {relativeTime(log.created_at)}
         </p>
       </div>
-      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${ac.classes}`}>
+
+      {/* Action badge */}
+      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${ac.badge}`}>
         {ac.label}
       </span>
     </div>
@@ -44,33 +93,66 @@ function ActivityRow({ log }: { log: RecentLog }) {
 }
 
 export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
-  const left = logs.slice(0, 5);
-  const right = logs.slice(5);
+  const groups = groupLogs(logs);
 
   return (
-    <div className="border rounded-md p-5 flex flex-col gap-4">
+    <div className="border border-slate-200 rounded-xl bg-white shadow-sm p-5 flex flex-col gap-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-400">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
           Recent Activity
         </h2>
         <Link
           href="/capital-markets/logs"
-          className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+          className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 transition-colors"
         >
           View all →
         </Link>
       </div>
 
       {logs.length === 0 ? (
-        <p className="text-xs text-slate-400 text-center py-6">No activity recorded yet.</p>
+        <p className="text-xs text-slate-400 text-center py-8">No activity recorded yet.</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-          <div className="flex flex-col divide-y divide-slate-100 lg:pr-5">
-            {left.map((log) => <ActivityRow key={log.id} log={log} />)}
+          {/* Left column — first group or all on mobile */}
+          <div className="lg:pr-5">
+            {groups.map((group, gi) => {
+              const colLogs = gi === 0 ? group.items.slice(0, 5) : [];
+              if (colLogs.length === 0 && gi !== 0) return null;
+              return (
+                <div key={group.label}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-300 mb-1 pt-1">
+                    {group.label}
+                  </p>
+                  <div className="divide-y divide-slate-100">
+                    {(gi === 0 ? colLogs : group.items).map((log) => (
+                      <ActivityRow key={log.id} log={log} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          {right.length > 0 && (
-            <div className="flex flex-col divide-y divide-slate-100 lg:pl-5">
-              {right.map((log) => <ActivityRow key={log.id} log={log} />)}
+
+          {/* Right column — overflow logs on lg+ */}
+          {logs.length > 5 && (
+            <div className="hidden lg:block lg:pl-5">
+              {(() => {
+                const overflowLogs = logs.slice(5);
+                const overflowGroups = groupLogs(overflowLogs);
+                return overflowGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-300 mb-1 pt-1">
+                      {group.label}
+                    </p>
+                    <div className="divide-y divide-slate-100">
+                      {group.items.map((log) => (
+                        <ActivityRow key={log.id} log={log} />
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </div>
