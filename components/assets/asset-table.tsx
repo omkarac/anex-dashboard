@@ -22,19 +22,22 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toCr } from '@/lib/utils/formatters';
 import { UnassignedFAB } from '@/components/developers/unassigned-fab';
 
-const GLOW_STYLES = `
-  :root { --aw1:18,32,179; --aw2:40,60,210; --ah1:0.12; --ah2:0.30; }
-  .dark  { --aw1:72,98,232; --aw2:100,130,255; --ah1:0.18; --ah2:0.42; }
+// Column widths — must match between header and body rows
+const GRID_COLS = '196px 128px 138px 88px 108px 88px 78px 98px 88px minmax(172px,1fr) 88px 78px';
+
+const ROW_STYLES = `
+  :root { --aw1:18,32,179; --aw2:40,60,210; --ah1:0.14; --ah2:0.42; }
+  .dark  { --aw1:72,98,232; --aw2:100,130,255; --ah1:0.20; --ah2:0.52; }
   @keyframes asset-breathe {
-    0%,100% { box-shadow: inset 3px 0 0 rgba(var(--aw1),var(--ah1)); }
-    50%     { box-shadow: inset 3px 0 0 rgba(var(--aw2),var(--ah2)); }
+    0%,100% {
+      box-shadow: inset 3px 0 0 rgba(var(--aw1),var(--ah1));
+    }
+    50% {
+      box-shadow: inset 3px 0 0 rgba(var(--aw2),var(--ah2)),
+                  0 0 28px -10px rgba(var(--aw1),0.22);
+    }
   }
-  @keyframes detail-in {
-    from { opacity:0; }
-    to   { opacity:1; }
-  }
-  .asset-row-urgent { animation: asset-breathe 2.5s ease-in-out infinite; }
-  .asset-detail-row { animation: detail-in 0.12s ease-out; }
+  .asset-row-urgent { animation: asset-breathe 2.6s ease-in-out infinite; }
   .asset-task-bdg {
     display:inline-flex; align-items:center; padding:1px 6px;
     border-radius:999px; font-size:10px; font-weight:600; line-height:1.6;
@@ -186,6 +189,7 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
   const searchParams = useSearchParams();
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
 
   const unassignedByAsset = useMemo(() => {
     const m = new Map<string, number>();
@@ -236,116 +240,135 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <div className="flex flex-col gap-3">
-      <style>{GLOW_STYLES}</style>
+      <style>{ROW_STYLES}</style>
+
       <div className="rounded-lg border overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b bg-muted/40">
-                {hg.headers.map((h) => (
-                  <th
-                    key={h.id}
-                    className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap"
+        <div style={{ minWidth: '1100px' }}>
+
+          {/* Header */}
+          {table.getHeaderGroups().map((hg) => (
+            <div
+              key={hg.id}
+              className="grid px-3 py-2.5 gap-x-3 border-b bg-muted/40"
+              style={{ gridTemplateColumns: GRID_COLS }}
+            >
+              {hg.headers.map((h) => (
+                <div
+                  key={h.id}
+                  className="text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap"
+                >
+                  {flexRender(h.column.columnDef.header, h.getContext())}
+                </div>
+              ))}
+            </div>
+          ))}
+
+          {/* Rows */}
+          {table.getRowModel().rows.map((row, i) => {
+            const isUrgent = unassignedByAsset.has(row.original.id);
+            const tasks = openTasksByAsset.get(row.original.id) ?? [];
+            const isExpanded = expandedAsset === row.original.id && tasks.length > 0;
+            const hasTasks = tasks.length > 0;
+
+            const totalOpen = tasks.length;
+            const dueCount = tasks.filter((t) => t.due_date && t.due_date <= today).length;
+            const top3 = [...tasks]
+              .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1))
+              .slice(0, 3);
+
+            return (
+              <div
+                key={row.id}
+                className={[
+                  'border-b transition-colors duration-150',
+                  isExpanded
+                    ? 'bg-muted/25'
+                    : i % 2 !== 0
+                    ? 'bg-muted/[0.06] hover:bg-muted/20'
+                    : 'hover:bg-muted/15',
+                  isUrgent ? 'asset-row-urgent' : '',
+                ].join(' ')}
+                onMouseEnter={() => showRow(row.original.id)}
+                onMouseLeave={hideRow}
+              >
+                {/* Main row */}
+                <div
+                  className="grid px-3 py-2.5 gap-x-3 items-center"
+                  style={{ gridTemplateColumns: GRID_COLS }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <div key={cell.id} className="min-w-0 text-sm">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Expandable task detail — grid-template-rows trick for smooth height */}
+                {hasTasks && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateRows: isExpanded ? '1fr' : '0fr',
+                      transition: 'grid-template-rows 0.28s cubic-bezier(0.16,1,0.3,1)',
+                    }}
                   >
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row, i) => {
-              const isUrgent = unassignedByAsset.has(row.original.id);
-              const tasks = openTasksByAsset.get(row.original.id) ?? [];
-              const isExpanded = expandedAsset === row.original.id && tasks.length > 0;
+                    <div style={{ overflow: 'hidden' }}>
+                      <div className="px-4 pt-2 pb-3 flex items-center gap-5 flex-wrap border-t border-border/30">
 
-              const totalOpen = tasks.length;
-              const dueCount = tasks.filter((t) => t.due_date && t.due_date <= today).length;
-              const top3 = [...tasks]
-                .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1))
-                .slice(0, 3);
-
-              return (
-                <React.Fragment key={row.id}>
-                  <tr
-                    className={`border-b transition-colors ${isExpanded ? 'bg-muted/20' : `hover:bg-muted/30 ${i % 2 !== 0 ? 'bg-muted/10' : ''}`} ${isUrgent ? 'asset-row-urgent' : ''}`}
-                    onMouseEnter={() => showRow(row.original.id)}
-                    onMouseLeave={hideRow}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-2.5">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {isExpanded && (
-                    <tr
-                      className="asset-detail-row border-b bg-muted/10"
-                      onMouseEnter={() => showRow(row.original.id)}
-                      onMouseLeave={hideRow}
-                    >
-                      <td colSpan={columns.length} className="px-4 py-0">
-                        <div className="py-2.5 flex items-center gap-6 flex-wrap">
-
-                          {/* Stat pills */}
-                          <div className="flex items-center gap-3 shrink-0">
+                        {/* Stat pills */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-xs font-bold tabular-nums">{totalOpen}</span>
+                            <span className="text-xs text-muted-foreground">open</span>
+                          </span>
+                          {dueCount > 0 && (
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="text-xs font-bold tabular-nums">{totalOpen}</span>
-                              <span className="text-xs text-muted-foreground">open</span>
+                              <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                              <span className="text-xs font-bold tabular-nums text-destructive">{dueCount}</span>
+                              <span className="text-xs text-destructive/80">due</span>
                             </span>
-                            {dueCount > 0 && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                                <span className="text-xs font-bold tabular-nums text-destructive">{dueCount}</span>
-                                <span className="text-xs text-destructive/80">due</span>
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Divider */}
-                          <span className="text-border select-none">·</span>
-
-                          {/* Top tasks */}
-                          <div className="flex items-center gap-2 flex-wrap min-w-0">
-                            {top3.map((t) => (
-                              <span
-                                key={t.id}
-                                className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-0.5 text-xs"
-                              >
-                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${PRIORITY_DOT[t.priority] ?? 'bg-muted-foreground/40'}`} />
-                                <span className="truncate max-w-[160px]">{t.title}</span>
-                                <span className="text-muted-foreground/60 text-[10px] shrink-0">{PRIORITY_LABEL[t.priority]}</span>
-                                {t.due_date && t.due_date <= today && (
-                                  <span className="text-destructive text-[10px] font-semibold shrink-0">due</span>
-                                )}
-                              </span>
-                            ))}
-                            {tasks.length > 3 && (
-                              <span className="text-[11px] text-muted-foreground">+{tasks.length - 3} more</span>
-                            )}
-                          </div>
-
+                          )}
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-            {table.getRowModel().rows.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-12 text-center text-muted-foreground">
-                  No assets found matching the current filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+
+                        <span className="text-border select-none">·</span>
+
+                        {/* Task pills */}
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          {top3.map((t) => (
+                            <span
+                              key={t.id}
+                              className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-0.5 text-xs"
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${PRIORITY_DOT[t.priority] ?? 'bg-muted-foreground/40'}`} />
+                              <span className="truncate max-w-[160px]">{t.title}</span>
+                              <span className="text-muted-foreground/60 text-[10px] shrink-0">{PRIORITY_LABEL[t.priority]}</span>
+                              {t.due_date && t.due_date <= today && (
+                                <span className="text-destructive text-[10px] font-semibold shrink-0">due</span>
+                              )}
+                            </span>
+                          ))}
+                          {tasks.length > 3 && (
+                            <span className="text-[11px] text-muted-foreground">+{tasks.length - 3} more</span>
+                          )}
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {table.getRowModel().rows.length === 0 && (
+            <div className="px-3 py-12 text-center text-muted-foreground text-sm">
+              No assets found matching the current filters.
+            </div>
+          )}
+
+        </div>
       </div>
 
       <div className="flex items-center justify-between px-1">
