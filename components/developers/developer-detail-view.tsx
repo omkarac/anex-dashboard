@@ -148,7 +148,7 @@ function ShareRow({ share, members }: { share: DeveloperShareFull; members: Team
   const totalCount = share.tasks.length;
 
   return (
-    <div className="rounded-xl border p-4 flex flex-col gap-0">
+    <div id={`share-${share.id}`} className="rounded-xl border p-4 flex flex-col gap-0 scroll-mt-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <Link

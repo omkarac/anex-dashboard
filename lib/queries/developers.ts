@@ -407,70 +407,118 @@ export async function getUnassignedTasks(): Promise<UnassignedTask[]> {
 
 export type MyTask = {
   id: string;
-  share_id: string;
+  source: 'share' | 'asset';
+  share_id: string | null;
   title: string;
   task_type: string | null;
   priority: string;
   status: string;
   due_date: string | null;
-  developer_id: string;
-  developer_name: string;
+  developer_id: string | null;
+  developer_name: string | null;
   asset_id: string;
   asset_name: string;
+  // Deep link: share tasks → developer page #share-{id}, asset tasks → asset page
+  link: string;
 };
 
 export async function getMyTasks(userId: string): Promise<MyTask[]> {
   if (!userId) return [];
   const service = createServiceClient();
 
-  const { data: tasks } = await service
-    .from('share_tasks')
-    .select('id, share_id, title, task_type, priority, status, due_date')
-    .eq('assigned_to', userId)
-    .neq('status', 'done')
-    .is('deleted_at', null)
-    .order('created_at');
-
-  if (!tasks?.length) return [];
-
-  const shareIds = [...new Set(tasks.map((t) => t.share_id))];
-  const { data: shares } = await service
-    .from('developer_shares')
-    .select('id, developer_id, asset_id')
-    .in('id', shareIds)
-    .is('deleted_at', null);
-
-  if (!shares?.length) return [];
-
-  const devIds = [...new Set(shares.map((s) => s.developer_id))];
-  const assetIds = [...new Set(shares.map((s) => s.asset_id))];
-
-  const [{ data: devs }, { data: assets }] = await Promise.all([
-    service.from('developers').select('id, name').in('id', devIds),
-    service.from('assets').select('id, property_name').in('id', assetIds),
+  // Fetch from both task tables in parallel
+  const [{ data: shareTasks }, { data: assetTasks }] = await Promise.all([
+    service
+      .from('share_tasks')
+      .select('id, share_id, title, task_type, priority, status, due_date')
+      .eq('assigned_to', userId)
+      .not('status', 'in', '("done","cancelled")')
+      .is('deleted_at', null)
+      .order('created_at'),
+    service
+      .from('tasks')
+      .select('id, asset_id, title, priority, status, due_date')
+      .eq('assigned_to', userId)
+      .not('status', 'in', '("done","cancelled")')
+      .is('deleted_at', null)
+      .order('created_at'),
   ]);
 
-  const shareMap = new Map(shares.map((s) => [s.id, s]));
-  const devMap = new Map((devs ?? []).map((d) => [d.id, d.name]));
-  const assetMap = new Map((assets ?? []).map((a) => [a.id, a.property_name]));
+  const results: MyTask[] = [];
 
-  return tasks.flatMap((t) => {
-    const share = shareMap.get(t.share_id);
-    if (!share) return [];
-    return [{
-      id: t.id,
-      share_id: t.share_id,
-      title: t.title,
-      task_type: t.task_type ?? null,
-      priority: t.priority,
-      status: t.status,
-      due_date: t.due_date ?? null,
-      developer_id: share.developer_id,
-      developer_name: devMap.get(share.developer_id) ?? 'Unknown',
-      asset_id: share.asset_id,
-      asset_name: assetMap.get(share.asset_id) ?? 'Unknown',
-    }];
-  });
+  // ── Share tasks ──────────────────────────────────────────────────────────────
+  if (shareTasks?.length) {
+    const shareIds = [...new Set(shareTasks.map((t) => t.share_id))];
+    const { data: shares } = await service
+      .from('developer_shares')
+      .select('id, developer_id, asset_id')
+      .in('id', shareIds)
+      .is('deleted_at', null);
+
+    if (shares?.length) {
+      const devIds = [...new Set(shares.map((s) => s.developer_id))];
+      const assetIds = [...new Set(shares.map((s) => s.asset_id))];
+      const [{ data: devs }, { data: shareAssets }] = await Promise.all([
+        service.from('developers').select('id, name').in('id', devIds),
+        service.from('assets').select('id, property_name').in('id', assetIds),
+      ]);
+      const shareMap = new Map(shares.map((s) => [s.id, s]));
+      const devMap = new Map((devs ?? []).map((d) => [d.id, d.name]));
+      const assetMap = new Map((shareAssets ?? []).map((a) => [a.id, a.property_name]));
+
+      for (const t of shareTasks) {
+        const share = shareMap.get(t.share_id);
+        if (!share) continue;
+        results.push({
+          id: t.id,
+          source: 'share',
+          share_id: t.share_id,
+          title: t.title,
+          task_type: t.task_type ?? null,
+          priority: t.priority,
+          status: t.status,
+          due_date: t.due_date ?? null,
+          developer_id: share.developer_id,
+          developer_name: devMap.get(share.developer_id) ?? 'Unknown',
+          asset_id: share.asset_id,
+          asset_name: assetMap.get(share.asset_id) ?? 'Unknown',
+          link: `/capital-markets/developers/${share.developer_id}#share-${t.share_id}`,
+        });
+      }
+    }
+  }
+
+  // ── Asset tasks ───────────────────────────────────────────────────────────────
+  if (assetTasks?.length) {
+    const assetIds = [...new Set(assetTasks.map((t) => t.asset_id))];
+    const { data: assets } = await service
+      .from('assets')
+      .select('id, property_name')
+      .in('id', assetIds)
+      .is('deleted_at', null);
+
+    const assetMap = new Map((assets ?? []).map((a) => [a.id, a.property_name]));
+
+    for (const t of assetTasks) {
+      results.push({
+        id: t.id,
+        source: 'asset',
+        share_id: null,
+        title: t.title,
+        task_type: null,
+        priority: t.priority,
+        status: t.status,
+        due_date: t.due_date ?? null,
+        developer_id: null,
+        developer_name: null,
+        asset_id: t.asset_id,
+        asset_name: assetMap.get(t.asset_id) ?? 'Unknown',
+        link: `/capital-markets/assets/${t.asset_id}`,
+      });
+    }
+  }
+
+  return results;
 }
 
 export type AssetOpenTask = {

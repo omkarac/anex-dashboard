@@ -103,38 +103,41 @@ function MyTaskRow({ task }: { task: MyTask }) {
   const due = formatDue(task.due_date);
 
   return (
-    <div className="px-4 py-3 hover:bg-muted/40 transition-colors">
+    <Link
+      href={task.link}
+      className="block px-4 py-3 hover:bg-muted/40 transition-colors group/row"
+    >
       <div className="flex items-start gap-2.5">
         {/* Priority dot */}
         <span className={`mt-1 h-2 w-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority] ?? 'bg-muted-foreground/30'}`} />
         <div className="flex-1 min-w-0">
           {/* Title + status */}
           <div className="flex items-baseline justify-between gap-2">
-            <p className="text-xs font-semibold truncate leading-tight">{task.title}</p>
+            <p className="text-xs font-semibold truncate leading-tight group-hover/row:underline underline-offset-2">
+              {task.title}
+            </p>
             <span className={`text-[10px] font-medium shrink-0 ${STATUS_CLS[task.status] ?? 'text-muted-foreground/60'}`}>
               {STATUS_LABEL[task.status] ?? task.status}
             </span>
           </div>
           {/* Context row */}
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <Link
-              href={`/capital-markets/developers/${task.developer_id}`}
-              className="text-[10px] text-muted-foreground font-medium hover:text-foreground transition-colors truncate max-w-[90px]"
-            >
-              {task.developer_name}
-            </Link>
-            <span className="text-muted-foreground/40 text-[10px]">·</span>
-            <Link
-              href={`/capital-markets/assets/${task.asset_id}`}
-              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors truncate max-w-[90px]"
-            >
+            {task.source === 'share' && task.developer_name ? (
+              <>
+                <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[90px]">
+                  {task.developer_name}
+                </span>
+                <span className="text-muted-foreground/40 text-[10px]">·</span>
+              </>
+            ) : null}
+            <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
               {task.asset_name}
-            </Link>
+            </span>
             {due && (
               <>
                 <span className="text-muted-foreground/40 text-[10px]">·</span>
                 <span className={`text-[10px] font-medium ${due.overdue ? 'text-destructive' : 'text-muted-foreground/70'}`}>
-                  {due.overdue ? 'Overdue' : ''} {due.label}
+                  {due.overdue ? 'Overdue · ' : ''}{due.label}
                 </span>
               </>
             )}
@@ -145,7 +148,7 @@ function MyTaskRow({ task }: { task: MyTask }) {
           {PRIORITY_LABEL[task.priority] ?? task.priority}
         </span>
       </div>
-    </div>
+    </Link>
   );
 }
 
