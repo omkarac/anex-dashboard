@@ -291,7 +291,12 @@ export type BoardStage = {
 
 export type ExitTotals = { won: { count: number; value: number }; dropped: { count: number; value: number } };
 
-export type PipelineBoard = { stages: BoardStage[]; exits: ExitTotals };
+export type PipelineBoard = {
+  stages: BoardStage[];
+  exits: ExitTotals;
+  hotDeals: BoardDeal[];
+  staleDeals: BoardDeal[];
+};
 
 function urgencyScore(d: BoardDeal): number {
   if (d.temperature === 'hot' && d.is_unassigned) return 100;
@@ -357,7 +362,7 @@ export async function getPipelineBoard(): Promise<PipelineBoard> {
     return { status, count: bucket.length, value, top: bucket.slice(0, 3), overflow: Math.max(0, bucket.length - 3) };
   });
 
-  const wonDeals    = allDeals.filter((d) => d.status === ('won' as AssetStatus));
+  const wonDeals     = allDeals.filter((d) => d.status === ('won' as AssetStatus));
   const droppedDeals = allDeals.filter((d) => d.status === ('dropped' as AssetStatus));
 
   const exits: ExitTotals = {
@@ -365,7 +370,17 @@ export async function getPipelineBoard(): Promise<PipelineBoard> {
     dropped: { count: droppedDeals.length, value: droppedDeals.reduce((s, d) => s + d.topline_cr, 0) },
   };
 
-  return { stages, exits };
+  const hotDeals = allDeals
+    .filter((d) => d.temperature === 'hot' && ACTIVE.includes(d.status))
+    .sort((a, b) => urgencyScore(b) - urgencyScore(a))
+    .slice(0, 10);
+
+  const staleDeals = allDeals
+    .filter((d) => d.days_since_activity >= 30 && ACTIVE.includes(d.status))
+    .sort((a, b) => b.days_since_activity - a.days_since_activity)
+    .slice(0, 8);
+
+  return { stages, exits, hotDeals, staleDeals };
 }
 
 // ─── Recent activity ──────────────────────────────────────────────────────────

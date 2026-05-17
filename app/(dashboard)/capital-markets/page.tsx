@@ -8,11 +8,7 @@ import {
   getRecentActivity,
 } from '@/lib/queries/dashboard';
 import { CommandHeader } from '@/components/dashboard/command-header';
-import { PipelineBoardWidget } from '@/components/dashboard/pipeline-board';
-import { AttentionPanel } from '@/components/dashboard/attention-panel';
-import { DealAgingWidget } from '@/components/dashboard/deal-aging';
-import { TeamBandwidth } from '@/components/dashboard/team-bandwidth';
-import { RecentActivityWidget } from '@/components/dashboard/recent-activity-widget';
+import { DashboardWorkspace } from '@/components/dashboard/workspace/DashboardWorkspace';
 
 export const metadata: Metadata = { title: 'Capital Markets — Anex' };
 
@@ -30,6 +26,8 @@ export default async function CapitalMarketsDashboardPage() {
     getPipelineBoard().catch(() => ({
       stages: [],
       exits: { won: { count: 0, value: 0 }, dropped: { count: 0, value: 0 } },
+      hotDeals: [],
+      staleDeals: [],
     })),
     getDealAging().catch(() => ({ under7: 0, d7to30: 0, d30to60: 0, over60: 0 })),
     getAttentionSignals().catch(() => []),
@@ -38,7 +36,7 @@ export default async function CapitalMarketsDashboardPage() {
   ]);
 
   return (
-    <div className="flex flex-col h-full overflow-auto bg-background">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Page header */}
       <div className="border-b bg-card shrink-0 px-6 py-4 flex items-center justify-between">
         <div>
@@ -59,30 +57,9 @@ export default async function CapitalMarketsDashboardPage() {
       {/* KPI command bar */}
       <CommandHeader stats={stats} />
 
-      {/* Main grid */}
-      <div className="flex-1 p-5 flex flex-col gap-4">
-        {/* Row 1: Pipeline board — full-width hero */}
-        <PipelineBoardWidget board={board} />
-
-        {/* Row 2: Attention + Aging */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-3">
-            <AttentionPanel signals={signals} />
-          </div>
-          <div className="lg:col-span-2">
-            <DealAgingWidget aging={aging} />
-          </div>
-        </div>
-
-        {/* Row 3: Team + Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-2">
-            <TeamBandwidth workload={workload} />
-          </div>
-          <div className="lg:col-span-3">
-            <RecentActivityWidget logs={recentLogs} />
-          </div>
-        </div>
+      {/* Customizable workspace */}
+      <div className="flex-1 overflow-hidden">
+        <DashboardWorkspace data={{ stats, board, aging, signals, workload, recentLogs }} />
       </div>
     </div>
   );
