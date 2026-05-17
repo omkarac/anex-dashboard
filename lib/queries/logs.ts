@@ -16,7 +16,15 @@ export type LogEntry = {
 
 // Entity types per vertical. Expand SM_ENTITY_TYPES as S&M features are built.
 export const CM_ENTITY_TYPES = ['asset', 'developer', 'task', 'update', 'developer_share', 'engagement'];
-export const SM_ENTITY_TYPES: string[] = [];
+export const SM_ENTITY_TYPES = [
+  'sales_project',
+  'channel_partner',
+  'client',
+  'walk_in',
+  'cp_meeting',
+  'eod_report',
+  'project_sm_assignment',
+];
 
 export type LogFilters = {
   q?: string;
