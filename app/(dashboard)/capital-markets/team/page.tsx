@@ -4,10 +4,11 @@ import { listTeamMembers } from '@/lib/queries/team';
 import { TeamPanel } from '@/components/team/team-panel';
 
 export const metadata: Metadata = { title: 'Team — Anex' };
+export const dynamic = 'force-dynamic';
 
 export default async function TeamPage() {
   const me = await getAuthenticatedMember();
-  const isAdmin = me.role === 'admin';
+  const isAdmin = ['admin', 'sales_admin', 'sales_head'].includes(me.role);
   const members = await listTeamMembers().catch(() => []);
 
   return (

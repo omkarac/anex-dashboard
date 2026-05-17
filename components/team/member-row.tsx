@@ -24,6 +24,14 @@ const DEPARTMENT_BADGE: Record<NonNullable<MemberDepartment>, string> = {
   both: 'bg-teal-50 text-teal-700 border border-teal-200',
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  member: 'Member',
+  sales_manager: 'Sales Manager',
+  sales_head: 'Sales Head',
+  sales_admin: 'Sales Admin',
+};
+
 export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) {
   const [isPending, startTransition] = useTransition();
   const [editingName, setEditingName] = useState(false);
@@ -31,9 +39,9 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
   const router = useRouter();
 
   const isSelf = member.id === currentUserId;
-  const canEdit = isCurrentUserAdmin || isSelf;
+  const canEditName = isCurrentUserAdmin || isSelf;
 
-  function saveRole(role: 'admin' | 'member') {
+  function saveRole(role: string) {
     startTransition(async () => {
       await updateMemberRole(member.id, role);
       router.refresh();
@@ -47,7 +55,7 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
     });
   }
 
-  function toggleActive(active: boolean) {
+  function saveStatus(active: boolean) {
     startTransition(async () => {
       await setMemberActive(member.id, active);
       router.refresh();
@@ -65,6 +73,7 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
 
   return (
     <tr className={`group border-b last:border-0 transition-colors hover:bg-muted/20 ${!member.is_active ? 'opacity-50' : ''}`}>
+
       {/* Avatar + Name */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
@@ -72,24 +81,22 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
             {member.full_name[0]?.toUpperCase()}
           </div>
           <div>
-            {editingName && canEdit ? (
-              <div className="flex items-center gap-1.5">
-                <Input
-                  autoFocus
-                  value={nameValue}
-                  onChange={(e) => setNameValue(e.target.value)}
-                  className="h-7 text-sm w-40 px-2"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveName();
-                    if (e.key === 'Escape') { setEditingName(false); setNameValue(member.full_name); }
-                  }}
-                  onBlur={saveName}
-                />
-              </div>
+            {editingName && canEditName ? (
+              <Input
+                autoFocus
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                className="h-7 text-sm w-40 px-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveName();
+                  if (e.key === 'Escape') { setEditingName(false); setNameValue(member.full_name); }
+                }}
+                onBlur={saveName}
+              />
             ) : (
               <p
-                className={`text-sm font-medium ${canEdit ? 'cursor-text hover:underline decoration-dotted' : ''}`}
-                onClick={() => canEdit && setEditingName(true)}
+                className={`text-sm font-medium ${canEditName ? 'cursor-text hover:underline decoration-dotted' : ''}`}
+                onClick={() => canEditName && setEditingName(true)}
               >
                 {member.full_name}
                 {isSelf && <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>}
@@ -100,26 +107,29 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
         </div>
       </td>
 
-      {/* Role */}
+      {/* Role — no self-edit to prevent accidental self-demotion */}
       <td className="px-4 py-3">
         {isCurrentUserAdmin && !isSelf ? (
           <select
             value={member.role}
-            onChange={(e) => saveRole(e.target.value as 'admin' | 'member')}
+            onChange={(e) => saveRole(e.target.value)}
             disabled={isPending}
             className="h-7 rounded border border-input bg-background px-2 text-xs disabled:opacity-50"
           >
             <option value="member">Member</option>
             <option value="admin">Admin</option>
+            <option value="sales_manager">Sales Manager</option>
+            <option value="sales_head">Sales Head</option>
+            <option value="sales_admin">Sales Admin</option>
           </select>
         ) : (
-          <span className="text-xs capitalize">{member.role}</span>
+          <span className="text-xs">{ROLE_LABELS[member.role] ?? member.role}</span>
         )}
       </td>
 
-      {/* Department */}
+      {/* Department — admins can edit including their own row */}
       <td className="px-4 py-3">
-        {isCurrentUserAdmin && !isSelf ? (
+        {isCurrentUserAdmin ? (
           <select
             value={member.department ?? ''}
             onChange={(e) => saveDepartment((e.target.value || null) as MemberDepartment)}
@@ -148,12 +158,12 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
         <span className="text-sm tabular-nums">{member.spoc_assets}</span>
       </td>
 
-      {/* Status */}
+      {/* Status — no self-edit to prevent accidental self-deactivation */}
       <td className="px-4 py-3">
         {isCurrentUserAdmin && !isSelf ? (
           <select
             value={member.is_active ? 'active' : 'inactive'}
-            onChange={(e) => toggleActive(e.target.value === 'active')}
+            onChange={(e) => saveStatus(e.target.value === 'active')}
             disabled={isPending}
             className="h-7 rounded border border-input bg-background px-2 text-xs disabled:opacity-50"
           >
@@ -162,16 +172,13 @@ export function MemberRow({ member, currentUserId, isCurrentUserAdmin }: Props) 
           </select>
         ) : (
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            member.is_active
-              ? 'bg-green-50 text-green-700'
-              : 'bg-gray-100 text-gray-500'
+            member.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
           }`}>
             {member.is_active ? 'Active' : 'Inactive'}
           </span>
         )}
       </td>
 
-      {/* Actions — empty, controls are inline */}
       <td className="px-4 py-3" />
     </tr>
   );

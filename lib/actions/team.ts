@@ -6,9 +6,14 @@ import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
 import type { MemberDepartment } from '@/lib/queries/team';
 
+function revalidateTeam() {
+  revalidatePath('/capital-markets/team');
+  revalidatePath('/sales-marketing/team');
+}
+
 export async function updateMemberRole(
   memberId: string,
-  role: 'admin' | 'member'
+  role: string
 ): Promise<ActionResult<void>> {
   const result = await withAudit({
     action: 'update',
@@ -24,7 +29,7 @@ export async function updateMemberRole(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
+  if (result.ok) revalidateTeam();
   return result;
 }
 
@@ -46,7 +51,7 @@ export async function setMemberActive(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
+  if (result.ok) revalidateTeam();
   return result;
 }
 
@@ -54,12 +59,11 @@ export async function updateMemberDepartment(
   memberId: string,
   department: MemberDepartment
 ): Promise<ActionResult<void>> {
-  const label = department ?? 'unassigned';
   const result = await withAudit({
     action: 'update',
     entityType: 'team_member',
     entityId: memberId,
-    summary: `Department changed to ${label}`,
+    summary: `Department changed to ${department ?? 'unassigned'}`,
     mutation: async () => {
       const service = createServiceClient();
       const { error } = await service
@@ -69,10 +73,7 @@ export async function updateMemberDepartment(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) {
-    revalidatePath('/capital-markets/team');
-    revalidatePath('/sales-marketing/team');
-  }
+  if (result.ok) revalidateTeam();
   return result;
 }
 
@@ -97,6 +98,6 @@ export async function updateMemberName(
       if (error) throw new Error(error.message);
     },
   });
-  if (result.ok) revalidatePath('/capital-markets/team'); revalidatePath('/sales-marketing/team');
+  if (result.ok) revalidateTeam();
   return result;
 }
