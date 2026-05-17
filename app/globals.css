@@ -50,36 +50,37 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── Light mode — refined off-white, deep navy-slate text ───────────────── */
+/* ─── Light mode — mature cool slate, institutional finance palette ───────── */
 :root {
   /* Anex navy — #1220B3 */
   --brand: oklch(0.37 0.24 264);
 
-  /* Surfaces: warm off-white, not pure white */
-  --background: oklch(0.975 0.006 264);
-  --foreground: oklch(0.16 0.028 264);
+  /* Page canvas: cool blue-slate, clearly not white */
+  --background: oklch(0.930 0.012 264);     /* ≈ #ECEEF4 slate page */
+  --foreground: oklch(0.12 0.032 264);      /* deep navy-charcoal */
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.028 264);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.028 264);
+  /* Cards sit lighter than the canvas — creates lift */
+  --card: oklch(0.960 0.009 264);           /* ≈ #F3F4FA */
+  --card-foreground: oklch(0.12 0.032 264);
+  --popover: oklch(0.972 0.007 264);
+  --popover-foreground: oklch(0.12 0.032 264);
 
   /* Brand navy as primary */
   --primary: oklch(0.37 0.24 264);
   --primary-foreground: oklch(0.985 0 0);
 
-  --secondary: oklch(0.945 0.012 264);
-  --secondary-foreground: oklch(0.22 0.03 264);
+  --secondary: oklch(0.915 0.015 264);
+  --secondary-foreground: oklch(0.18 0.030 264);
 
-  --muted: oklch(0.945 0.010 264);
-  --muted-foreground: oklch(0.47 0.025 264);
+  --muted: oklch(0.908 0.016 264);          /* darker than bg — used for chips, hover */
+  --muted-foreground: oklch(0.46 0.026 264);
 
-  --accent: oklch(0.93 0.015 264);
-  --accent-foreground: oklch(0.22 0.03 264);
+  --accent: oklch(0.902 0.018 264);
+  --accent-foreground: oklch(0.18 0.030 264);
 
   --destructive: oklch(0.56 0.22 27);
-  --border: oklch(0.875 0.012 264);
-  --input: oklch(0.875 0.012 264);
+  --border: oklch(0.855 0.019 264);         /* ≈ #D5D8E8 — visible slate border */
+  --input: oklch(0.860 0.017 264);
   --ring: oklch(0.37 0.24 264);
 
   --chart-1: oklch(0.37 0.24 264);
@@ -90,14 +91,14 @@
 
   --radius: 0.5rem;
 
-  /* Sidebar: slightly deeper than background */
-  --sidebar: oklch(0.955 0.010 264);
-  --sidebar-foreground: oklch(0.16 0.028 264);
+  /* Sidebar: anchoring dark edge — clearly distinct from the page */
+  --sidebar: oklch(0.898 0.019 264);        /* ≈ #E2E4F0 */
+  --sidebar-foreground: oklch(0.12 0.032 264);
   --sidebar-primary: oklch(0.37 0.24 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.915 0.018 264);
-  --sidebar-accent-foreground: oklch(0.22 0.03 264);
-  --sidebar-border: oklch(0.875 0.012 264);
+  --sidebar-accent: oklch(0.875 0.022 264);
+  --sidebar-accent-foreground: oklch(0.18 0.030 264);
+  --sidebar-border: oklch(0.840 0.022 264);
   --sidebar-ring: oklch(0.37 0.24 264);
 }
 
