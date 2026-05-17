@@ -57,9 +57,11 @@ export default async function AssetsPage({
   ]);
 
   const assetIds = assets.map((a) => a.id);
+  const unassignedAssetIds = [...new Set(unassignedTasks.map((t) => t.asset_id))];
+  const openTaskAssetIds = [...new Set([...assetIds, ...unassignedAssetIds])];
   const [latestUpdates, openTasks] = await Promise.all([
     getLatestUpdatesForAssets(assetIds),
-    getOpenTasksForAssets(assetIds).catch(() => []),
+    getOpenTasksForAssets(openTaskAssetIds).catch(() => []),
   ]);
 
   return (
