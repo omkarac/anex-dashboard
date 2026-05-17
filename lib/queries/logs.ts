@@ -21,6 +21,7 @@ export const SM_ENTITY_TYPES = [
   'channel_partner',
   'client',
   'walk_in',
+  'site_visit',
   'cp_meeting',
   'eod_report',
   'project_sm_assignment',
@@ -61,8 +62,16 @@ export async function listLogs(filters: LogFilters = {}): Promise<{
     if (filters.entity_type) q = q.eq('entity_type', filters.entity_type);
     if (filters.from) q = q.gte('created_at', filters.from);
     if (filters.to) q = q.lte('created_at', filters.to + 'T23:59:59Z');
-    if (filters.vertical === 'capital_markets') q = q.in('entity_type', CM_ENTITY_TYPES);
-    if (filters.vertical === 'sales_marketing' && SM_ENTITY_TYPES.length > 0) q = q.in('entity_type', SM_ENTITY_TYPES);
+    if (filters.vertical === 'capital_markets') {
+      q = q.in('entity_type', CM_ENTITY_TYPES);
+    } else if (filters.vertical === 'sales_marketing') {
+      // Always exclude CM entity types; restrict to known SM types when available
+      if (SM_ENTITY_TYPES.length > 0) {
+        q = q.in('entity_type', SM_ENTITY_TYPES);
+      } else {
+        q = q.not('entity_type', 'in', `(${CM_ENTITY_TYPES.join(',')})`);
+      }
+    }
 
     return q.order('created_at', { ascending: false });
   }
@@ -137,9 +146,14 @@ export async function getLogFilterOptions(vertical?: 'capital_markets' | 'sales_
   if (vertical === 'capital_markets') {
     actionQ = actionQ.in('entity_type', CM_ENTITY_TYPES);
     entityQ = entityQ.in('entity_type', CM_ENTITY_TYPES);
-  } else if (vertical === 'sales_marketing' && SM_ENTITY_TYPES.length > 0) {
-    actionQ = actionQ.in('entity_type', SM_ENTITY_TYPES);
-    entityQ = entityQ.in('entity_type', SM_ENTITY_TYPES);
+  } else if (vertical === 'sales_marketing') {
+    if (SM_ENTITY_TYPES.length > 0) {
+      actionQ = actionQ.in('entity_type', SM_ENTITY_TYPES);
+      entityQ = entityQ.in('entity_type', SM_ENTITY_TYPES);
+    } else {
+      actionQ = actionQ.not('entity_type', 'in', `(${CM_ENTITY_TYPES.join(',')})`);
+      entityQ = entityQ.not('entity_type', 'in', `(${CM_ENTITY_TYPES.join(',')})`);
+    }
   }
 
   const [{ data: actorRows }, { data: actionRows }, { data: entityRows }] = await Promise.all([
