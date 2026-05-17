@@ -215,7 +215,9 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
   });
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const [absorbed, setAbsorbed] = useState(false);
+  const [stripHeight, setStripHeight] = useState(0);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -224,6 +226,10 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (stripRef.current) setStripHeight(stripRef.current.scrollHeight);
+  }, [dev.contact_person, dev.contact_email, dev.contact_phone, dev.notes]);
 
   const p = palette(dev.name);
   const activeLogoUrl = editing ? (form.logo_url.trim() || null) : dev.logo_url;
@@ -350,6 +356,40 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
                 <h1 className="text-2xl font-bold tracking-tight leading-tight">{dev.name}</h1>
               )}
             </div>
+
+            {/* Compact contact — slides in from right on scroll, view mode only */}
+            {!editing && (dev.contact_person || dev.contact_email || dev.contact_phone) && (
+              <div
+                className="shrink-0 flex flex-col items-end gap-1.5 text-right max-w-[260px]"
+                style={{
+                  opacity: absorbed ? 1 : 0,
+                  transform: absorbed ? 'translateX(0)' : 'translateX(16px)',
+                  transition: 'opacity 0.35s ease, transform 0.45s cubic-bezier(0.16,1,0.3,1)',
+                  pointerEvents: absorbed ? 'auto' : 'none',
+                }}
+              >
+                {dev.contact_person && (
+                  <p className="text-sm font-semibold leading-none truncate">{dev.contact_person}</p>
+                )}
+                <div className="flex items-center gap-3">
+                  {dev.contact_email && (
+                    <a
+                      href={`mailto:${dev.contact_email}`}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors max-w-[160px]"
+                    >
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{dev.contact_email}</span>
+                    </a>
+                  )}
+                  {dev.contact_phone && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
+                      <Phone className="h-3 w-3 shrink-0" />
+                      {dev.contact_phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Edit form — replaces contact strip when editing */}
@@ -388,23 +428,32 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
             </div>
           )}
 
-          {/* Contact strip — view mode only */}
+          {/* Contact strip — collapses and migrates right on scroll */}
           {!editing && (
-            <div className="mt-5 border-t border-border/40 pt-4 pb-5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                <ContactField label="Contact" value={dev.contact_person} />
-                <ContactField
-                  label="Email"
-                  value={dev.contact_email}
-                  href={dev.contact_email ? `mailto:${dev.contact_email}` : undefined}
-                />
-                <ContactField label="Phone" value={dev.contact_phone} />
+            <div
+              className="overflow-hidden"
+              style={{
+                height: absorbed ? 0 : stripHeight || 'auto',
+                opacity: absorbed ? 0 : 1,
+                transition: 'height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease',
+              }}
+            >
+              <div ref={stripRef} className="mt-5 border-t border-border/40 pt-4 pb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <ContactField label="Contact" value={dev.contact_person} />
+                  <ContactField
+                    label="Email"
+                    value={dev.contact_email}
+                    href={dev.contact_email ? `mailto:${dev.contact_email}` : undefined}
+                  />
+                  <ContactField label="Phone" value={dev.contact_phone} />
+                </div>
+                {dev.notes && (
+                  <p className="mt-4 text-xs text-muted-foreground border-t border-border/30 pt-3 leading-relaxed">
+                    {dev.notes}
+                  </p>
+                )}
               </div>
-              {dev.notes && (
-                <p className="mt-4 text-xs text-muted-foreground border-t border-border/30 pt-3 leading-relaxed">
-                  {dev.notes}
-                </p>
-              )}
             </div>
           )}
 
