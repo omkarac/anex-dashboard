@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Phone, ExternalLink, ChevronLeft, Building2, Pencil, X, Check } from 'lucide-react';
@@ -214,6 +214,17 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
     notes: dev.notes ?? '',
   });
 
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [absorbed, setAbsorbed] = useState(false);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const onScroll = () => setAbsorbed(el.scrollTop > 48);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
   const p = palette(dev.name);
   const activeLogoUrl = editing ? (form.logo_url.trim() || null) : dev.logo_url;
   const dominantRgb = useDominantColor(activeLogoUrl);
@@ -399,14 +410,59 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
 
           {error && <p className="relative text-xs text-destructive pb-3 -mt-1">{error}</p>}
         </div>
+
+        {/* Compact KPI strip — slides into hero bottom as user scrolls */}
+        <div
+          className="overflow-hidden"
+          style={{
+            height: absorbed ? '42px' : '0px',
+            transition: 'height 0.45s cubic-bezier(0.16,1,0.3,1)',
+          }}
+        >
+          <div
+            className="border-t border-border/40 px-6 flex items-center gap-0"
+            style={{
+              transform: absorbed ? 'translateY(0)' : 'translateY(-100%)',
+              transition: 'transform 0.45s cubic-bezier(0.16,1,0.3,1)',
+              height: '42px',
+            }}
+          >
+            {[
+              { label: 'Shared', value: dev.share_count, dot: '' },
+              ...outcomeEntries.map(([o, n]) => ({
+                label: OUTCOME_CONFIG[o]?.label ?? o,
+                value: n,
+                dot: OUTCOME_CONFIG[o]?.dot ?? '',
+              })),
+            ].map((stat, i) => (
+              <React.Fragment key={stat.label}>
+                {i > 0 && <span className="mx-4 text-border select-none">·</span>}
+                <span className="inline-flex items-center gap-2">
+                  {stat.dot && (
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stat.dot}`} />
+                  )}
+                  <span className="text-sm font-bold tabular-nums">{stat.value}</span>
+                  <span className="text-xs text-muted-foreground">{stat.label}</span>
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ── Content ── */}
-      <div className="flex-1 overflow-auto p-6">
+      <div ref={contentRef} className="flex-1 overflow-auto p-6">
         <div className="max-w-3xl mx-auto flex flex-col gap-6">
 
-          {/* KPI tiles */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* KPI tiles — fade out once absorbed into hero strip */}
+          <div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+            style={{
+              opacity: absorbed ? 0 : 1,
+              transition: 'opacity 0.3s ease',
+              pointerEvents: absorbed ? 'none' : 'auto',
+            }}
+          >
             <div className="rounded-xl border bg-card p-4">
               <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-muted-foreground mb-2">Assets Shared</p>
               <p className="text-2xl font-bold tabular-nums">{dev.share_count}</p>
