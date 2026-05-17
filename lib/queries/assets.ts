@@ -21,6 +21,7 @@ export type AssetFilters = {
   plot_min?: number;
   plot_max?: number;
   page?: number;
+  asset_ids?: string[];
 };
 
 const SORT_MAP: Record<SortOption, { column: string; ascending: boolean }> = {
@@ -51,6 +52,7 @@ export async function listAssets(filters: AssetFilters = {}): Promise<{
     .order(column, { ascending, nullsFirst: false })
     .range(from, to);
 
+  if (filters.asset_ids) query = query.in('id', filters.asset_ids.length ? filters.asset_ids : ['__none__']);
   if (filters.q?.trim()) query = query.ilike('property_name', `%${filters.q.trim()}%`);
   if (filters.status?.length) query = query.in('status', filters.status);
   if (filters.temperature?.length) query = query.in('temperature', filters.temperature);

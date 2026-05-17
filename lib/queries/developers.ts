@@ -446,6 +446,36 @@ export async function getOpenTasksForAssets(assetIds: string[]): Promise<AssetOp
   });
 }
 
+export async function getAssetIdsWithOpenTasks(): Promise<string[]> {
+  const service = createServiceClient();
+
+  const { data: shares } = await service
+    .from('developer_shares')
+    .select('id, asset_id')
+    .is('deleted_at', null);
+
+  if (!shares?.length) return [];
+
+  const shareIds = shares.map((s) => s.id);
+  const shareAssetMap = new Map(shares.map((s) => [s.id, s.asset_id]));
+
+  const { data: tasks } = await service
+    .from('share_tasks')
+    .select('share_id')
+    .in('share_id', shareIds)
+    .neq('status', 'done')
+    .is('deleted_at', null);
+
+  if (!tasks?.length) return [];
+
+  const assetIds = new Set<string>();
+  for (const t of tasks) {
+    const assetId = shareAssetMap.get(t.share_id);
+    if (assetId) assetIds.add(assetId);
+  }
+  return [...assetIds];
+}
+
 export type DeveloperOption = { id: string; name: string };
 
 export async function getDeveloperOptions(): Promise<DeveloperOption[]> {

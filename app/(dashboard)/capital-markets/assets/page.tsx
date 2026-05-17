@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { listAssets, getDistinctSpocAgents, getAssetNumericBounds } from '@/lib/queries/assets';
 import { getLatestUpdatesForAssets } from '@/lib/queries/updates';
 import { getTeamMembers } from '@/lib/queries/tasks';
-import { getUnassignedTasks, getOpenTasksForAssets } from '@/lib/queries/developers';
+import { getUnassignedTasks, getOpenTasksForAssets, getAssetIdsWithOpenTasks } from '@/lib/queries/developers';
 import type { SortOption } from '@/lib/queries/assets';
 import { AssetTable } from '@/components/assets/asset-table';
 import { FilterBar } from '@/components/assets/filter-bar';
@@ -31,6 +31,16 @@ export default async function AssetsPage({
   const page = parseInt(params.page ?? '1', 10);
   const sort = VALID_SORTS.includes(params.sort as SortOption) ? (params.sort as SortOption) : 'updated_desc';
 
+  const hasOpenTasksFilter = params.has_open_tasks === '1';
+
+  const [openTaskAssetIdFilter, spocOptions, bounds, teamMembers, unassignedTasks] = await Promise.all([
+    hasOpenTasksFilter ? getAssetIdsWithOpenTasks().catch(() => []) : Promise.resolve(undefined),
+    getDistinctSpocAgents(),
+    getAssetNumericBounds(),
+    getTeamMembers().catch(() => []),
+    getUnassignedTasks().catch(() => []),
+  ]);
+
   const filters = {
     q: params.q?.trim() || undefined,
     status: parseParam(params, 'status'),
@@ -46,15 +56,10 @@ export default async function AssetsPage({
     plot_min: parseNum(params, 'plot_min'),
     plot_max: parseNum(params, 'plot_max'),
     page,
+    asset_ids: openTaskAssetIdFilter,
   };
 
-  const [{ assets, count, pageCount }, spocOptions, bounds, teamMembers, unassignedTasks] = await Promise.all([
-    listAssets(filters),
-    getDistinctSpocAgents(),
-    getAssetNumericBounds(),
-    getTeamMembers().catch(() => []),
-    getUnassignedTasks().catch(() => []),
-  ]);
+  const { assets, count, pageCount } = await listAssets(filters);
 
   const assetIds = assets.map((a) => a.id);
   const unassignedAssetIds = [...new Set(unassignedTasks.map((t) => t.asset_id))];

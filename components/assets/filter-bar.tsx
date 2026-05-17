@@ -7,7 +7,7 @@ import { RangeSlider } from '@/components/ui/range-slider';
 import { ASSET_STATUS_LABELS, ASSET_TEMPERATURE_LABELS, ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, ArrowUpDown } from 'lucide-react';
+import { X, ArrowUpDown, ListTodo } from 'lucide-react';
 import { AssetSearchInput } from '@/components/assets/asset-search-input';
 import type { AssetStatus, AssetTemperature, AssetType } from '@/lib/schemas/asset';
 import type { SortOption } from '@/lib/queries/assets';
@@ -176,8 +176,10 @@ export function FilterBar({ spocOptions, toplineBound, invBound, plotBound }: Fi
 
   const currentSort = (searchParams.get('sort') ?? 'updated_desc') as SortOption;
 
+  const hasOpenTasks = searchParams.get('has_open_tasks') === '1';
+
   const hasFilters = ['q', 'status', 'temperature', 'asset_type', 'regulation', 'spoc_agent',
-    'topline_min', 'topline_max', 'inv_min', 'inv_max', 'plot_min', 'plot_max'].some((k) => searchParams.has(k));
+    'topline_min', 'topline_max', 'inv_min', 'inv_max', 'plot_min', 'plot_max', 'has_open_tasks'].some((k) => searchParams.has(k));
 
   function clearAll() {
     const params = new URLSearchParams();
@@ -228,6 +230,16 @@ export function FilterBar({ spocOptions, toplineBound, invBound, plotBound }: Fi
           placeholder="SPOC"
           className="w-36"
         />
+
+        <Button
+          variant={hasOpenTasks ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setParam('has_open_tasks', hasOpenTasks ? '' : '1')}
+          className="h-8 gap-1.5 text-xs font-medium"
+        >
+          <ListTodo className="h-3.5 w-3.5" />
+          Has open tasks
+        </Button>
 
         <div className="flex items-center gap-1.5 ml-auto">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
