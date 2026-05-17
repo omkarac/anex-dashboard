@@ -102,50 +102,52 @@
   --sidebar-ring: oklch(0.37 0.24 264);
 }
 
-/* ─── Dark mode — deep blue-slate, warm cream text, not flat black ────────── */
+/* ─── Dark mode — rich midnight indigo, warm cream text, clear depth ─────── */
 .dark {
-  /* Deep blue-charcoal backgrounds — depth without harshness */
-  --background: oklch(0.145 0.028 264);
-  --foreground: oklch(0.935 0.012 76);   /* warm cream, not stark white */
+  /* Rich midnight blue — more chroma than plain charcoal */
+  --background: oklch(0.150 0.034 264);   /* deep indigo-charcoal ≈ #0F1120 */
+  --foreground: oklch(0.938 0.010 76);    /* warm cream — not harsh white */
 
-  --card: oklch(0.185 0.025 264);
-  --card-foreground: oklch(0.935 0.012 76);
-  --popover: oklch(0.185 0.025 264);
-  --popover-foreground: oklch(0.935 0.012 76);
+  /* Cards float clearly above the canvas */
+  --card: oklch(0.192 0.030 264);         /* ≈ #161B30 */
+  --card-foreground: oklch(0.938 0.010 76);
+  --popover: oklch(0.210 0.028 264);
+  --popover-foreground: oklch(0.938 0.010 76);
 
-  /* Lighter brand blue for dark bg — still reads as brand */
-  --primary: oklch(0.60 0.21 264);
+  /* Brighter brand for dark surfaces */
+  --primary: oklch(0.62 0.22 264);
   --primary-foreground: oklch(0.985 0 0);
 
-  --secondary: oklch(0.215 0.025 264);
+  --secondary: oklch(0.225 0.028 264);
   --secondary-foreground: oklch(0.88 0.010 76);
 
-  --muted: oklch(0.215 0.022 264);
-  --muted-foreground: oklch(0.60 0.018 264);
+  /* Muted — clearly distinct from card for chips, badges, hovers */
+  --muted: oklch(0.228 0.026 264);        /* ≈ #1E2338 */
+  --muted-foreground: oklch(0.62 0.020 264);
 
-  --accent: oklch(0.235 0.028 264);
+  --accent: oklch(0.248 0.030 264);
   --accent-foreground: oklch(0.88 0.010 76);
 
   --destructive: oklch(0.68 0.19 22);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 11%);
-  --ring: oklch(0.60 0.21 264);
+  --border: oklch(1 0 0 / 11%);          /* slightly more visible than before */
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.62 0.22 264);
 
-  --chart-1: oklch(0.60 0.21 264);
-  --chart-2: oklch(0.50 0.17 264);
-  --chart-3: oklch(0.42 0.13 264);
-  --chart-4: oklch(0.34 0.09 264);
-  --chart-5: oklch(0.27 0.05 264);
+  --chart-1: oklch(0.62 0.22 264);
+  --chart-2: oklch(0.52 0.18 264);
+  --chart-3: oklch(0.44 0.14 264);
+  --chart-4: oklch(0.36 0.10 264);
+  --chart-5: oklch(0.28 0.06 264);
 
-  /* Sidebar: slightly darker than background for hierarchy */
-  --sidebar: oklch(0.115 0.030 264);
+  /* Sidebar: anchors the left edge — distinctly darker */
+  --sidebar: oklch(0.112 0.034 264);      /* ≈ #0A0E1C */
   --sidebar-foreground: oklch(0.88 0.010 76);
-  --sidebar-primary: oklch(0.60 0.21 264);
+  --sidebar-primary: oklch(0.62 0.22 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.22 0.028 264);
+  --sidebar-accent: oklch(0.228 0.030 264);
   --sidebar-accent-foreground: oklch(0.88 0.010 76);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.60 0.21 264);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.62 0.22 264);
 }
 
 @layer base {

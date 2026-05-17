@@ -9,10 +9,10 @@ type Segment = {
 };
 
 const SEGMENTS: Segment[] = [
-  { key: 'under7',  label: '< 7d',    sublabel: 'fresh',   bar: 'bg-emerald-400', countColor: 'text-emerald-600' },
-  { key: 'd7to30',  label: '7–30d',   sublabel: 'active',  bar: 'bg-sky-400',     countColor: 'text-sky-600' },
-  { key: 'd30to60', label: '30–60d',  sublabel: 'slowing', bar: 'bg-amber-400',   countColor: 'text-amber-600' },
-  { key: 'over60',  label: '60+ d',   sublabel: 'stalled', bar: 'bg-rose-400',    countColor: 'text-rose-600' },
+  { key: 'under7',  label: '< 7d',    sublabel: 'fresh',   bar: 'bg-emerald-400', countColor: 'text-emerald-600 dark:text-emerald-400' },
+  { key: 'd7to30',  label: '7–30d',   sublabel: 'active',  bar: 'bg-sky-400',     countColor: 'text-sky-600 dark:text-sky-400' },
+  { key: 'd30to60', label: '30–60d',  sublabel: 'slowing', bar: 'bg-amber-400',   countColor: 'text-amber-600 dark:text-amber-400' },
+  { key: 'over60',  label: '60+ d',   sublabel: 'stalled', bar: 'bg-rose-400',    countColor: 'text-rose-600 dark:text-rose-400' },
 ];
 
 export function DealAgingWidget({ aging }: { aging: DealAging }) {

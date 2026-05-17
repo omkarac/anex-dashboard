@@ -25,7 +25,7 @@ function LoadRing({ load, max }: { load: number; max: number }) {
       aria-hidden
     >
       {/* Track */}
-      <circle cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="2.5" className="stroke-slate-200 dark:stroke-slate-700" />
+      <circle cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="2.5" className="stroke-muted" />
       {/* Arc */}
       {load > 0 && (
         <circle
@@ -46,7 +46,7 @@ function LoadRing({ load, max }: { load: number; max: number }) {
 
 function LoadLabel({ load, max }: { load: number; max: number }) {
   const pct = max > 0 ? Math.min(load / max, 1) : 0;
-  if (pct === 0) return <span className="text-[10px] text-slate-300 font-medium">free</span>;
+  if (pct === 0) return <span className="text-[10px] text-muted-foreground/50 font-medium">free</span>;
   if (pct >= 0.85) return <span className="text-[10px] text-rose-500 font-semibold">high</span>;
   if (pct >= 0.55) return <span className="text-[10px] text-amber-500 font-semibold">busy</span>;
   return <span className="text-[10px] text-indigo-400 font-medium">ok</span>;
@@ -82,7 +82,7 @@ export function TeamBandwidth({ workload }: { workload: MemberWorkload[] }) {
                 <div className="relative w-10 h-10 shrink-0">
                   <LoadRing load={load} max={maxLoad} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[12px] font-bold text-slate-700 select-none">
+                    <span className="text-[12px] font-bold text-foreground/60 select-none">
                       {m.full_name[0].toUpperCase()}
                     </span>
                   </div>

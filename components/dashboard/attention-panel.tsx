@@ -6,9 +6,9 @@ const REASON_CONFIG: Record<
   AttentionSignal['reason'],
   { label: string; badge: string }
 > = {
-  hot_unassigned: { label: 'No Owner',   badge: 'bg-rose-100 text-rose-700' },
-  hot_silent:     { label: '7d Silent',  badge: 'bg-rose-100 text-rose-700' },
-  stale_stage:    { label: 'Stalled',    badge: 'bg-amber-100 text-amber-700' },
+  hot_unassigned: { label: 'No Owner',   badge: 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400' },
+  hot_silent:     { label: '7d Silent',  badge: 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400' },
+  stale_stage:    { label: 'Stalled',    badge: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400' },
 };
 
 export function AttentionPanel({ signals }: { signals: AttentionSignal[] }) {
