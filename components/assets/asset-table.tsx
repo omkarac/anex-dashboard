@@ -381,7 +381,7 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
         </div>
       </div>
 
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-center gap-4 px-1">
         <p className="text-sm text-muted-foreground">
           {count} {count === 1 ? 'asset' : 'assets'}
           {pageCount > 1 && ` · page ${page} of ${pageCount}`}
