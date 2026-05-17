@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import type { LatLngExpression, LatLngBoundsExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Sun, Moon } from 'lucide-react';
 import { MICRO_MARKET_COORDS } from '@/lib/data/micro-market-coords';
 import { MICRO_MARKETS } from '@/lib/enums/micro-markets';
 
@@ -132,32 +132,6 @@ function markerStyle(
   return null;
 }
 
-// ─── Theme toggle button ──────────────────────────────────────────────────────
-
-function ThemeToggle({
-  dark,
-  onToggle,
-}: {
-  dark: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      onClick={onToggle}
-      className="absolute top-3 right-3 z-[1000] h-7 w-7 rounded-md flex items-center justify-center transition-colors shadow-md"
-      style={{
-        background: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-        backdropFilter: 'blur(4px)',
-        border: dark ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(0,0,0,0.12)',
-        color: dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)',
-      }}
-      aria-label="Toggle map theme"
-    >
-      {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-    </button>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LocationMapInner({
@@ -165,11 +139,8 @@ export default function LocationMapInner({
   sharedMarkets = [],
   interestedMarkets = [],
 }: LocationMapProps) {
-  const [dark, setDark] = useState(() =>
-    typeof document !== 'undefined'
-      ? document.documentElement.classList.contains('dark')
-      : true
-  );
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === 'dark';
 
   const toPoints = (markets: string[]): HeatPoint[] =>
     markets
@@ -252,7 +223,6 @@ export default function LocationMapInner({
           );
         })}
 
-        <ThemeToggle dark={dark} onToggle={() => setDark((d) => !d)} />
       </MapContainer>
 
       {/* Legend */}
