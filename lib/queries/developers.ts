@@ -321,8 +321,14 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
 
   const INTERESTED_OUTCOMES = new Set(['interested', 'pursuing', 'won']);
 
+  // Only pending shares (no outcome yet) → yellow dot. Decided shares graduate to green or grey.
   const sharedMarkets = [
-    ...new Set(shares.map((s) => s.asset_micro_market).filter((m): m is string => m != null)),
+    ...new Set(
+      shares
+        .filter((s) => s.outcome == null)
+        .map((s) => s.asset_micro_market)
+        .filter((m): m is string => m != null)
+    ),
   ];
 
   const interestedMarkets = [
