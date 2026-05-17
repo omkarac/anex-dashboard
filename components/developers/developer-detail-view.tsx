@@ -529,7 +529,12 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
 
           {/* Investment Appetite */}
           {!editing && (
-            <AppetiteSection developerId={dev.id} preferences={dev.preferences} />
+            <AppetiteSection
+              developerId={dev.id}
+              preferences={dev.preferences}
+              sharedMarkets={dev.sharedMarkets}
+              interestedMarkets={dev.interestedMarkets}
+            />
           )}
 
           {/* Shared assets */}

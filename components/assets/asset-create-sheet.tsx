@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sheet';
 import { createAsset } from '@/lib/actions/assets';
 import { ASSET_STATUS_LABELS, ASSET_TEMPERATURE_LABELS, ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
+import { MICRO_MARKETS, microMarketsByZone } from '@/lib/enums/micro-markets';
 import type { AssetStatus, AssetTemperature, AssetType } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 
@@ -74,6 +75,25 @@ export function AssetCreateSheet({ teamMembers = [] }: { teamMembers?: TeamMembe
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="location">Location</Label>
                 <Input id="location" name="location" placeholder="e.g. Dadar West, Mumbai" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="micro_market">Micro-Market</Label>
+                <select
+                  id="micro_market"
+                  name="micro_market"
+                  defaultValue=""
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— None —</option>
+                  {[...microMarketsByZone().entries()].map(([zone, markets]) => (
+                    <optgroup key={zone} label={zone}>
+                      {markets.map((m) => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

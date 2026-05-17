@@ -30,6 +30,7 @@ export type DeveloperShareFull = {
   id: string;
   asset_id: string;
   asset_name: string;
+  asset_micro_market: string | null;
   shared_at: string;
   shared_by_name: string;
   outcome: string | null;
@@ -45,6 +46,8 @@ export type DeveloperWithStats = Developer & {
   outcome_counts: Record<string, number>;
   shares: DeveloperShareFull[];
   preferences: DeveloperPreferences | null;
+  sharedMarkets: string[];
+  interestedMarkets: string[];
 };
 
 export type ShareWithDetails = {
@@ -85,6 +88,7 @@ export async function listDevelopers(): Promise<DeveloperWithStats[]> {
       id: s.id,
       asset_id: s.asset_id,
       asset_name: (s.asset as { property_name: string } | null)?.property_name ?? 'Unknown',
+      asset_micro_market: null,
       shared_at: s.shared_at,
       shared_by_name: memberMap.get(s.shared_by) ?? 'Unknown',
       outcome: s.outcome,
@@ -112,6 +116,8 @@ export async function listDevelopers(): Promise<DeveloperWithStats[]> {
       outcome_counts,
       shares,
       preferences: null,
+      sharedMarkets: [],
+      interestedMarkets: [],
     };
   });
 }
@@ -207,7 +213,7 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
   const [{ data: rawShares }, { data: prefs }] = await Promise.all([
     service
       .from('developer_shares')
-      .select('*, asset:assets!asset_id(property_name)')
+      .select('*, asset:assets!asset_id(property_name, micro_market)')
       .eq('developer_id', id)
       .is('deleted_at', null)
       .order('shared_at', { ascending: false }),
@@ -286,24 +292,45 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
     updatesByShare.set(u.share_id, arr);
   }
 
-  const shares: DeveloperShareFull[] = (rawShares ?? []).map((s) => ({
-    id: s.id,
-    asset_id: s.asset_id,
-    asset_name: (s.asset as { property_name: string } | null)?.property_name ?? 'Unknown',
-    shared_at: s.shared_at,
-    shared_by_name: memberMap.get(s.shared_by) ?? 'Unknown',
-    outcome: s.outcome,
-    outcome_at: s.outcome_at ?? null,
-    notes: s.notes,
-    tasks: tasksByShare.get(s.id) ?? [],
-    updates: updatesByShare.get(s.id) ?? [],
-  }));
+  type AssetJoin = { property_name: string; micro_market: string | null } | null;
+
+  const shares: DeveloperShareFull[] = (rawShares ?? []).map((s) => {
+    const asset = s.asset as AssetJoin;
+    return {
+      id: s.id,
+      asset_id: s.asset_id,
+      asset_name: asset?.property_name ?? 'Unknown',
+      asset_micro_market: asset?.micro_market ?? null,
+      shared_at: s.shared_at,
+      shared_by_name: memberMap.get(s.shared_by) ?? 'Unknown',
+      outcome: s.outcome,
+      outcome_at: s.outcome_at ?? null,
+      notes: s.notes,
+      tasks: tasksByShare.get(s.id) ?? [],
+      updates: updatesByShare.get(s.id) ?? [],
+    };
+  });
 
   const outcome_counts: Record<string, number> = {};
   for (const s of shares) {
     const key = s.outcome ?? 'pending';
     outcome_counts[key] = (outcome_counts[key] ?? 0) + 1;
   }
+
+  const INTERESTED_OUTCOMES = new Set(['interested', 'pursuing', 'won']);
+
+  const sharedMarkets = [
+    ...new Set(shares.map((s) => s.asset_micro_market).filter((m): m is string => m != null)),
+  ];
+
+  const interestedMarkets = [
+    ...new Set(
+      shares
+        .filter((s) => s.outcome != null && INTERESTED_OUTCOMES.has(s.outcome))
+        .map((s) => s.asset_micro_market)
+        .filter((m): m is string => m != null)
+    ),
+  ];
 
   return {
     ...(dev as Developer),
@@ -312,6 +339,8 @@ export async function getDeveloperById(id: string): Promise<DeveloperWithStats |
     outcome_counts,
     shares,
     preferences: (prefs as DeveloperPreferences | null) ?? null,
+    sharedMarkets,
+    interestedMarkets,
   };
 }
 

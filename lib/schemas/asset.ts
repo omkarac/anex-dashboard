@@ -28,6 +28,7 @@ export const AssetSchema = z.object({
   id: z.string().uuid(),
   property_name: z.string(),
   location: z.string().nullable(),
+  micro_market: z.string().nullable(),
   status: AssetStatusEnum,
   temperature: AssetTemperatureEnum,
   asset_type: AssetTypeEnum.nullable(),
@@ -67,6 +68,7 @@ export const AssetCreateSchema = AssetSchema.omit({
   converted_to_engagement_id: true,
 }).partial({
   location: true,
+  micro_market: true,
   temperature: true,
   asset_type: true,
   spoc_agent: true,

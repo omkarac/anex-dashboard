@@ -161,9 +161,13 @@ function RangeInput({ label, unit, minVal, maxVal, onMin, onMax }: {
 function AppetiteView({
   prefs,
   onEdit,
+  sharedMarkets,
+  interestedMarkets,
 }: {
   prefs: DeveloperPreferences | null;
   onEdit: () => void;
+  sharedMarkets: string[];
+  interestedMarkets: string[];
 }) {
   const filled = hasAnyPreference(prefs);
   const zoneMap = microMarketsByZone();
@@ -199,7 +203,11 @@ function AppetiteView({
               {prefs!.preferred_micro_markets.length} micro-markets
             </span>
           </div>
-          <LocationMap appetiteMarkets={prefs!.preferred_micro_markets} />
+          <LocationMap
+            appetiteMarkets={prefs!.preferred_micro_markets}
+            sharedMarkets={sharedMarkets}
+            interestedMarkets={interestedMarkets}
+          />
           {/* Zone breakdown below the map */}
           <div className="mt-3 flex flex-col gap-1.5">
             {[...marketsBySelectedZone.entries()].map(([zone, labels]) => (
@@ -390,9 +398,13 @@ function AppetiteForm({
 export function AppetiteSection({
   developerId,
   preferences,
+  sharedMarkets = [],
+  interestedMarkets = [],
 }: {
   developerId: string;
   preferences: DeveloperPreferences | null;
+  sharedMarkets?: string[];
+  interestedMarkets?: string[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -453,7 +465,12 @@ export function AppetiteSection({
       {editing ? (
         <AppetiteForm form={form} setForm={setForm} />
       ) : (
-        <AppetiteView prefs={preferences} onEdit={startEdit} />
+        <AppetiteView
+          prefs={preferences}
+          onEdit={startEdit}
+          sharedMarkets={sharedMarkets}
+          interestedMarkets={interestedMarkets}
+        />
       )}
     </section>
   );

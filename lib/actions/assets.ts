@@ -26,6 +26,7 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
   const raw = {
     property_name: formData.get('property_name'),
     location: formData.get('location') || null,
+    micro_market: formData.get('micro_market') || null,
     status: formData.get('status') || 'open',
     temperature: formData.get('temperature') || 'none',
     asset_type: formData.get('asset_type') || null,
