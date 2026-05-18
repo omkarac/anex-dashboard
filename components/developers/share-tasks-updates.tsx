@@ -2,12 +2,13 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Plus, Trash2, Circle, CheckCircle2, Clock, User } from 'lucide-react';
+import { Check, Plus, Trash2, Circle, CheckCircle2, Clock, User, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   completeShareTask,
+  uncompleteShareTask,
   updateShareTaskFields,
   createShareTask,
   createShareUpdate,
@@ -47,6 +48,13 @@ function TaskRow({
     });
   }
 
+  function handleUndo() {
+    startTransition(async () => {
+      await uncompleteShareTask(task.id);
+      router.refresh();
+    });
+  }
+
   function handleAssigneeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value || null;
     startTransition(async () => {
@@ -64,7 +72,7 @@ function TaskRow({
   }
 
   return (
-    <div className={`flex items-start gap-3 py-2.5 ${isPending ? 'opacity-60' : ''}`}>
+    <div className={`flex items-start gap-3 py-2.5 group/task ${isPending ? 'opacity-60' : ''}`}>
       {/* Checkbox */}
       <button
         onClick={handleComplete}
@@ -122,11 +130,24 @@ function TaskRow({
         </div>
       )}
 
-      {/* Assignee name when done */}
-      {done && task.assigned_to_name && (
-        <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-1">
-          <User className="h-3 w-3" />{task.assigned_to_name}
-        </span>
+      {/* Done row: assignee name + undo button */}
+      {done && (
+        <div className="flex items-center gap-2 shrink-0">
+          {task.assigned_to_name && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <User className="h-3 w-3" />{task.assigned_to_name}
+            </span>
+          )}
+          <button
+            onClick={handleUndo}
+            disabled={isPending}
+            className="opacity-0 group-hover/task:opacity-100 transition-opacity text-muted-foreground/40 hover:text-amber-600 disabled:pointer-events-none"
+            aria-label="Undo completion"
+            title="Undo"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

@@ -62,6 +62,7 @@ export type ShareWithDetails = {
   shared_by_name: string;
   outcome: string | null;
   notes: string | null;
+  last_completed_task: string | null;
 };
 
 export async function listDevelopers(): Promise<DeveloperWithStats[]> {
@@ -160,8 +161,15 @@ export async function listAllShares(): Promise<ShareWithDetails[]> {
     shared_by_name: memberMap[s.shared_by] ?? 'Unknown',
     outcome: s.outcome,
     notes: s.notes,
+    last_completed_task: null,
   }));
 }
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  im_shared: 'IM shared',
+  ff_shared: 'FF shared',
+  eoi_issued: 'EOI issued',
+};
 
 export async function getSharesForAsset(assetId: string): Promise<ShareWithDetails[]> {
   const service = createServiceClient();
@@ -175,16 +183,32 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
 
   if (!shares?.length) return [];
 
+  const shareIds = shares.map((s) => s.id);
   const devIds = [...new Set(shares.map((s) => s.developer_id))];
   const actorIds = [...new Set(shares.map((s) => s.shared_by))];
 
-  const [{ data: devs }, { data: members }] = await Promise.all([
+  const [{ data: devs }, { data: members }, { data: completedTasks }] = await Promise.all([
     service.from('developers').select('id, name').in('id', devIds),
     service.from('team_members').select('id, full_name').in('id', actorIds),
+    service
+      .from('share_tasks')
+      .select('share_id, title, task_type, completed_at')
+      .in('share_id', shareIds)
+      .eq('status', 'done')
+      .is('deleted_at', null)
+      .order('completed_at', { ascending: false }),
   ]);
 
   const devMap = Object.fromEntries((devs ?? []).map((d) => [d.id, d.name]));
   const memberMap = Object.fromEntries((members ?? []).map((m) => [m.id, m.full_name]));
+
+  // Keep only the most-recent completed task per share
+  const lastTaskMap = new Map<string, string>();
+  for (const t of completedTasks ?? []) {
+    if (!lastTaskMap.has(t.share_id)) {
+      lastTaskMap.set(t.share_id, TASK_TYPE_LABELS[t.task_type ?? ''] ?? t.title);
+    }
+  }
 
   return shares.map((s) => ({
     id: s.id,
@@ -197,6 +221,7 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
     shared_by_name: memberMap[s.shared_by] ?? 'Unknown',
     outcome: s.outcome,
     notes: s.notes,
+    last_completed_task: lastTaskMap.get(s.id) ?? null,
   }));
 }
 

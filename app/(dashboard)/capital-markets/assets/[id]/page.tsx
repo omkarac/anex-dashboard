@@ -84,7 +84,7 @@ export default async function AssetDetailPage({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <ShareDialog assetId={id} developers={developers} />
+            <ShareDialog assetId={id} developers={developers} existingShares={shares} />
             {shares.length > 0 && (
               <span className="inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 border-purple-200">
                 Shared w/ {shares.length} Developer{shares.length !== 1 ? 's' : ''}

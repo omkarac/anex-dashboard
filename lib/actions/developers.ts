@@ -78,7 +78,7 @@ export async function updateDeveloper(
   return result;
 }
 
-const ROUTINE_TASKS = [
+const ALL_ROUTINE_TASKS = [
   { title: 'Share Information Memorandum', task_type: 'im_shared', priority: 'medium' },
   { title: 'Share Financial Feasibility',  task_type: 'ff_shared', priority: 'medium' },
   { title: 'Issue EOI',                   task_type: 'eoi_issued', priority: 'high'   },
@@ -87,8 +87,11 @@ const ROUTINE_TASKS = [
 export async function shareWithDeveloper(
   assetId: string,
   developerId: string,
-  notes: string
+  notes: string,
+  selectedTaskTypes: string[] = ['im_shared']
 ): Promise<ActionResult<void>> {
+  const tasksToCreate = ALL_ROUTINE_TASKS.filter((t) => selectedTaskTypes.includes(t.task_type));
+
   const result = await withAudit({
     action: 'share',
     entityType: 'developer_share',
@@ -110,17 +113,19 @@ export async function shareWithDeveloper(
         .single();
       if (error) throw new Error(error.message);
 
-      const { error: tasksError } = await service.from('share_tasks').insert(
-        ROUTINE_TASKS.map((t) => ({
-          share_id: share.id,
-          title: t.title,
-          task_type: t.task_type,
-          status: 'todo',
-          priority: t.priority,
-          created_by: actorId,
-        }))
-      );
-      if (tasksError) throw new Error(tasksError.message);
+      if (tasksToCreate.length > 0) {
+        const { error: tasksError } = await service.from('share_tasks').insert(
+          tasksToCreate.map((t) => ({
+            share_id: share.id,
+            title: t.title,
+            task_type: t.task_type,
+            status: 'todo',
+            priority: t.priority,
+            created_by: actorId,
+          }))
+        );
+        if (tasksError) throw new Error(tasksError.message);
+      }
     },
   });
 
@@ -166,6 +171,39 @@ export async function completeShareTask(
         task_id: taskId,
         created_by: actorId,
       });
+      if (updateError) throw new Error(updateError.message);
+    },
+  });
+
+  if (result.ok) revalidatePath('/capital-markets/developers');
+  return result;
+}
+
+export async function uncompleteShareTask(
+  taskId: string,
+): Promise<ActionResult<void>> {
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'share_task',
+    entityId: taskId,
+    summary: `Share task marked incomplete`,
+    mutation: async (actorId) => {
+      const service = createServiceClient();
+      const now = new Date().toISOString();
+
+      const { error: taskError } = await service
+        .from('share_tasks')
+        .update({ status: 'todo', completed_at: null, updated_at: now })
+        .eq('id', taskId);
+      if (taskError) throw new Error(taskError.message);
+
+      // Remove the auto-generated update entry that was created on completion
+      const { error: updateError } = await service
+        .from('share_updates')
+        .update({ deleted_at: now, deleted_by: actorId })
+        .eq('task_id', taskId)
+        .eq('source', 'task_completed')
+        .is('deleted_at', null);
       if (updateError) throw new Error(updateError.message);
     },
   });
