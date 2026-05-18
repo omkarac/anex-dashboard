@@ -5,10 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Font — Next.js injects --font-archivo via next/font/google */
+  /* Font — Next.js injects CSS variables via next/font/google */
   --font-sans: var(--font-archivo), 'Archivo', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
   --font-heading: var(--font-archivo), 'Archivo', system-ui, sans-serif;
+  /* Sales vertical fonts */
+  --font-sales: var(--font-plus-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-sales-mono: var(--font-dm-mono), 'DM Mono', ui-monospace, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
