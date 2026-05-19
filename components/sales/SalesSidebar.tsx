@@ -17,16 +17,30 @@ const NAV = [
   { label: 'Logs',             href: '/sales/logs',              icon: '🗂️' },
 ];
 
-interface Props { member: TeamMember; }
+interface Props {
+  member: TeamMember;
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
 
-export function SalesSidebar({ member }: Props) {
+export function SalesSidebar({ member, mobileOpen, onClose }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="sales-sidebar">
+    <nav className={`sales-sidebar${mobileOpen ? ' mobile-open' : ''}`} style={{ position: 'relative' }}>
+      {/* Close button — only visible on mobile (via CSS) */}
+      <button
+        className="sidebar-close-btn"
+        onClick={onClose}
+        aria-label="Close navigation"
+        type="button"
+      >
+        ✕
+      </button>
+
       {/* Logo */}
       <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-        <Link href="/sales/dashboard" style={{ textDecoration: 'none', display: 'block' }}>
+        <Link href="/sales/dashboard" style={{ textDecoration: 'none', display: 'block' }} onClick={onClose}>
           <Image
             src="/logo-white.png"
             alt="Anex Advisory"
@@ -46,15 +60,16 @@ export function SalesSidebar({ member }: Props) {
         {NAV.map(item => {
           const active = pathname === item.href || (item.href !== '/sales/dashboard' && pathname.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href} style={{ textDecoration: 'none', display: 'block' }}>
+            <Link key={item.href} href={item.href} style={{ textDecoration: 'none', display: 'block' }} onClick={onClose}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 16px', margin: '1px 8px', borderRadius: 8,
+                padding: '11px 16px', margin: '1px 8px', borderRadius: 8,
                 background: active ? 'rgba(201,168,76,.15)' : 'transparent',
                 borderLeft: active ? '3px solid var(--anex-gold)' : '3px solid transparent',
                 transition: 'background .15s',
+                minHeight: 44, // minimum tap target
               }}>
-                <span style={{ fontSize: 15 }}>{item.icon}</span>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
                 <span style={{
                   fontSize: 13, fontWeight: active ? 700 : 500,
                   color: active ? 'var(--anex-gold)' : 'rgba(255,255,255,.75)',

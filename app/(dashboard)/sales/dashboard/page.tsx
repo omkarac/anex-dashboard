@@ -76,54 +76,21 @@ export default async function SalesDashboardPage({
   }));
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="dashboard-content">
 
       {/* ── KPI Row ──────────────────────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-        gap: 12,
-      }}>
-        <KpiTile
-          label="Total Walk-ins"
-          value={kpis.totalWalkins}
-          sub={`${kpis.cpWalkins} CP · ${kpis.directWalkins} Direct`}
-          accent="var(--anex-navy)"
-        />
-        <KpiTile
-          label="Bookings"
-          value={kpis.booked}
-          sub={`${kpis.convPct}% conv. rate`}
-          accent="var(--status-booked)"
-        />
-        <KpiTile
-          label="Warm Leads"
-          value={kpis.warm}
-          sub="Actively following up"
-          accent="var(--status-warm)"
-        />
-        <KpiTile
-          label="Lost"
-          value={kpis.lost}
-          sub="Total lost leads"
-          accent="var(--status-lost)"
-        />
-        <KpiTile
-          label="Unique OBMs"
-          value={kpis.uniqueObms}
-          sub={`${kpis.totalIbms} IBMs total`}
-          accent="var(--anex-teal)"
-        />
-        <KpiTile
-          label="CP Walk-ins"
-          value={kpis.cpWalkins}
-          sub={`${kpis.totalMeetings} total meetings`}
-          accent="var(--anex-gold-dim)"
-        />
+      <div className="kpi-grid-auto">
+        <KpiTile label="Total Walk-ins" value={kpis.totalWalkins} sub={`${kpis.cpWalkins} CP · ${kpis.directWalkins} Direct`} accent="var(--anex-navy)" />
+        <KpiTile label="Bookings"       value={kpis.booked}       sub={`${kpis.convPct}% conv. rate`} accent="var(--status-booked)" />
+        <KpiTile label="Warm Leads"     value={kpis.warm}         sub="Actively following up"         accent="var(--status-warm)" />
+        <KpiTile label="Lost"           value={kpis.lost}         sub="Total lost leads"              accent="var(--status-lost)" />
+        <KpiTile label="Unique OBMs"    value={kpis.uniqueObms}   sub={`${kpis.totalIbms} IBMs total`} accent="var(--anex-teal)" />
+        <KpiTile label="CP Walk-ins"    value={kpis.cpWalkins}    sub={`${kpis.totalMeetings} total meetings`} accent="var(--anex-gold-dim)" />
       </div>
 
       {/* ── Row 2: SM Performance + Config Demand ─────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      {/* .grid-2 stacks to 1-col on mobile via CSS */}
+      <div className="grid-2">
 
         {/* SM Performance */}
         <div className="sales-card">
@@ -134,7 +101,7 @@ export default async function SalesDashboardPage({
             </div>
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 320 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--sales-border-light)', background: 'var(--sales-bg)' }}>
                   <Th left>SM</Th>
@@ -175,7 +142,7 @@ export default async function SalesDashboardPage({
             </div>
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 280 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--sales-border-light)', background: 'var(--sales-bg)' }}>
                   <Th left>Config</Th>
@@ -207,31 +174,34 @@ export default async function SalesDashboardPage({
       </div>
 
       {/* ── Row 3: CP Priority + Lost Analysis ────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="grid-2">
 
         {/* CP Priority */}
         <div className="sales-card">
           <div className="sales-card-header">
             <div className="sales-card-title">CP Priority Breakdown</div>
           </div>
-          <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            {[
-              { label: 'P1 — 10+ walk-ins', count: p1, color: 'var(--anex-gold)', bg: '#FFFBEB', border: '#FDE68A' },
-              { label: 'P2 — 5–9 walk-ins', count: p2, color: 'var(--status-cold)', bg: '#DBEAFE', border: '#BFDBFE' },
-              { label: 'P3 — 1–4 walk-ins', count: p3, color: 'var(--sales-txt3)', bg: 'var(--sales-bg)', border: 'var(--sales-border)' },
-            ].map(tier => (
-              <div key={tier.label} style={{
-                padding: '12px 8px', borderRadius: 8, textAlign: 'center',
-                background: tier.bg, border: `1.5px solid ${tier.border}`,
-              }}>
-                <div style={{ fontSize: 26, fontWeight: 800, color: tier.color, fontVariantNumeric: 'tabular-nums' }}>
-                  {tier.count}
+          {/* .grid-3 becomes 2-col on mobile */}
+          <div style={{ padding: '16px 18px' }}>
+            <div className="grid-3">
+              {[
+                { label: 'P1 — 10+ walk-ins', count: p1, color: 'var(--anex-gold)', bg: '#FFFBEB', border: '#FDE68A' },
+                { label: 'P2 — 5–9 walk-ins', count: p2, color: 'var(--status-cold)', bg: '#DBEAFE', border: '#BFDBFE' },
+                { label: 'P3 — 1–4 walk-ins', count: p3, color: 'var(--sales-txt3)', bg: 'var(--sales-bg)', border: 'var(--sales-border)' },
+              ].map(tier => (
+                <div key={tier.label} style={{
+                  padding: '12px 8px', borderRadius: 8, textAlign: 'center',
+                  background: tier.bg, border: `1.5px solid ${tier.border}`,
+                }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: tier.color, fontVariantNumeric: 'tabular-nums' }}>
+                    {tier.count}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--sales-txt2)', fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>
+                    {tier.label}
+                  </div>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--sales-txt2)', fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>
-                  {tier.label}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           <div style={{ padding: '0 18px 14px' }}>
             <a href={`/sales-marketing/cp-review?project=${project.id}`}
@@ -267,7 +237,7 @@ export default async function SalesDashboardPage({
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 320 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--sales-border-light)', background: 'var(--sales-bg)' }}>
                 <Th left>Month</Th>
@@ -300,12 +270,12 @@ export default async function SalesDashboardPage({
         <div className="sales-card-header">
           <div className="sales-card-title">Top CP Performance</div>
           <a href={`/sales-marketing/cp-review?project=${project.id}`}
-            style={{ fontSize: 12, color: 'var(--anex-teal)', textDecoration: 'none', fontWeight: 600 }}>
+            style={{ fontSize: 12, color: 'var(--anex-teal)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
             Full table →
           </a>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 560 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--sales-border-light)', background: 'var(--sales-bg)' }}>
                 <Th left style={{ width: 28 }}>#</Th>
@@ -313,9 +283,10 @@ export default async function SalesDashboardPage({
                 <Th left>Cat</Th>
                 <Th>WI</Th>
                 <Th>Bkd</Th>
-                <Th>1BHK</Th>
-                <Th>2BHK</Th>
-                <Th>3BHK</Th>
+                {/* Hide config breakdown cols on smallest screens */}
+                <Th data-mobile="hide">1BHK</Th>
+                <Th data-mobile="hide">2BHK</Th>
+                <Th data-mobile="hide">3BHK</Th>
                 <Th>Conv%</Th>
                 <Th>Priority</Th>
               </tr>
@@ -339,9 +310,9 @@ export default async function SalesDashboardPage({
                   </td>
                   <td style={{ ...tdRight, fontWeight: 700 }}>{cp.total_walkins}</td>
                   <td style={{ ...tdRight, color: 'var(--status-booked)', fontWeight: 700 }}>{cp.booked}</td>
-                  <td style={tdRight}>{cp.bhk_1}</td>
-                  <td style={tdRight}>{cp.bhk_2}</td>
-                  <td style={tdRight}>{cp.bhk_3}</td>
+                  <td style={tdRight} data-mobile="hide">{cp.bhk_1}</td>
+                  <td style={tdRight} data-mobile="hide">{cp.bhk_2}</td>
+                  <td style={tdRight} data-mobile="hide">{cp.bhk_3}</td>
                   <td style={tdRight}>{cp.conversion_pct ?? 0}%</td>
                   <td style={{ ...tdRight }}>
                     {cp.computed_priority && (
@@ -387,23 +358,28 @@ function Th({
   children,
   left,
   style,
+  'data-mobile': dataMobile,
 }: {
   children?: React.ReactNode;
   left?: boolean;
   style?: React.CSSProperties;
+  'data-mobile'?: string;
 }) {
   return (
-    <th style={{
-      padding: '8px 10px',
-      textAlign: left ? 'left' : 'right',
-      fontSize: 11,
-      fontWeight: 700,
-      color: 'var(--sales-txt3)',
-      textTransform: 'uppercase',
-      letterSpacing: '.4px',
-      whiteSpace: 'nowrap',
-      ...style,
-    }}>
+    <th
+      data-mobile={dataMobile}
+      style={{
+        padding: '8px 10px',
+        textAlign: left ? 'left' : 'right',
+        fontSize: 11,
+        fontWeight: 700,
+        color: 'var(--sales-txt3)',
+        textTransform: 'uppercase',
+        letterSpacing: '.4px',
+        whiteSpace: 'nowrap',
+        ...style,
+      }}
+    >
       {children}
     </th>
   );

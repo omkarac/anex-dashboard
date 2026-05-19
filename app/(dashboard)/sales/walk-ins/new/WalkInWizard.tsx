@@ -367,7 +367,8 @@ export function WalkInWizard({ projectId, smList }: Props) {
         {/* Step 2: Client details (new clients only) */}
         {state.step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* grid-2 stacks to 1-col on mobile */}
+            <div className="grid-2">
               <div className="mobile-form-group" style={{ marginBottom: 0 }}>
                 <label className="mobile-form-label">First Name</label>
                 <input type="text" value={state.firstName} onChange={e => set('firstName', e.target.value)} className="mobile-input" />
@@ -548,8 +549,8 @@ export function WalkInWizard({ projectId, smList }: Props) {
         )}
       </div>
 
-      {/* Sticky bottom nav */}
-      <div style={{
+      {/* Sticky bottom nav — safe-bottom adds env(safe-area-inset-bottom) padding for iOS notch */}
+      <div className="safe-bottom" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'white', borderTop: '1px solid var(--sales-border)',
         padding: '12px 20px', display: 'flex', gap: 10, zIndex: 10,

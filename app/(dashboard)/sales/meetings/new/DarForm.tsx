@@ -180,8 +180,8 @@ export function DarForm({ projects, defaultCpId }: Props) {
         )}
       </div>
 
-      {/* Place From / To */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      {/* Place From / To — stacks on mobile */}
+      <div className="grid-2">
         <div className="mobile-form-group" style={{ marginBottom: 0 }}>
           <label className="mobile-form-label">Place From</label>
           <input {...register('place_from')} className="mobile-input" placeholder="Starting point" />

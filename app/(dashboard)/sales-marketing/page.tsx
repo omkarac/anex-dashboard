@@ -77,31 +77,33 @@ export default async function SalesDashboardPage({
   return (
     <div className="flex flex-col h-full overflow-auto">
       {/* Header */}
-      <div className="border-b px-6 py-4 shrink-0 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Sales Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{project.name} · {project.location}</p>
+      <div className="border-b px-4 sm:px-6 py-3 sm:py-4 shrink-0 flex items-start sm:items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight truncate">Sales Dashboard</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">{project.name} · {project.location}</p>
         </div>
-        <div className="flex gap-2">
-          {projects.map(p => (
-            <a
-              key={p.id}
-              href={`/sales-marketing?project=${p.id}`}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                p.id === project.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:bg-accent'
-              }`}
-            >
-              {p.name.split(' ')[0]}
-            </a>
-          ))}
-        </div>
+        {projects.length > 1 && (
+          <div className="flex gap-1.5 flex-wrap">
+            {projects.map(p => (
+              <a
+                key={p.id}
+                href={`/sales-marketing?project=${p.id}`}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
+                  p.id === project.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border text-muted-foreground hover:bg-accent'
+                }`}
+              >
+                {p.name.split(' ')[0]}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 p-6 space-y-6">
-        {/* ROW 1: KPI Tiles */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="flex-1 p-3 sm:p-6 space-y-4 sm:space-y-6">
+        {/* ROW 1: KPI Tiles — 2-col on phone, 3 on tablet, 6 on desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <KpiTile label="CP Walk-ins"    value={kpis.cpWalkins}     color="navy"   />
           <KpiTile label="Bookings"       value={kpis.booked}        color="green"  subtitle={`${kpis.convPct}% conv.`} />
           <KpiTile label="Warm Leads"     value={kpis.warm}          color="gold"   />

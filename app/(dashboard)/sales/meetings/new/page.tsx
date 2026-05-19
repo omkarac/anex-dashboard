@@ -15,7 +15,7 @@ export default async function DarMeetingPage({
   const projects = await getUserProjects();
 
   return (
-    <div style={{ padding: 'var(--content-pad)', maxWidth: 620, margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(12px, 4vw, 24px)', maxWidth: 620, margin: '0 auto' }}>
       {/* Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, fontSize: 12, color: 'var(--sales-txt3)' }}>
         <Link href="/sales/dashboard" style={{ color: 'var(--sales-txt3)', textDecoration: 'none' }}>Dashboard</Link>

@@ -14,9 +14,9 @@ export default async function TasksPage() {
   ]);
 
   return (
-    <div style={{ padding: 'var(--content-pad)', display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 800 }}>
-      {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+    <div className="dashboard-content" style={{ maxWidth: 800 }}>
+      {/* KPI row — 4-col on desktop, 2x2 on mobile via .kpi-row-4 */}
+      <div className="kpi-row-4">
         <KpiCard label="Due Today"   value={kpis.dueToday}       accent="var(--anex-navy)" />
         <KpiCard label="Overdue"     value={kpis.overdue}        accent="var(--status-lost)" />
         <KpiCard label="Total Pending" value={kpis.pendingTotal} accent="var(--status-warm)" />

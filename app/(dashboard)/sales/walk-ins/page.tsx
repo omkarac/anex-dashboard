@@ -85,7 +85,7 @@ export default async function WalkInsListPage({
     new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
   return (
-    <div style={{ padding: 'var(--content-pad)', display: 'flex', flexDirection: 'column', gap: 16, height: '100%', overflow: 'auto' }}>
+    <div className="page-scroll">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -99,7 +99,7 @@ export default async function WalkInsListPage({
           style={{
             textDecoration: 'none',
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            height: 40, padding: '0 16px',
+            height: 44, padding: '0 18px',
             background: 'var(--anex-navy)', color: 'white',
             borderRadius: 'var(--r)', fontSize: 13, fontWeight: 700,
           }}
@@ -109,37 +109,38 @@ export default async function WalkInsListPage({
       </div>
 
       {/* Filters */}
-      <div className="sales-card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {/* Status chips */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {STATUS_FILTERS.map(f => (
-            <Link
-              key={f.value}
-              href={buildHref({ status: f.value })}
-              className={`filter-chip${activeStatus === f.value ? ' active' : ''}`}
-            >
-              {f.label}
-            </Link>
-          ))}
+      <div className="sales-card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* Status + project chips row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {STATUS_FILTERS.map(f => (
+              <Link
+                key={f.value}
+                href={buildHref({ status: f.value })}
+                className={`filter-chip${activeStatus === f.value ? ' active' : ''}`}
+              >
+                {f.label}
+              </Link>
+            ))}
+          </div>
+
+          {projects.length > 1 && (
+            <>
+              <div style={{ width: 1, height: 20, background: 'var(--sales-border)', margin: '0 4px' }} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Link href={buildHref({ project: '' })} className={`filter-chip${!activeProject ? ' active' : ''}`}>All</Link>
+                {projects.map(p => (
+                  <Link key={p.id} href={buildHref({ project: p.id })} className={`filter-chip${activeProject === p.id ? ' active' : ''}`}>
+                    {p.name.split(' ')[0]}
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Project filter */}
-        {projects.length > 1 && (
-          <>
-            <div style={{ width: 1, height: 20, background: 'var(--sales-border)', margin: '0 4px' }} />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <Link href={buildHref({ project: '' })} className={`filter-chip${!activeProject ? ' active' : ''}`}>All Projects</Link>
-              {projects.map(p => (
-                <Link key={p.id} href={buildHref({ project: p.id })} className={`filter-chip${activeProject === p.id ? ' active' : ''}`}>
-                  {p.name}
-                </Link>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Search */}
-        <form method="GET" action="/sales/walk-ins" style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+        {/* Search — full width on mobile */}
+        <form method="GET" action="/sales/walk-ins" style={{ display: 'flex', gap: 6 }}>
           {activeStatus && <input type="hidden" name="status" value={activeStatus} />}
           {activeProject && <input type="hidden" name="project" value={activeProject} />}
           <input
@@ -147,34 +148,37 @@ export default async function WalkInsListPage({
             defaultValue={params.q}
             placeholder="Search by name or mobile..."
             className="mobile-input"
-            style={{ height: 36, width: 220, fontSize: 13 }}
+            style={{ height: 40, flex: 1, fontSize: 13 }}
           />
           <button
             type="submit"
             style={{
-              height: 36, padding: '0 14px',
+              height: 40, padding: '0 16px',
               border: '1.5px solid var(--sales-border)', borderRadius: 'var(--r)',
               background: 'white', fontSize: 13, fontWeight: 600,
               cursor: 'pointer', color: 'var(--sales-txt2)', fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
             }}
           >
-            Go
+            Search
           </button>
         </form>
       </div>
 
-      {/* Table */}
+      {/* Table — mobile hides less-critical columns via [data-mobile="hide"] */}
       <div className="sales-card" style={{ flex: 1, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table className="wi-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--sales-border)', background: '#F8FAFC' }}>
-              {['Client', 'Mobile', 'Status', 'Project', 'Source', 'CP', 'Configuration', 'Date', ''].map(h => (
-                <th key={h} style={{
-                  padding: '10px 16px', textAlign: 'left',
-                  fontSize: 11, fontWeight: 700, color: 'var(--sales-txt3)',
-                  textTransform: 'uppercase', letterSpacing: '.4px', whiteSpace: 'nowrap',
-                }}>{h}</th>
-              ))}
+              <th style={thStyle}>Client</th>
+              <th style={thStyle} data-mobile="hide">Mobile</th>
+              <th style={thStyle}>Status</th>
+              <th style={thStyle} data-mobile="hide">Project</th>
+              <th style={thStyle} data-mobile="hide">Source</th>
+              <th style={thStyle} data-mobile="hide">CP</th>
+              <th style={thStyle} data-mobile="hide">Config</th>
+              <th style={thStyle}>Date</th>
+              <th style={thStyle}></th>
             </tr>
           </thead>
           <tbody>
@@ -191,37 +195,36 @@ export default async function WalkInsListPage({
               const rowClass = `row-${r.status}`;
               return (
                 <tr key={r.id} className={`wi-row ${rowClass}`} style={{ borderBottom: '1px solid var(--sales-border-light)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--sales-txt)' }}>{name}</td>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--sales-txt2)' }}>
+                  <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--sales-txt)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</td>
+                  <td style={{ padding: '12px 12px', fontFamily: 'monospace', fontSize: 12, color: 'var(--sales-txt2)', whiteSpace: 'nowrap' }} data-mobile="hide">
                     {r.clients?.mobile_primary ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '12px 12px' }}>
                     <span className={`status-badge badge-${r.status}`}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: dot, display: 'inline-block', marginRight: 5 }} />
                       {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--sales-txt2)' }}>{r.sales_projects?.name ?? '—'}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--sales-txt2)', textTransform: 'capitalize' }}>
+                  <td style={{ padding: '12px 12px', color: 'var(--sales-txt2)', whiteSpace: 'nowrap' }} data-mobile="hide">{r.sales_projects?.name ?? '—'}</td>
+                  <td style={{ padding: '12px 12px', color: 'var(--sales-txt2)', textTransform: 'capitalize', whiteSpace: 'nowrap' }} data-mobile="hide">
                     {r.source?.replace(/_/g, ' ') ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--sales-txt2)' }}>
+                  <td style={{ padding: '12px 12px', color: 'var(--sales-txt2)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-mobile="hide">
                     {r.channel_partners?.canonical_name ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--sales-txt2)', textTransform: 'uppercase', fontSize: 11, fontWeight: 700 }}>
+                  <td style={{ padding: '12px 12px', color: 'var(--sales-txt2)', textTransform: 'uppercase', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }} data-mobile="hide">
                     {r.configuration ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--sales-txt3)', whiteSpace: 'nowrap', fontSize: 12 }}>
+                  <td style={{ padding: '12px 12px', color: 'var(--sales-txt3)', whiteSpace: 'nowrap', fontSize: 12 }}>
                     {formatDate(r.created_at)}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '12px 10px' }}>
                     <Link
                       href={`/sales/walk-ins/${r.id}`}
                       style={{
                         textDecoration: 'none', fontSize: 11, fontWeight: 700,
-                        padding: '4px 10px', borderRadius: 6,
+                        padding: '5px 10px', borderRadius: 6,
                         background: 'var(--sales-bg)', border: '1.5px solid var(--sales-border)',
-                        color: 'var(--sales-txt2)',
+                        color: 'var(--sales-txt2)', whiteSpace: 'nowrap', display: 'inline-block',
                       }}
                     >
                       View
@@ -238,3 +241,9 @@ export default async function WalkInsListPage({
     </div>
   );
 }
+
+const thStyle: React.CSSProperties = {
+  padding: '10px 12px', textAlign: 'left',
+  fontSize: 11, fontWeight: 700, color: 'var(--sales-txt3)',
+  textTransform: 'uppercase', letterSpacing: '.4px', whiteSpace: 'nowrap',
+};

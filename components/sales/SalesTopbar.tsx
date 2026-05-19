@@ -9,9 +9,10 @@ import type { SalesProject } from '@/lib/schemas/sales';
 interface Props {
   member: TeamMember;
   projects: SalesProject[];
+  onMenuClick?: () => void;
 }
 
-function TopbarContent({ member, projects }: Props) {
+function TopbarContent({ member, projects, onMenuClick }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -36,9 +37,22 @@ function TopbarContent({ member, projects }: Props) {
 
   return (
     <div className="sales-topbar">
-      {/* Mobile hamburger */}
-<div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--sales-txt)' }}>
+      {/* Hamburger — only visible on mobile via CSS */}
+      <button
+        className="sales-hamburger"
+        onClick={onMenuClick}
+        aria-label="Open navigation menu"
+        type="button"
+      >
+        ☰
+      </button>
+
+      {/* Page title */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <h1 style={{
+          margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--sales-txt)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
           {pageTitle}
         </h1>
       </div>
@@ -56,25 +70,29 @@ function TopbarContent({ member, projects }: Props) {
             height: 36, padding: '0 10px', border: '1.5px solid var(--sales-border)',
             borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--sales-txt)',
             background: 'white', cursor: 'pointer', fontFamily: 'var(--font-sales)',
-            minWidth: 160,
+            minWidth: 0, maxWidth: 180, width: 'auto',
           }}
         >
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       )}
       {projects.length === 1 && (
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sales-txt2)', padding: '0 4px' }}>
+        <span style={{
+          fontSize: 13, fontWeight: 600, color: 'var(--sales-txt2)',
+          padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap', maxWidth: 140,
+        }}>
           {projects[0].name}
         </span>
       )}
 
-      {/* Quick actions */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* Quick action buttons — hidden on mobile via .topbar-actions CSS class */}
+      <div className="topbar-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <Link href="/sales/meetings/new" style={{
           textDecoration: 'none',
           height: 36, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 6,
           background: 'var(--anex-navy)', color: 'white', borderRadius: 8,
-          fontSize: 12, fontWeight: 700,
+          fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
         }}>
           + DAR
         </Link>
@@ -82,7 +100,7 @@ function TopbarContent({ member, projects }: Props) {
           textDecoration: 'none',
           height: 36, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 6,
           background: 'var(--status-booked)', color: 'white', borderRadius: 8,
-          fontSize: 12, fontWeight: 700,
+          fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
         }}>
           + Walk-in
         </Link>
@@ -102,10 +120,10 @@ function TopbarContent({ member, projects }: Props) {
   );
 }
 
-export function SalesTopbar({ member, projects }: Props) {
+export function SalesTopbar({ member, projects, onMenuClick }: Props) {
   return (
     <Suspense fallback={<div className="sales-topbar" />}>
-      <TopbarContent member={member} projects={projects} />
+      <TopbarContent member={member} projects={projects} onMenuClick={onMenuClick} />
     </Suspense>
   );
 }
