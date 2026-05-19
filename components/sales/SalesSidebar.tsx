@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { TeamMember } from '@/lib/rbac';
@@ -24,19 +25,18 @@ export function SalesSidebar({ member }: Props) {
   return (
     <nav className="sales-sidebar">
       {/* Logo */}
-      <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-        <Link href="/sales/dashboard" style={{ textDecoration: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: 'linear-gradient(135deg, var(--anex-gold), var(--anex-gold-dim))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 800, color: 'var(--anex-navy)',
-            }}>AN</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>Anex Sales</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', fontWeight: 500 }}>S&M CRM v2</div>
-            </div>
+      <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+        <Link href="/sales/dashboard" style={{ textDecoration: 'none', display: 'block' }}>
+          <Image
+            src="/logo-white.png"
+            alt="Anex Advisory"
+            width={110}
+            height={105}
+            priority
+            style={{ display: 'block', width: 110, height: 'auto', opacity: 0.95 }}
+          />
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', fontWeight: 500, marginTop: 6, letterSpacing: '.4px', textTransform: 'uppercase' }}>
+            Sales &amp; Marketing CRM
           </div>
         </Link>
       </div>
