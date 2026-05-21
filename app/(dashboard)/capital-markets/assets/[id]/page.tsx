@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { getAsset } from '@/lib/queries/assets';
 import { getUpdatesForAsset, getActivityLogsForAsset } from '@/lib/queries/updates';
 import { getTasksForAsset, getTeamMembers } from '@/lib/queries/tasks';
@@ -18,6 +17,8 @@ import { formatDate } from '@/lib/utils/formatters';
 import { AssetAssignSelect } from '@/components/assets/asset-assign-select';
 import { FileDrawer } from '@/components/assets/file-drawer';
 import { RegulationsEditor } from '@/components/assets/regulations-editor';
+import { AssetDeleteButton } from '@/components/assets/asset-delete-button';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 import { ChevronLeft } from 'lucide-react';
 
 export async function generateMetadata({
@@ -46,9 +47,9 @@ export default async function AssetDetailPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const currentUserId = user?.id ?? '';
+  const member = await getAuthenticatedMember();
+  const currentUserId = member.id;
+  const isAdmin = member.role === 'admin';
 
   const [asset, updates, tasks, activity, shares, developers, files, teamMembers, scenarios] = await Promise.all([
     getAsset(id),
@@ -92,6 +93,7 @@ export default async function AssetDetailPage({
             )}
             <StatusBadge status={asset.status} />
             <TemperatureBadge temperature={asset.temperature} />
+            {isAdmin && <AssetDeleteButton assetId={id} assetName={asset.property_name} />}
           </div>
         </div>
       </div>
