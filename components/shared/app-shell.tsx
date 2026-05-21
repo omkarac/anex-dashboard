@@ -50,7 +50,7 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: React.Ele
     { href: '/capital-markets', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
     { href: '/capital-markets/assets', label: 'Assets', icon: Building2 },
     { href: '/capital-markets/developers', label: 'Developers', icon: Users2 },
-    { href: '/capital-markets/logs', label: 'Activity Logs', icon: ScrollText },
+    { href: '/audit', label: 'Audit Room', icon: ScrollText },
     { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
   ],
   sales_marketing: [
@@ -63,7 +63,7 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: React.Ele
     { href: '/sales-marketing/sm-performance', label: 'SM Performance', icon: BarChart3, adminOnly: true },
     { href: '/sales-marketing/cp-review', label: 'CP Review', icon: TrendingUp },
     { href: '/sales-marketing/lost-analysis', label: 'Lost Analysis', icon: TrendingDown },
-    { href: '/sales-marketing/logs', label: 'Activity Logs', icon: ScrollText },
+    { href: '/audit', label: 'Audit Room', icon: ScrollText },
     { href: '/sales-marketing/team', label: 'Team', icon: Grid3X3, adminOnly: true },
   ],
 };

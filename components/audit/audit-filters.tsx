@@ -5,24 +5,26 @@ import { useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { actionLabel } from '@/lib/enums/audit';
+import type { AuditVertical } from '@/lib/queries/logs';
 
 type Props = {
   actors: { id: string; full_name: string }[];
   actions: string[];
   entityTypes: string[];
+  showVerticalSwitcher?: boolean;
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  create: 'Create',
-  update: 'Update',
-  delete: 'Delete',
-  status_change: 'Status Change',
-  share: 'Share',
-  convert: 'Convert',
-  delete_log: 'Delete Log',
-};
+const VERTICAL_OPTIONS: { value: AuditVertical; label: string }[] = [
+  { value: 'all', label: 'All verticals' },
+  { value: 'capital_markets', label: 'Capital Markets' },
+  { value: 'sales_marketing', label: 'Sales & Marketing' },
+];
 
-export function LogFilters({ actors, actions, entityTypes }: Props) {
+const selectClass =
+  'h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+
+export function AuditFilters({ actors, actions, entityTypes, showVerticalSwitcher = true }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,17 +32,15 @@ export function LogFilters({ actors, actions, entityTypes }: Props) {
   const set = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
+      if (value) params.set(key, value);
+      else params.delete(key);
       params.delete('page');
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams]
   );
 
+  const vertical = searchParams.get('vertical') ?? 'all';
   const q = searchParams.get('q') ?? '';
   const actorId = searchParams.get('actor_id') ?? '';
   const action = searchParams.get('action') ?? '';
@@ -49,22 +49,30 @@ export function LogFilters({ actors, actions, entityTypes }: Props) {
   const to = searchParams.get('to') ?? '';
   const showDeleted = searchParams.get('deleted') === '1';
 
-  const hasFilters = q || actorId || action || entityType || from || to || showDeleted;
+  const hasFilters = (vertical && vertical !== 'all') || q || actorId || action || entityType || from || to || showDeleted;
 
   function clearFilters() {
-    router.push(pathname);
+    const params = new URLSearchParams();
+    const view = searchParams.get('view');
+    if (view) params.set('view', view);
+    router.push(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   }
-
-  const selectClass =
-    'h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {showVerticalSwitcher && (
+        <select value={vertical} onChange={(e) => set('vertical', e.target.value)} className={selectClass + ' font-medium'}>
+          {VERTICAL_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      )}
+
       <Input
         value={q}
         onChange={(e) => set('q', e.target.value)}
         placeholder="Search summary…"
-        className="h-8 text-xs w-48"
+        className="h-8 text-xs w-44"
       />
 
       <select value={actorId} onChange={(e) => set('actor_id', e.target.value)} className={selectClass}>
@@ -77,7 +85,7 @@ export function LogFilters({ actors, actions, entityTypes }: Props) {
       <select value={action} onChange={(e) => set('action', e.target.value)} className={selectClass}>
         <option value="">All actions</option>
         {actions.map((a) => (
-          <option key={a} value={a}>{ACTION_LABELS[a] ?? a}</option>
+          <option key={a} value={a}>{actionLabel(a)}</option>
         ))}
       </select>
 
@@ -88,20 +96,8 @@ export function LogFilters({ actors, actions, entityTypes }: Props) {
         ))}
       </select>
 
-      <input
-        type="date"
-        value={from}
-        onChange={(e) => set('from', e.target.value)}
-        className={selectClass + ' w-32'}
-        title="From date"
-      />
-      <input
-        type="date"
-        value={to}
-        onChange={(e) => set('to', e.target.value)}
-        className={selectClass + ' w-32'}
-        title="To date"
-      />
+      <input type="date" value={from} onChange={(e) => set('from', e.target.value)} className={selectClass + ' w-32'} title="From date" />
+      <input type="date" value={to} onChange={(e) => set('to', e.target.value)} className={selectClass + ' w-32'} title="To date" />
 
       <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
         <input

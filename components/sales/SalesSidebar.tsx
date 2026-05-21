@@ -14,7 +14,7 @@ const NAV = [
   { label: 'My Tasks',         href: '/sales/tasks',              icon: '✅' },
   { label: 'Channel Partners', href: '/sales/channel-partners',  icon: '🏢' },
   { label: 'EOD Report',       href: '/sales/eod',               icon: '📝' },
-  { label: 'Logs',             href: '/sales/logs',              icon: '🗂️' },
+  { label: 'Audit Room',       href: '/audit',                   icon: '🗂️' },
 ];
 
 interface Props {

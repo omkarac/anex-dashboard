@@ -103,7 +103,7 @@ export function RecentActivityWidget({ logs }: { logs: RecentLog[] }) {
           Recent Activity
         </h2>
         <Link
-          href="/capital-markets/logs"
+          href="/audit?vertical=capital_markets"
           className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 transition-colors"
         >
           View all →

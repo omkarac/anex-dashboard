@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service';
 
+export type AuditDiff = { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
+
 export type LogEntry = {
   id: string;
   actor_id: string | null;
@@ -7,6 +9,7 @@ export type LogEntry = {
   entity_type: string;
   entity_id: string;
   summary: string;
+  diff: AuditDiff;
   created_at: string;
   deleted_at: string | null;
   delete_reason: string | null;
@@ -27,6 +30,14 @@ export const SM_ENTITY_TYPES = [
   'project_sm_assignment',
 ];
 
+export type AuditVertical = 'capital_markets' | 'sales_marketing' | 'all';
+
+export function verticalForEntity(entityType: string): AuditVertical | 'other' {
+  if (CM_ENTITY_TYPES.includes(entityType)) return 'capital_markets';
+  if (SM_ENTITY_TYPES.includes(entityType)) return 'sales_marketing';
+  return 'other';
+}
+
 export type LogFilters = {
   q?: string;
   actor_id?: string;
@@ -36,7 +47,7 @@ export type LogFilters = {
   to?: string;
   show_deleted?: boolean;
   page?: number;
-  vertical?: 'capital_markets' | 'sales_marketing';
+  vertical?: AuditVertical;
 };
 
 const PAGE_SIZE = 50;
