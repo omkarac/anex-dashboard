@@ -61,6 +61,7 @@ export type Asset = z.infer<typeof AssetSchema>;
 export const AssetCreateSchema = AssetSchema.omit({
   id: true,
   created_at: true,
+  created_by: true,
   updated_at: true,
   updated_by: true,
   deleted_at: true,

@@ -46,7 +46,6 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
     topline_cr: formData.get('topline_cr') ? Number(formData.get('topline_cr')) : null,
     next_step: formData.get('next_step') || null,
     assigned_to: formData.get('assigned_to') || null,
-    created_by: 'placeholder',
   };
 
   const parsed = AssetCreateSchema.safeParse(raw);
