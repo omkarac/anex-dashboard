@@ -34,16 +34,31 @@ export async function withAudit<T>(params: {
 
     const data = await params.mutation(actorId);
 
-    // Write activity log (non-blocking — don't fail the mutation if logging fails)
-    await service.from('activity_logs').insert({
+    // activity_logs.entity_id is a NOT NULL uuid. Some create actions pass a
+    // placeholder ('pending', 'self') before the row's id exists — that fails
+    // the uuid insert and the log was being lost silently. Resolve a real uuid:
+    // prefer the created row's id, then fall back to the actor.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let entityId = params.entityId;
+    if (!UUID_RE.test(entityId)) {
+      const resultId = (data as { id?: unknown } | null | undefined)?.id;
+      entityId = typeof resultId === 'string' && UUID_RE.test(resultId) ? resultId : actorId;
+    }
+
+    // Write activity log (non-blocking — don't fail the mutation if logging
+    // fails — but surface the error so audit gaps aren't invisible).
+    const { error: logError } = await service.from('activity_logs').insert({
       actor_id: actorId,
       action: params.action,
       entity_type: params.entityType,
-      entity_id: params.entityId,
+      entity_id: entityId,
       asset_id: params.assetId ?? null,
       summary: params.summary,
       diff: params.diff ?? null,
     });
+    if (logError) {
+      console.error('[withAudit] activity log insert failed:', logError.message);
+    }
 
     return { ok: true, data };
   } catch (err) {
