@@ -9,8 +9,12 @@ import {
 
 const ANALYTICS_ROW_CAP = 5000;
 const FLAGGED_ROW_CAP = 400;
-const AFTER_HOURS_START = 20; // 8pm UTC
-const AFTER_HOURS_END = 6; // 6am UTC
+// After-hours = activity outside business hours in IST (UTC+5:30): from
+// 10:00 PM IST through 6:00 AM IST. Timestamps are stored in UTC, so we shift
+// by the IST offset and compare minutes-of-day to respect the :30 offset.
+const IST_OFFSET_MINUTES = 330;
+const AFTER_HOURS_START_MIN = 22 * 60; // 10:00 PM IST
+const AFTER_HOURS_END_MIN = 6 * 60; // 6:00 AM IST
 
 type RawRow = {
   id: string;
@@ -193,8 +197,9 @@ export async function getFlaggedEvents(filters: LogFilters = {}): Promise<Flagge
       flags.push('status_reversal');
     }
 
-    const hour = new Date(r.created_at).getUTCHours();
-    if (hour >= AFTER_HOURS_START || hour < AFTER_HOURS_END) flags.push('after_hours');
+    const d = new Date(r.created_at);
+    const istMinutes = (d.getUTCHours() * 60 + d.getUTCMinutes() + IST_OFFSET_MINUTES) % 1440;
+    if (istMinutes >= AFTER_HOURS_START_MIN || istMinutes < AFTER_HOURS_END_MIN) flags.push('after_hours');
 
     if ((burstCounts.get(burstKey(r)) ?? 0) >= 5) flags.push('bulk');
 
