@@ -19,7 +19,6 @@ import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { LatestUpdateSummary } from '@/lib/queries/updates';
 import type { UnassignedTask, AssetOpenTask, MyTask } from '@/lib/queries/developers';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { toCr } from '@/lib/utils/formatters';
 import { UnassignedFAB } from '@/components/developers/unassigned-fab';
 
 // Column widths — must match between header and body rows
@@ -114,7 +113,7 @@ function buildColumns(
       accessorKey: 'initial_investment_cr',
       header: 'Inv. (Cr)',
       cell: ({ row }) => {
-        const v = toCr(row.original.initial_investment_cr);
+        const v = row.original.initial_investment_cr;
         return <span className="tabular-nums">{v != null ? v.toLocaleString('en-IN') : <span className="text-muted-foreground">—</span>}</span>;
       },
     },
@@ -122,7 +121,7 @@ function buildColumns(
       accessorKey: 'topline_cr',
       header: 'Topline (Cr)',
       cell: ({ row }) => {
-        const v = toCr(row.original.topline_cr);
+        const v = row.original.topline_cr;
         return <span className="tabular-nums">{v != null ? v.toLocaleString('en-IN') : <span className="text-muted-foreground">—</span>}</span>;
       },
     },

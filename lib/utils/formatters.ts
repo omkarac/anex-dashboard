@@ -10,6 +10,17 @@ export function fromCr(crore: number): number {
   return crore * CR_SCALE;
 }
 
+// Area unit conversion. DB stores areas in square metres.
+export const SQFT_PER_SQM = 10.7639;
+
+export function sqftToSqm(sqft: number): number {
+  return sqft / SQFT_PER_SQM;
+}
+
+export function sqmToSqft(sqm: number): number {
+  return sqm * SQFT_PER_SQM;
+}
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export function formatDate(date: string | null | undefined): string {

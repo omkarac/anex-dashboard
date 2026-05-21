@@ -17,12 +17,34 @@ import {
 import { createAsset } from '@/lib/actions/assets';
 import { ASSET_STATUS_LABELS, ASSET_TEMPERATURE_LABELS, ASSET_TYPE_LABELS, REGULATION_OPTIONS } from '@/lib/enums/asset';
 import { MICRO_MARKETS, microMarketsByZone } from '@/lib/enums/micro-markets';
+import { sqftToSqm } from '@/lib/utils/formatters';
 import type { AssetStatus, AssetTemperature, AssetType } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 
 const STATUS_OPTIONS = Object.keys(ASSET_STATUS_LABELS) as AssetStatus[];
 const TEMPERATURE_OPTIONS = Object.keys(ASSET_TEMPERATURE_LABELS) as AssetTemperature[];
 const TYPE_OPTIONS = Object.keys(ASSET_TYPE_LABELS) as AssetType[];
+
+// Area fields stored in sq.m.; each gets a per-field unit selector in the form.
+const AREA_FIELDS = ['plot_size_sqm', 'development_potential_sqm', 'rehab_area_sqm', 'sale_area_sqm'] as const;
+
+const selectClass =
+  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+
+function AreaField({ id, label }: { id: string; label: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex gap-1.5">
+        <Input id={id} name={id} type="number" step="0.01" min={0} placeholder="0.00" className="flex-1" />
+        <select name={`${id}_unit`} defaultValue="sqm" aria-label={`${label} unit`} className={selectClass + ' w-24'}>
+          <option value="sqm">sq.m.</option>
+          <option value="sqft">sq.ft.</option>
+        </select>
+      </div>
+    </div>
+  );
+}
 
 export function AssetCreateSheet({ teamMembers = [] }: { teamMembers?: TeamMemberOption[] }) {
   const [open, setOpen] = useState(false);
@@ -33,6 +55,15 @@ export function AssetCreateSheet({ teamMembers = [] }: { teamMembers?: TeamMembe
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
+
+    // Normalize any area entered in sq.ft. to sq.m. before submit (DB stores sq.m.)
+    for (const field of AREA_FIELDS) {
+      const raw = formData.get(field);
+      if (raw && formData.get(`${field}_unit`) === 'sqft') {
+        formData.set(field, String(sqftToSqm(Number(raw))));
+      }
+      formData.delete(`${field}_unit`);
+    }
 
     startTransition(async () => {
       const result = await createAsset(formData);
@@ -149,11 +180,6 @@ export function AssetCreateSheet({ teamMembers = [] }: { teamMembers?: TeamMembe
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="resource">Source / Resource</Label>
-                <Input id="resource" name="resource" placeholder="Who brought this deal?" />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="assigned_to">Assigned To</Label>
                 <select
                   id="assigned_to"
@@ -194,30 +220,21 @@ export function AssetCreateSheet({ teamMembers = [] }: { teamMembers?: TeamMembe
             {/* Sizes */}
             <section className="flex flex-col gap-3">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Areas (sq.m.)
+                Areas
               </h3>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Pick the unit per field. Values are stored in sq.m.
+              </p>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="plot_size_sqm">Plot Size</Label>
-                  <Input id="plot_size_sqm" name="plot_size_sqm" type="number" step="0.01" placeholder="0.00" />
-                </div>
+                <AreaField id="plot_size_sqm" label="Plot Size" />
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="fsi_potential">FSI Potential</Label>
                   <Input id="fsi_potential" name="fsi_potential" type="number" step="0.01" placeholder="0.00" />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="development_potential_sqm">Dev Potential</Label>
-                  <Input id="development_potential_sqm" name="development_potential_sqm" type="number" step="0.01" placeholder="0.00" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="sale_area_sqm">Sale Area</Label>
-                  <Input id="sale_area_sqm" name="sale_area_sqm" type="number" step="0.01" placeholder="0.00" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="rehab_area_sqm">Rehab Area</Label>
-                  <Input id="rehab_area_sqm" name="rehab_area_sqm" type="number" step="0.01" placeholder="0.00" />
-                </div>
+                <AreaField id="development_potential_sqm" label="Dev Potential" />
+                <AreaField id="sale_area_sqm" label="Sale Area" />
+                <AreaField id="rehab_area_sqm" label="Rehab Area" />
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="sale_rate_psf">Sale Rate (PSF)</Label>
                   <Input id="sale_rate_psf" name="sale_rate_psf" type="number" step="0.01" placeholder="0.00" />

@@ -31,7 +31,6 @@ export async function createAsset(formData: FormData): Promise<ActionResult<Asse
     temperature: formData.get('temperature') || 'none',
     asset_type: formData.get('asset_type') || null,
     spoc_agent: formData.get('spoc_agent') || null,
-    resource: formData.get('resource') || null,
     handover_notes: formData.get('handover_notes') || null,
     plot_size_sqm: formData.get('plot_size_sqm') ? Number(formData.get('plot_size_sqm')) : null,
     fsi_potential: formData.get('fsi_potential') ? Number(formData.get('fsi_potential')) : null,

@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { CR_SCALE } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 
 const PAGE_SIZE = 50;
@@ -59,11 +58,11 @@ export async function listAssets(filters: AssetFilters = {}): Promise<{
   if (filters.asset_type?.length) query = query.in('asset_type', filters.asset_type);
   if (filters.spoc_agent?.length) query = query.in('spoc_agent', filters.spoc_agent);
   if (filters.regulation?.length) query = query.overlaps('regulations', filters.regulation);
-  // Filter values arrive in Crore; convert to rupees for the DB query
-  if (filters.topline_min != null) query = query.gte('topline_cr', filters.topline_min * CR_SCALE);
-  if (filters.topline_max != null) query = query.lte('topline_cr', filters.topline_max * CR_SCALE);
-  if (filters.inv_min != null) query = query.gte('initial_investment_cr', filters.inv_min * CR_SCALE);
-  if (filters.inv_max != null) query = query.lte('initial_investment_cr', filters.inv_max * CR_SCALE);
+  // Monetary columns are stored in Crore; filter values arrive in Crore too.
+  if (filters.topline_min != null) query = query.gte('topline_cr', filters.topline_min);
+  if (filters.topline_max != null) query = query.lte('topline_cr', filters.topline_max);
+  if (filters.inv_min != null) query = query.gte('initial_investment_cr', filters.inv_min);
+  if (filters.inv_max != null) query = query.lte('initial_investment_cr', filters.inv_max);
   if (filters.plot_min != null) query = query.gte('plot_size_sqm', filters.plot_min);
   if (filters.plot_max != null) query = query.lte('plot_size_sqm', filters.plot_max);
 
@@ -110,8 +109,8 @@ export async function getAssetNumericBounds(): Promise<{
     const toplines = data.map((r) => r.topline_cr ?? 0).filter((v) => v > 0);
     const invs = data.map((r) => r.initial_investment_cr ?? 0).filter((v) => v > 0);
     const plots = data.map((r) => r.plot_size_sqm ?? 0).filter((v) => v > 0);
-    if (toplines.length) topline_max = Math.ceil((Math.max(...toplines) / CR_SCALE) * 1.1);
-    if (invs.length) inv_max = Math.ceil((Math.max(...invs) / CR_SCALE) * 1.1);
+    if (toplines.length) topline_max = Math.ceil(Math.max(...toplines) * 1.1);
+    if (invs.length) inv_max = Math.ceil(Math.max(...invs) * 1.1);
     if (plots.length) plot_max = Math.ceil(Math.max(...plots) * 1.1);
   }
 

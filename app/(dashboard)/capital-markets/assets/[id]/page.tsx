@@ -119,7 +119,6 @@ export default async function AssetDetailPage({
               </h2>
               <Field label="Type" value={asset.asset_type ? ASSET_TYPE_LABELS[asset.asset_type] : null} />
               <Field label="SPOC / Agent" value={asset.spoc_agent} />
-              <Field label="Resource" value={asset.resource} />
               {asset.handover_notes && <Field label="Handover Notes" value={asset.handover_notes} />}
             </section>
 
