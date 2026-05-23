@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
 import { LostReasonSchema, type LostReason } from '@/lib/schemas/sales';
+import { istTodayISO } from '@/lib/utils/formatters';
 import { z } from 'zod';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,14 +35,14 @@ export async function getCallQueue(): Promise<ActionResult<CallQueueItem[]>> {
     if (!user) return { ok: false, error: 'Not authenticated' };
 
     const service = createServiceClient();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = istTodayISO();
 
     const { data: tasks, error: tasksError } = await service
       .from('follow_up_tasks')
       .select('id, due_at, task_type, notes, lead_id')
       .eq('assigned_to', user.id)
       .eq('status', 'pending')
-      .lte('due_at', `${today}T23:59:59`)
+      .lte('due_at', `${today}T23:59:59+05:30`)
       .not('lead_id', 'is', null)
       .order('due_at', { ascending: true });
 

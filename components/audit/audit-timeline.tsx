@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { formatDate } from '@/lib/utils/formatters';
+import { formatDate, IST_TZ } from '@/lib/utils/formatters';
 import { actionLabel, actionColor, VERTICAL_SHORT, VERTICAL_COLORS } from '@/lib/enums/audit';
 import { verticalForEntity, type LogEntry } from '@/lib/queries/logs';
 
 function timeOfDay(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return new Date(iso).toLocaleTimeString('en-IN', { timeZone: IST_TZ, hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function groupByDay(logs: LogEntry[]): { day: string; items: LogEntry[] }[] {

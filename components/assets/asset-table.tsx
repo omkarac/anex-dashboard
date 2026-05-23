@@ -13,7 +13,7 @@ import { InlineStatusSelect } from '@/components/assets/inline-status-select';
 import { InlineTemperatureSelect } from '@/components/assets/inline-temperature-select';
 import { Button } from '@/components/ui/button';
 import { ASSET_TYPE_LABELS } from '@/lib/enums/asset';
-import { formatDate } from '@/lib/utils/formatters';
+import { formatDate, istTodayISO } from '@/lib/utils/formatters';
 import type { Asset } from '@/lib/schemas/asset';
 import type { TeamMemberOption } from '@/lib/queries/tasks';
 import type { LatestUpdateSummary } from '@/lib/queries/updates';
@@ -191,7 +191,7 @@ export function AssetTable({ data, count, pageCount, page, teamMembers, latestUp
   const searchParams = useSearchParams();
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istTodayISO();
 
   // Inject keyframe styles into <head> — inline <style> in JSX body is unreliable in React 19
   useEffect(() => {

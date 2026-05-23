@@ -11,6 +11,7 @@ import {
   type UpdateWalkInStatusInput,
   type SiteVisitFeedbackInput,
 } from '@/lib/schemas/sales';
+import { istTodayISO } from '@/lib/utils/formatters';
 import { upsertClient } from './clients';
 
 export type WalkInIntakeResult = {
@@ -160,7 +161,7 @@ export async function updateWalkInStatus(
         .update({
           status: parsed.data.status,
           latest_remark: parsed.data.remark,
-          latest_remark_date: new Date().toISOString().slice(0, 10),
+          latest_remark_date: istTodayISO(),
           lost_reason: parsed.data.lost_reason ?? null,
           updated_by: actorId,
         })

@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createCpMeeting } from '@/lib/actions/sales/meetings';
 import { CreateMeetingInputSchema, type CreateMeetingInput, type CpStage } from '@/lib/schemas/sales';
+import { istTodayISO } from '@/lib/utils/formatters';
 import { CpSearchCombobox } from '@/components/sales/CpSearchCombobox';
 import type { SalesProject } from '@/lib/schemas/sales';
 
@@ -42,7 +43,7 @@ export function DarForm({ projects, defaultCpId }: Props) {
     defaultValues: {
       project_id: defaultProjectId,
       cp_id: defaultCpId ?? '',
-      meeting_date: new Date().toISOString().split('T')[0],
+      meeting_date: istTodayISO(),
       meeting_type: undefined,
       nri_lead: false,
     },
@@ -173,7 +174,7 @@ export function DarForm({ projects, defaultCpId }: Props) {
           {...register('meeting_date')}
           type="date"
           className="mobile-input"
-          max={new Date().toISOString().split('T')[0]}
+          max={istTodayISO()}
         />
         {errors.meeting_date && (
           <span style={{ fontSize: 12, color: 'var(--color-danger)' }}>{errors.meeting_date.message}</span>

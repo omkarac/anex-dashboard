@@ -38,6 +38,7 @@ function TaskRow({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [dueDate, setDueDate] = useState(task.due_date ?? '');
   const done = task.status === 'done';
 
   function handleComplete() {
@@ -63,10 +64,14 @@ function TaskRow({
     });
   }
 
-  function handleDueDateChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value || null;
+  // Commit on blur, not on every change: a controlled date input bound to
+  // server state that saves per-keystroke interrupts manual year entry
+  // (e.g. typing 2026 gets captured as 00XX). Local state lets the user finish.
+  function commitDueDate() {
+    const next = dueDate || null;
+    if ((task.due_date ?? '') === (next ?? '')) return; // no change
     startTransition(async () => {
-      await updateShareTaskFields(task.id, { due_date: val });
+      await updateShareTaskFields(task.id, { due_date: next });
       router.refresh();
     });
   }
@@ -122,9 +127,9 @@ function TaskRow({
           </select>
           <input
             type="date"
-            value={task.due_date ?? ''}
-            onChange={handleDueDateChange}
-            disabled={isPending}
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            onBlur={commitDueDate}
             className="h-6 rounded-md border bg-background px-1.5 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
           />
         </div>

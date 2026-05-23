@@ -8,6 +8,7 @@ import {
   type VisitScheduleRow,
 } from '@/lib/actions/sales/calendar';
 import { getUserProjects } from '@/lib/actions/sales/projects';
+import { istTodayISO, istDateISO, IST_TZ } from '@/lib/utils/formatters';
 import { CalendarClient } from './CalendarClient';
 
 export const metadata: Metadata = { title: 'CP Calendar — Anex Sales' };
@@ -24,19 +25,17 @@ function groupByDate(rows: VisitScheduleRow[]): Map<string, VisitScheduleRow[]> 
 }
 
 function formatDateHeader(dateStr: string): string {
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  if (dateStr === today) return 'Today';
-  if (dateStr === tomorrow) return 'Tomorrow';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  if (dateStr === istTodayISO()) return 'Today';
+  if (dateStr === istDateISO(Date.now() + 86400000)) return 'Tomorrow';
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleDateString('en-IN', { timeZone: IST_TZ, weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function isToday(dateStr: string) {
-  return dateStr === new Date().toISOString().slice(0, 10);
+  return dateStr === istTodayISO();
 }
 function isFuture(dateStr: string) {
-  return dateStr > new Date().toISOString().slice(0, 10);
+  return dateStr > istTodayISO();
 }
 
 export default async function CalendarPage({

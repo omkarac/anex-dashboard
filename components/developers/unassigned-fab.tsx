@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { X, Zap, User } from 'lucide-react';
 import { updateShareTaskFields } from '@/lib/actions/developers';
+import { istTodayISO, IST_TZ } from '@/lib/utils/formatters';
 import type { UnassignedTask, MyTask } from '@/lib/queries/developers';
 import type { TeamMemberSelect } from '@/lib/queries/team';
 
@@ -52,10 +53,10 @@ const STATUS_CLS: Record<string, string> = {
 
 function formatDue(due: string | null): { label: string; overdue: boolean } | null {
   if (!due) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istTodayISO();
   const overdue = due < today;
   const d = new Date(due);
-  const label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const label = d.toLocaleDateString('en-IN', { timeZone: IST_TZ, day: 'numeric', month: 'short' });
   return { label, overdue };
 }
 

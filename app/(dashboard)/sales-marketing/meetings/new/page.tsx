@@ -8,6 +8,7 @@ import { CpSearchCombobox } from '@/components/sales/CpSearchCombobox';
 import { createCpMeeting } from '@/lib/actions/sales/meetings';
 import { MeetingTypeBadge } from '@/components/sales/MeetingTypeBadge';
 import type { MeetingType, MeetingCategory } from '@/lib/schemas/sales';
+import { istTodayISO } from '@/lib/utils/formatters';
 
 type State = {
   projectId: string;
@@ -34,7 +35,7 @@ function reducer(state: State, action: Action): State {
 function init(projectId: string): State {
   return {
     projectId,
-    meetingDate: new Date().toISOString().split('T')[0],
+    meetingDate: istTodayISO(),
     meetingType: '',
     cpId: null,
     placeFrom: '',

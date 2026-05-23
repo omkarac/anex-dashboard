@@ -112,7 +112,7 @@ export default async function MeetingsPage({
             {rows.map((m: any) => (
               <tr key={m.id} className="border-b hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                  {new Date(m.meeting_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  {new Date(m.meeting_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: '2-digit' })}
                 </td>
                 <td className="px-4 py-3 font-medium">{m.team_members?.full_name ?? '—'}</td>
                 <td className="px-4 py-3">{m.channel_partners?.canonical_name ?? '—'}</td>

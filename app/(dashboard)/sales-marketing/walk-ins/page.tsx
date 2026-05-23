@@ -153,7 +153,7 @@ export default async function WalkInsPage({
                   </td>
                   <td className="px-3 py-2 text-muted-foreground max-w-[160px] truncate">{wi.latest_remark ?? '—'}</td>
                   <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                    {lastVisit ? new Date(lastVisit.visit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                    {lastVisit ? new Date(lastVisit.visit_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' }) : '—'}
                   </td>
                 </tr>
               );

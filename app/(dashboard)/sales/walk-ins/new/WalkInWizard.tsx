@@ -8,6 +8,7 @@ import { updateWalkInStatus } from '@/lib/actions/sales/walk-ins';
 import { lookupClientByMobile } from '@/lib/actions/sales/clients';
 import type { Config, Purpose, LostReason } from '@/lib/schemas/sales';
 import type { TeamMemberSelect } from '@/lib/queries/team';
+import { istTodayISO } from '@/lib/utils/formatters';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -517,7 +518,7 @@ export function WalkInWizard({ projectId, smList }: Props) {
                   type="date"
                   value={state.nextFollowupDate}
                   onChange={e => set('nextFollowupDate', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={istTodayISO()}
                   className="mobile-input"
                 />
               </div>

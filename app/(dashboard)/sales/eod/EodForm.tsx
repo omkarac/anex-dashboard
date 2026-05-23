@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTodayMeetingCounts, createEodReport } from '@/lib/actions/sales/meetings';
+import { istTodayISO, IST_TZ } from '@/lib/utils/formatters';
 import type { SalesProject } from '@/lib/schemas/sales';
 
 interface Props {
@@ -45,7 +46,7 @@ export function EodForm({ projects, defaultProjectId }: Props) {
     setError('');
     const res = await createEodReport({
       project_id: projectId,
-      report_date: new Date().toISOString().split('T')[0],
+      report_date: istTodayISO(),
       calls_dialled: parseInt(callsDialled || '0', 10),
       calls_connected: parseInt(callsConnected || '0', 10),
       notes: notes || undefined,
@@ -55,7 +56,7 @@ export function EodForm({ projects, defaultProjectId }: Props) {
     setSubmitted(true);
   }
 
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long' });
+  const today = new Date().toLocaleDateString('en-IN', { timeZone: IST_TZ, weekday: 'long', day: '2-digit', month: 'long' });
   const currentProject = projects.find(p => p.id === projectId);
 
   const kpis = [

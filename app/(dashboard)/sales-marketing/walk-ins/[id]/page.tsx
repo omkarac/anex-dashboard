@@ -100,7 +100,7 @@ export default async function WalkInDetailPage({ params }: { params: Promise<{ i
                         Visit #{sv.visit_number}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(sv.visit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        {new Date(sv.visit_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'long', year: 'numeric' })}
                       </span>
                       <span className="text-xs text-muted-foreground capitalize">{sv.visit_type?.replace('_', ' ')}</span>
                     </div>
@@ -116,7 +116,7 @@ export default async function WalkInDetailPage({ params }: { params: Promise<{ i
                 )}
                 {sv.proposed_revisit_date && (
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Proposed revisit: {new Date(sv.proposed_revisit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    Proposed revisit: {new Date(sv.proposed_revisit_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })}
                   </div>
                 )}
               </div>

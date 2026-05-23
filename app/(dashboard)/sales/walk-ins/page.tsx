@@ -82,7 +82,7 @@ export default async function WalkInsListPage({
   };
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+    new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: '2-digit' });
 
   return (
     <div className="page-scroll">

@@ -4,6 +4,7 @@
 // DB types, form validation, and server action inputs all use these.
 
 import { z } from 'zod'
+import { istTodayISO } from '@/lib/utils/formatters'
 
 // ── Enum schemas (match DB enums exactly) ────────────────────────────────────
 
@@ -152,7 +153,7 @@ export const CpMeetingSchema = z.object({
 export const CreateMeetingInputSchema = z.object({
   project_id: z.string().uuid(),
   cp_id: z.string().uuid('Please select a CP from the list'),
-  meeting_date: z.string().default(() => new Date().toISOString().split('T')[0]),
+  meeting_date: z.string().default(() => istTodayISO()),
   meeting_type: MeetingTypeSchema,
   // meeting_category is NOT here — computed server-side
   place_from: z.string().optional(),
@@ -170,7 +171,7 @@ export const CreateMeetingInputSchema = z.object({
 
 export const CreateEodInputSchema = z.object({
   project_id: z.string().uuid(),
-  report_date: z.string().default(() => new Date().toISOString().split('T')[0]),
+  report_date: z.string().default(() => istTodayISO()),
   calls_dialled: z.number().int().min(0).default(0),
   calls_connected: z.number().int().min(0).default(0),
   notes: z.string().max(1000).optional(),

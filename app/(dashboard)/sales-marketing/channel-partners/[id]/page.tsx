@@ -80,7 +80,7 @@ export default async function CpDetailPage({
           <div><span className="text-2xl font-bold tabular-nums">{meetings?.length ?? 0}</span> <span className="text-muted-foreground text-xs">Meetings</span></div>
           {lastMeeting && (
             <div className="text-muted-foreground text-xs self-end">
-              Last meeting: {new Date(lastMeeting.meeting_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+              Last meeting: {new Date(lastMeeting.meeting_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: '2-digit' })}
             </div>
           )}
         </div>
@@ -119,7 +119,7 @@ export default async function CpDetailPage({
               {(meetings ?? []).map((m: any) => (
                 <tr key={m.id} className="border-b hover:bg-muted/20">
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
-                    {new Date(m.meeting_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                    {new Date(m.meeting_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: '2-digit' })}
                   </td>
                   <td className="px-4 py-3">{m.team_members?.full_name ?? '—'}</td>
                   <td className="px-4 py-3">
@@ -163,7 +163,7 @@ export default async function CpDetailPage({
                     <LeadStatusBadge status={w.status as LeadStatus} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                    {new Date(w.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                    {new Date(w.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: '2-digit' })}
                   </td>
                 </tr>
               ))}

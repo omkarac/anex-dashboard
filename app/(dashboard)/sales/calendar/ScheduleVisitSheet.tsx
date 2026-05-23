@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createVisitSchedule } from '@/lib/actions/sales/calendar';
 import type { SalesProject } from '@/lib/schemas/sales';
 import { CpSearchCombobox } from '@/components/sales/CpSearchCombobox';
+import { istTodayISO } from '@/lib/utils/formatters';
 
 interface Props {
   project: SalesProject;
@@ -23,7 +24,7 @@ export function ScheduleVisitSheet({ project, currentUserId, teamMembers, onClos
     client_mobile: '',
     cp_id: '',
     closing_sm_id: currentUserId,
-    tentative_date: new Date().toISOString().slice(0, 10),
+    tentative_date: istTodayISO(),
     tentative_time: '',
     notes: '',
   });
@@ -153,7 +154,7 @@ export function ScheduleVisitSheet({ project, currentUserId, teamMembers, onClos
                 className="mobile-input"
                 type="date"
                 value={form.tentative_date}
-                min={new Date().toISOString().slice(0, 10)}
+                min={istTodayISO()}
                 onChange={e => setField('tentative_date', e.target.value)}
                 required
               />

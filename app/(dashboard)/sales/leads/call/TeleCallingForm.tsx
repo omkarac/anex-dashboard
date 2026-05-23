@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { logCallAndCompleteTask, markLeadLost, type CallQueueItem } from '@/lib/actions/sales/leads';
 import type { LostReason } from '@/lib/schemas/sales';
+import { istTodayISO } from '@/lib/utils/formatters';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -382,7 +383,7 @@ export function TeleCallingForm({ initialQueue }: Props) {
                 type="date"
                 value={followUpDate}
                 onChange={e => setFollowUpDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+                min={istTodayISO()}
                 className="mobile-input"
               />
             </div>

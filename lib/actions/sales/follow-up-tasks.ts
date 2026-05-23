@@ -12,6 +12,7 @@ import {
   type SnoozeFollowUpTaskInput,
   type EscalateFollowUpTaskInput,
 } from '@/lib/schemas/sales-calendar';
+import { istTodayISO, istDateISO } from '@/lib/utils/formatters';
 
 // ── Row type returned by queries (with joined data) ────────────────────────────
 
@@ -130,8 +131,9 @@ export async function getTaskKpis(): Promise<{
   const member = await getAuthenticatedMember();
   const supabase = createServiceClient();
   const now = new Date();
-  const todayStart = now.toISOString().slice(0, 10) + 'T00:00:00.000Z';
-  const todayEnd = now.toISOString().slice(0, 10) + 'T23:59:59.999Z';
+  const istToday = istTodayISO();
+  const todayStart = `${istToday}T00:00:00.000+05:30`;
+  const todayEnd = `${istToday}T23:59:59.999+05:30`;
 
   const [{ data: pending }, { data: completedToday }] = await Promise.all([
     supabase
@@ -149,8 +151,7 @@ export async function getTaskKpis(): Promise<{
   ]);
 
   const rows = pending ?? [];
-  const todayStr = now.toISOString().slice(0, 10);
-  const dueToday = rows.filter(r => r.due_at.slice(0, 10) === todayStr && r.status === 'pending').length;
+  const dueToday = rows.filter(r => istDateISO(r.due_at) === istToday && r.status === 'pending').length;
   const overdue = rows.filter(r => r.due_at < now.toISOString() && r.status !== 'snoozed').length;
 
   return {

@@ -9,6 +9,7 @@ import {
   type CreateMeetingInput,
   type CreateEodInput,
 } from '@/lib/schemas/sales';
+import { istTodayISO } from '@/lib/utils/formatters';
 
 async function computeMeetingCategory(
   cpId: string,
@@ -136,7 +137,7 @@ export async function getTodayMeetingCounts(projectId: string): Promise<{
   obm: number; ibm: number; unique_obm: number; repeat_obm: number; unique_ibm: number; repeat_ibm: number;
 }> {
   const supabase = createServiceClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istTodayISO();
   const { data } = await supabase
     .from('cp_meetings')
     .select('meeting_type, meeting_category')

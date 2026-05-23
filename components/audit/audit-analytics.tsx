@@ -1,4 +1,5 @@
 import { actionLabel, actionColor } from '@/lib/enums/audit';
+import { IST_TZ } from '@/lib/utils/formatters';
 import type { AuditAnalytics } from '@/lib/queries/audit';
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -16,7 +17,7 @@ function TimeSeriesChart({ data }: { data: AuditAnalytics['timeSeries'] }) {
     <div className="flex items-end gap-1.5 h-40">
       {data.map((d) => {
         const heightPct = (d.count / max) * 100;
-        const label = new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        const label = new Date(d.date).toLocaleDateString('en-IN', { timeZone: IST_TZ, day: 'numeric', month: 'short' });
         return (
           <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${label}: ${d.count} events`}>
             <span className="text-[10px] text-muted-foreground tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">

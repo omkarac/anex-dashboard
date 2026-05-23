@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { convertToEngagement } from '@/lib/actions/engagements';
+import { istTodayISO } from '@/lib/utils/formatters';
 import { ENGAGEMENT_KIND_LABELS } from '@/lib/enums/engagement';
 import type { EngagementKind } from '@/lib/schemas/engagement';
 
@@ -18,7 +19,7 @@ type Props = { assetId: string };
 export function ConvertDialog({ assetId }: Props) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<EngagementKind>('mandate');
-  const [startedAt, setStartedAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startedAt, setStartedAt] = useState(() => istTodayISO());
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

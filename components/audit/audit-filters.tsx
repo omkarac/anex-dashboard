@@ -96,8 +96,24 @@ export function AuditFilters({ actors, actions, entityTypes, showVerticalSwitche
         ))}
       </select>
 
-      <input type="date" value={from} onChange={(e) => set('from', e.target.value)} className={selectClass + ' w-32'} title="From date" />
-      <input type="date" value={to} onChange={(e) => set('to', e.target.value)} className={selectClass + ' w-32'} title="To date" />
+      {/* Uncontrolled + commit on blur: a controlled date input that pushes to
+          the URL per-keystroke interrupts manual year entry (2026 → 00XX). */}
+      <input
+        key={`from-${from}`}
+        type="date"
+        defaultValue={from}
+        onBlur={(e) => set('from', e.target.value)}
+        className={selectClass + ' w-32'}
+        title="From date"
+      />
+      <input
+        key={`to-${to}`}
+        type="date"
+        defaultValue={to}
+        onBlur={(e) => set('to', e.target.value)}
+        className={selectClass + ' w-32'}
+        title="To date"
+      />
 
       <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
         <input

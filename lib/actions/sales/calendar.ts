@@ -10,6 +10,7 @@ import {
   type CreateVisitScheduleInput,
   type UpdateVisitScheduleStatusInput,
 } from '@/lib/schemas/sales-calendar';
+import { istTodayISO, istDateISO } from '@/lib/utils/formatters';
 
 // ── Row type returned by queries (with joined data) ────────────────────────────
 
@@ -41,10 +42,10 @@ export async function getVisitSchedules(
 ): Promise<VisitScheduleRow[]> {
   const supabase = createServiceClient();
 
-  const start = startDate ?? new Date().toISOString().slice(0, 10);
+  const start = startDate ?? istTodayISO();
   const d = new Date();
   d.setDate(d.getDate() + 60);
-  const end = endDate ?? d.toISOString().slice(0, 10);
+  const end = endDate ?? istDateISO(d);
 
   const { data } = await supabase
     .from('visit_schedules')
@@ -180,10 +181,10 @@ export async function getUpcomingVisitCounts(projectId: string): Promise<{
   thisWeek: number;
 }> {
   const supabase = createServiceClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istTodayISO();
   const weekEnd = new Date();
   weekEnd.setDate(weekEnd.getDate() + 7);
-  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+  const weekEndStr = istDateISO(weekEnd);
 
   const { data } = await supabase
     .from('visit_schedules')

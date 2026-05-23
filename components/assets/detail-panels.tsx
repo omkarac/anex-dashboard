@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/lib/enums/task';
-import { formatTimeAgo, formatDate } from '@/lib/utils/formatters';
+import { formatTimeAgo, formatDate, istTodayISO } from '@/lib/utils/formatters';
 import { createUpdate } from '@/lib/actions/updates';
 import { deleteUpdate } from '@/lib/actions/updates';
 import { createTask, updateTaskStatus, updateTaskAssignee, setTaskFileUrl, deleteTask } from '@/lib/actions/tasks';
@@ -66,7 +66,7 @@ function PanelShell({ title, count, children, chatMode }: {
 // ─── Updates panel ────────────────────────────────────────────────────────────
 
 function todayIso(): string {
-  return new Date().toISOString().split('T')[0];
+  return istTodayISO();
 }
 
 function UpdateCard({ update, currentUserId, onDelete }: {

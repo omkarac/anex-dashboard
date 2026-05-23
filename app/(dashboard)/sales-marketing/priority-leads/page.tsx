@@ -120,7 +120,7 @@ export default async function PriorityLeadsPage({
                   <td className="px-4 py-3 text-sm text-muted-foreground">{lead.cp_name ?? 'Direct'}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{lead.closing_sm ?? '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {lead.last_visit_date ? new Date(lead.last_visit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                    {lead.last_visit_date ? new Date(lead.last_visit_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' }) : '—'}
                     {lead.visit_number && lead.visit_number > 1 && (
                       <span className="ml-1 text-xs text-blue-500">v{lead.visit_number}</span>
                     )}

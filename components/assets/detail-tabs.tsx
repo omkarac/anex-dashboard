@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ASSET_STATUS_LABELS } from '@/lib/enums/asset';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS } from '@/lib/enums/task';
-import { formatTimeAgo, formatDate } from '@/lib/utils/formatters';
+import { formatTimeAgo, formatDate, istTodayISO } from '@/lib/utils/formatters';
 import { createUpdate, deleteUpdate } from '@/lib/actions/updates';
 import { createTask, updateTaskStatus, deleteTask } from '@/lib/actions/tasks';
 import type { UpdateWithAuthor, StatusHistoryEntry, ActivityLogEntry } from '@/lib/queries/updates';
@@ -69,7 +69,7 @@ function UpdatesPanel({
     if (!body.trim()) return;
     startTransition(async () => {
       const result = await createUpdate(assetId, {
-        update_date: new Date().toISOString().split('T')[0],
+        update_date: istTodayISO(),
         update_task: body.trim(),
       });
       if (result.ok) { setBody(''); router.refresh(); }

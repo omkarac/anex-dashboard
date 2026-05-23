@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Download, Printer, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportAuditCsv } from '@/lib/actions/logs';
+import { istTodayISO } from '@/lib/utils/formatters';
 import type { AuditVertical, LogFilters } from '@/lib/queries/logs';
 
 export function AuditExport() {
@@ -34,7 +35,7 @@ export function AuditExport() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `audit-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `audit-export-${istTodayISO()}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

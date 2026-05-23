@@ -7,6 +7,7 @@ import {
   snoozeFollowUpTask,
   type FollowUpTaskRow,
 } from '@/lib/actions/sales/follow-up-tasks';
+import { istTodayISO, istDateISO, IST_TZ } from '@/lib/utils/formatters';
 
 const TASK_TYPE_LABELS: Record<string, string> = {
   follow_up_call:         'Follow-up Call',
@@ -33,16 +34,13 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; border: string; 
 
 function formatDue(dueAt: string): string {
   const due = new Date(dueAt);
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const dueStr = due.toISOString().slice(0, 10);
-  const time = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const todayStr = istTodayISO();
+  const dueStr = istDateISO(dueAt);
+  const time = due.toLocaleTimeString('en-IN', { timeZone: IST_TZ, hour: '2-digit', minute: '2-digit', hour12: true });
 
   if (dueStr === todayStr) return `Today ${time}`;
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (dueStr === tomorrow.toISOString().slice(0, 10)) return `Tomorrow ${time}`;
-  return due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + time;
+  if (dueStr === istDateISO(Date.now() + 86400000)) return `Tomorrow ${time}`;
+  return due.toLocaleDateString('en-IN', { timeZone: IST_TZ, day: 'numeric', month: 'short' }) + ' ' + time;
 }
 
 function isOverdue(dueAt: string, status: string): boolean {
@@ -237,8 +235,8 @@ interface GroupedTasks {
 
 export function TasksClient({ tasks }: { tasks: FollowUpTaskRow[] }) {
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+  const todayStr = istTodayISO();
+  const tomorrowStr = istDateISO(now.getTime() + 86400000);
 
   const grouped: GroupedTasks = { overdue: [], today: [], tomorrow: [], upcoming: [], snoozed: [] };
 
@@ -247,7 +245,7 @@ export function TasksClient({ tasks }: { tasks: FollowUpTaskRow[] }) {
       grouped.snoozed.push(t);
       continue;
     }
-    const dateStr = t.due_at.slice(0, 10);
+    const dateStr = istDateISO(t.due_at);
     if (t.due_at < now.toISOString()) {
       grouped.overdue.push(t);
     } else if (dateStr === todayStr) {

@@ -63,7 +63,7 @@ export default async function WalkInDetailPage({ params }: { params: Promise<{ i
   const dot = STATUS_DOT[status] ?? '#94A3B8';
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+    new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
