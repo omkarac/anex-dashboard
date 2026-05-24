@@ -79,7 +79,7 @@ export async function getAuthenticatedMember(): Promise<TeamMember> {
     redirect('/pending');
   }
 
-  if (!member.is_active) redirect('/login');
+  if (!member.is_active || member.status === 'deactivated') redirect('/pending');
   if (member.status === 'pending') redirect('/pending');
   return member as TeamMember;
 }

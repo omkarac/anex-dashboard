@@ -55,7 +55,9 @@ export async function currentUser(): Promise<TeamMember> {
     redirect('/pending');
   }
 
-  if (!member.is_active) redirect('/login?error=deactivated');
+  // Offboarded members keep their session but are gated to the deactivated
+  // holding-page variant; pending members to the awaiting-approval variant.
+  if (!member.is_active || member.status === 'deactivated') redirect('/pending');
   if (member.status === 'pending') redirect('/pending');
 
   return member as TeamMember;

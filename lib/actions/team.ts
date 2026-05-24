@@ -101,9 +101,14 @@ export async function setMemberActive(
     summary: isActive ? 'Member reactivated' : 'Member deactivated',
     mutation: async () => {
       const service = createServiceClient();
+      // Keep status in lockstep with is_active so the offboarded gate + the
+      // orphaned-work pool can key off either flag consistently.
       const { error } = await service
         .from('team_members')
-        .update({ is_active: isActive })
+        .update({
+          is_active: isActive,
+          status: isActive ? 'active' : 'deactivated',
+        })
         .eq('id', memberId);
       if (error) throw new Error(error.message);
     },

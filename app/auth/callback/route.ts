@@ -74,12 +74,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/pending`);
   }
 
-  if (!existing.is_active) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/login?error=deactivated`);
-  }
-
-  if (existing.status === 'pending') {
+  // Offboarded (deactivated) → deactivated holding view; pending → awaiting
+  // approval. Both keep the session but get zero app access (gated to /pending).
+  if (!existing.is_active || existing.status !== 'active') {
     return NextResponse.redirect(`${origin}/pending`);
   }
 
