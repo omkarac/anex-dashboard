@@ -6,6 +6,9 @@ import type { ActionResult } from '@/lib/actions/_base';
 import { AddAssetFileSchema } from '@/lib/schemas/asset-file';
 import type { AssetFile } from '@/lib/schemas/asset-file';
 import { revalidatePath } from 'next/cache';
+import { authorizeCmWrite } from '@/lib/rbac';
+
+const CM_FORBIDDEN = 'Forbidden — capital-markets access required' as const;
 
 function extractTitleFromUrl(url: string): string {
   try {
@@ -24,6 +27,9 @@ export async function addAssetFile(
   url: string,
   title?: string,
 ): Promise<ActionResult<AssetFile>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const parsed = AddAssetFileSchema.safeParse({ assetId, url, title });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
 
@@ -67,6 +73,9 @@ export async function removeAssetFile(
   fileId: string,
   assetId: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',
@@ -92,6 +101,9 @@ export async function updateAssetFileTitle(
   title: string,
   assetId: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   if (!title.trim()) return { ok: false, error: 'Title cannot be empty' };
 
   const result = await withAudit({
@@ -118,6 +130,9 @@ export async function reorderAssetFiles(
   orderedIds: string[],
   assetId: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',

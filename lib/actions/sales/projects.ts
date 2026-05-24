@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { getAuthenticatedMember } from '@/lib/auth/member';
+import { authorizeSalesRole, isSalesHead } from '@/lib/rbac';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
 import { CreateProjectInputSchema, type SalesProject } from '@/lib/schemas/sales';
 
@@ -34,6 +35,11 @@ export async function getUserProjects(): Promise<SalesProject[]> {
 export async function createSalesProject(
   input: unknown
 ): Promise<ActionResult<SalesProject>> {
+  const member = await authorizeSalesRole();
+  if (!member || !isSalesHead(member)) {
+    return { ok: false, error: 'Forbidden — sales admin access required' };
+  }
+
   const parsed = CreateProjectInputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
@@ -62,6 +68,10 @@ export async function assignSmToProject(
   smId: string,
   role: string = 'both'
 ): Promise<ActionResult<{ id: string }>> {
+  const member = await authorizeSalesRole();
+  if (!member || !isSalesHead(member)) {
+    return { ok: false, error: 'Forbidden — sales admin access required' };
+  }
   return withAudit({
     action: 'update',
     entityType: 'project_sm_assignment',

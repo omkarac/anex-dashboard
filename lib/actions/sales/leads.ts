@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { authorizeSalesRole, canAccessProject } from '@/lib/rbac';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
 import { LostReasonSchema, type LostReason } from '@/lib/schemas/sales';
 import { istTodayISO } from '@/lib/utils/formatters';
@@ -144,6 +145,21 @@ export async function logCallAndCompleteTask(
   }
   const d = parsed.data;
 
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  {
+    const service = createServiceClient();
+    const { data: lead } = await service
+      .from('leads')
+      .select('project_id')
+      .eq('id', d.lead_id)
+      .single();
+    if (!lead) return { ok: false, error: 'Lead not found' };
+    if (!(await canAccessProject(member, lead.project_id))) {
+      return { ok: false, error: 'Forbidden — not assigned to this project' };
+    }
+  }
+
   return withAudit({
     action: 'create',
     entityType: 'lead_activity',
@@ -231,6 +247,21 @@ export async function markLeadLost(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
   }
   const d = parsed.data;
+
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  {
+    const service = createServiceClient();
+    const { data: lead } = await service
+      .from('leads')
+      .select('project_id')
+      .eq('id', d.lead_id)
+      .single();
+    if (!lead) return { ok: false, error: 'Lead not found' };
+    if (!(await canAccessProject(member, lead.project_id))) {
+      return { ok: false, error: 'Forbidden — not assigned to this project' };
+    }
+  }
 
   return withAudit({
     action: 'status_change',

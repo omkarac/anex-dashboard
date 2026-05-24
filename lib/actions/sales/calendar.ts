@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service';
 import { getAuthenticatedMember } from '@/lib/auth/member';
+import { authorizeSalesRole, canAccessProject } from '@/lib/rbac';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
 import {
   CreateVisitScheduleInputSchema,
@@ -40,6 +41,9 @@ export async function getVisitSchedules(
   startDate?: string,
   endDate?: string
 ): Promise<VisitScheduleRow[]> {
+  const member = await authorizeSalesRole();
+  if (!member || !(await canAccessProject(member, projectId))) return [];
+
   const supabase = createServiceClient();
 
   const start = startDate ?? istTodayISO();
@@ -94,6 +98,12 @@ export async function createVisitSchedule(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
   }
 
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  if (!(await canAccessProject(member, parsed.data.project_id))) {
+    return { ok: false, error: 'Forbidden — not assigned to this project' };
+  }
+
   return withAudit({
     action: 'create',
     entityType: 'visit_schedule',
@@ -136,6 +146,21 @@ export async function updateVisitScheduleStatus(
   }
 
   const { visit_id, status, reason, outcome_notes } = parsed.data;
+
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  {
+    const service = createServiceClient();
+    const { data: vs } = await service
+      .from('visit_schedules')
+      .select('project_id')
+      .eq('id', visit_id)
+      .single();
+    if (!vs) return { ok: false, error: 'Visit schedule not found' };
+    if (!(await canAccessProject(member, vs.project_id))) {
+      return { ok: false, error: 'Forbidden — not assigned to this project' };
+    }
+  }
 
   return withAudit({
     action: 'status_change',
@@ -180,6 +205,11 @@ export async function getUpcomingVisitCounts(projectId: string): Promise<{
   tentative: number;
   thisWeek: number;
 }> {
+  const member = await authorizeSalesRole();
+  if (!member || !(await canAccessProject(member, projectId))) {
+    return { today: 0, confirmed: 0, tentative: 0, thisWeek: 0 };
+  }
+
   const supabase = createServiceClient();
   const today = istTodayISO();
   const weekEnd = new Date();
@@ -206,6 +236,9 @@ export async function getUpcomingVisitCounts(projectId: string): Promise<{
 export async function getProjectTeamMembers(
   projectId: string
 ): Promise<{ id: string; full_name: string }[]> {
+  const member = await authorizeSalesRole();
+  if (!member || !(await canAccessProject(member, projectId))) return [];
+
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('project_sm_assignments')

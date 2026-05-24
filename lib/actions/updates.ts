@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
+import { authorizeCmWrite, authorizeAdmin } from '@/lib/rbac';
 
 export type CreateUpdateInput = {
   update_date: string;   // YYYY-MM-DD — date the event occurred
@@ -15,6 +16,9 @@ export async function createUpdate(
   assetId: string,
   input: CreateUpdateInput,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: 'Forbidden — capital-markets access required' };
+
   const task = input.update_task.trim();
   if (!task) return { ok: false, error: 'Update description cannot be empty' };
 
@@ -52,6 +56,9 @@ export async function deleteUpdate(
   updateId: string,
   assetId: string,
 ): Promise<ActionResult<void>> {
+  const admin = await authorizeAdmin();
+  if (!admin) return { ok: false, error: 'Forbidden — admin access required' };
+
   const result = await withAudit({
     action: 'delete',
     entityType: 'update',

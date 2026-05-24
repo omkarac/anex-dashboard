@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
+import { authorizeSalesRole, canAccessProject } from '@/lib/rbac';
 import {
   CreateMeetingInputSchema,
   CreateEodInputSchema,
@@ -44,6 +45,12 @@ export async function createCpMeeting(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
   }
 
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  if (!(await canAccessProject(member, parsed.data.project_id))) {
+    return { ok: false, error: 'Forbidden — not assigned to this project' };
+  }
+
   return withAudit({
     action: 'create',
     entityType: 'cp_meeting',
@@ -82,6 +89,12 @@ export async function createEodReport(
   const parsed = CreateEodInputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
+  }
+
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  if (!(await canAccessProject(member, parsed.data.project_id))) {
+    return { ok: false, error: 'Forbidden — not assigned to this project' };
   }
 
   return withAudit({
@@ -136,6 +149,10 @@ export async function createEodReport(
 export async function getTodayMeetingCounts(projectId: string): Promise<{
   obm: number; ibm: number; unique_obm: number; repeat_obm: number; unique_ibm: number; repeat_ibm: number;
 }> {
+  const ZERO = { obm: 0, ibm: 0, unique_obm: 0, repeat_obm: 0, unique_ibm: 0, repeat_ibm: 0 };
+  const member = await authorizeSalesRole();
+  if (!member || !(await canAccessProject(member, projectId))) return ZERO;
+
   const supabase = createServiceClient();
   const today = istTodayISO();
   const { data } = await supabase

@@ -5,6 +5,7 @@ import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import type { EngagementKind } from '@/lib/schemas/engagement';
 import { revalidatePath } from 'next/cache';
+import { authorizeCmWrite } from '@/lib/rbac';
 
 export async function convertToEngagement(
   assetId: string,
@@ -12,6 +13,9 @@ export async function convertToEngagement(
   startedAt: string,
   notes: string
 ): Promise<ActionResult<{ engagementId: string }>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: 'Forbidden — capital-markets access required' };
+
   const result = await withAudit({
     action: 'convert',
     entityType: 'asset',

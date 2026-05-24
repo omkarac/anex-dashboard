@@ -5,26 +5,57 @@ import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
 import type { MemberDepartment } from '@/lib/queries/team';
+import { authorizeAdmin } from '@/lib/rbac';
+import { teamMemberRoleSchema } from '@/lib/schemas/team';
 
 function revalidateTeam() {
   revalidatePath('/capital-markets/team');
   revalidatePath('/sales-marketing/team');
 }
 
+const FORBIDDEN = 'Forbidden — admin access required' as const;
+
 export async function updateMemberRole(
   memberId: string,
   role: string
 ): Promise<ActionResult<void>> {
+  const actor = await authorizeAdmin();
+  if (!actor) return { ok: false, error: FORBIDDEN };
+
+  const parsedRole = teamMemberRoleSchema.safeParse(role);
+  if (!parsedRole.success) return { ok: false, error: 'Invalid role' };
+  const nextRole = parsedRole.data;
+
+  // Guard against removing the last admin (self-demotion or otherwise).
+  if (nextRole !== 'admin') {
+    const service = createServiceClient();
+    const { data: target } = await service
+      .from('team_members')
+      .select('role')
+      .eq('id', memberId)
+      .single();
+    if (target?.role === 'admin') {
+      const { count } = await service
+        .from('team_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'admin')
+        .eq('is_active', true);
+      if ((count ?? 0) <= 1) {
+        return { ok: false, error: 'Cannot demote the last active admin' };
+      }
+    }
+  }
+
   const result = await withAudit({
     action: 'update',
     entityType: 'team_member',
     entityId: memberId,
-    summary: `Role changed to ${role}`,
+    summary: `Role changed to ${nextRole}`,
     mutation: async () => {
       const service = createServiceClient();
       const { error } = await service
         .from('team_members')
-        .update({ role })
+        .update({ role: nextRole })
         .eq('id', memberId);
       if (error) throw new Error(error.message);
     },
@@ -37,6 +68,32 @@ export async function setMemberActive(
   memberId: string,
   isActive: boolean
 ): Promise<ActionResult<void>> {
+  const actor = await authorizeAdmin();
+  if (!actor) return { ok: false, error: FORBIDDEN };
+
+  // Prevent self-lockout and removal of the last active admin.
+  if (!isActive) {
+    if (memberId === actor.id) {
+      return { ok: false, error: 'You cannot deactivate your own account' };
+    }
+    const service = createServiceClient();
+    const { data: target } = await service
+      .from('team_members')
+      .select('role')
+      .eq('id', memberId)
+      .single();
+    if (target?.role === 'admin') {
+      const { count } = await service
+        .from('team_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'admin')
+        .eq('is_active', true);
+      if ((count ?? 0) <= 1) {
+        return { ok: false, error: 'Cannot deactivate the last active admin' };
+      }
+    }
+  }
+
   const result = await withAudit({
     action: 'update',
     entityType: 'team_member',
@@ -59,6 +116,9 @@ export async function updateMemberDepartment(
   memberId: string,
   department: MemberDepartment
 ): Promise<ActionResult<void>> {
+  const actor = await authorizeAdmin();
+  if (!actor) return { ok: false, error: FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'team_member',
@@ -81,6 +141,9 @@ export async function updateMemberName(
   memberId: string,
   fullName: string
 ): Promise<ActionResult<void>> {
+  const actor = await authorizeAdmin();
+  if (!actor) return { ok: false, error: FORBIDDEN };
+
   const trimmed = fullName.trim();
   if (!trimmed) return { ok: false, error: 'Name cannot be empty' };
 

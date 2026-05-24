@@ -7,6 +7,9 @@ import type { AssetStatus, AssetTemperature, Asset } from '@/lib/schemas/asset';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
 import { createMilestoneTasks } from '@/lib/actions/tasks';
+import { authorizeCmWrite, authorizeAdmin } from '@/lib/rbac';
+
+const CM_FORBIDDEN = 'Forbidden — capital-markets access required' as const;
 
 // Status transition rules (members only — admins can do anything)
 const ALLOWED_TRANSITIONS: Record<AssetStatus, AssetStatus[]> = {
@@ -23,6 +26,9 @@ function canTransition(from: AssetStatus, to: AssetStatus, isAdmin: boolean): bo
 }
 
 export async function createAsset(formData: FormData): Promise<ActionResult<Asset>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const raw = {
     property_name: formData.get('property_name'),
     location: formData.get('location') || null,
@@ -81,6 +87,9 @@ export async function updateAssetStatus(
   toStatus: AssetStatus,
   note?: string
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'status_change',
     entityType: 'asset',
@@ -133,6 +142,9 @@ export async function updateAssetTemperature(
   assetId: string,
   temperature: AssetTemperature
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',
@@ -157,6 +169,9 @@ export async function updateAssetNextStep(
   assetId: string,
   nextStep: string
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',
@@ -191,6 +206,9 @@ export async function updateAssetFinancials(
     fsi_potential?: number | null;
   }
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',
@@ -216,6 +234,9 @@ export async function updateAssetRegulations(
   regulations: string[],
   regulationNotes: string | null,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',
@@ -237,6 +258,9 @@ export async function updateAssetRegulations(
 }
 
 export async function softDeleteAsset(assetId: string): Promise<ActionResult<void>> {
+  const admin = await authorizeAdmin();
+  if (!admin) return { ok: false, error: 'Forbidden — admin access required' };
+
   const result = await withAudit({
     action: 'delete',
     entityType: 'asset',
@@ -267,6 +291,8 @@ export async function softDeleteAsset(assetId: string): Promise<ActionResult<voi
 export async function searchAssetSuggestions(
   q: string
 ): Promise<{ id: string; property_name: string }[]> {
+  const member = await authorizeCmWrite();
+  if (!member) return [];
   if (!q.trim()) return [];
   const service = createServiceClient();
   const { data } = await service
@@ -283,6 +309,9 @@ export async function assignAsset(
   assetId: string,
   assignedTo: string | null
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset',

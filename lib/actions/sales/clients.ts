@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
+import { authorizeSalesRole } from '@/lib/rbac';
 import { UpsertClientInputSchema, type Client, type UpsertClientInput } from '@/lib/schemas/sales';
 
 function normalizeMobile(raw: string): string {
@@ -15,6 +16,9 @@ function normalizeMobile(raw: string): string {
 export async function upsertClient(
   input: UpsertClientInput
 ): Promise<ActionResult<Client & { isNew: boolean }>> {
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+
   const parsed = UpsertClientInputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
@@ -67,6 +71,9 @@ export async function upsertClient(
 }
 
 export async function lookupClientByMobile(mobile: string): Promise<Client | null> {
+  const member = await authorizeSalesRole();
+  if (!member) return null;
+
   const supabase = createServiceClient();
   let normalized: string;
   try {

@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
+import { authorizeCmWrite, authorizeAdmin } from '@/lib/rbac';
 import {
   DeveloperCreateSchema,
   DeveloperPreferencesUpsertSchema,
@@ -16,7 +17,13 @@ import type {
   ShareUpdateCreate,
 } from '@/lib/schemas/developer';
 
+const CM_FORBIDDEN = 'Forbidden — capital-markets access required' as const;
+const ADMIN_FORBIDDEN = 'Forbidden — admin access required' as const;
+
 export async function createDeveloper(formData: FormData): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const raw = {
     name: formData.get('name'),
     contact_person: formData.get('contact_person') || null,
@@ -56,6 +63,9 @@ export async function updateDeveloper(
     logo_url: string | null;
   }
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'developer',
@@ -90,6 +100,9 @@ export async function shareWithDeveloper(
   notes: string,
   selectedTaskTypes: string[] = ['im_shared']
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const tasksToCreate = ALL_ROUTINE_TASKS.filter((t) => selectedTaskTypes.includes(t.task_type));
 
   const result = await withAudit({
@@ -148,6 +161,9 @@ export async function completeShareTask(
   taskType: string | null,
   taskTitle: string
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'share_task',
@@ -182,6 +198,9 @@ export async function completeShareTask(
 export async function uncompleteShareTask(
   taskId: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'share_task',
@@ -216,6 +235,9 @@ export async function updateShareTaskFields(
   taskId: string,
   data: { assigned_to?: string | null; due_date?: string | null; priority?: string }
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'share_task',
@@ -242,6 +264,9 @@ export async function createShareTask(
   shareId: string,
   data: ShareTaskCreate
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const parsed = ShareTaskCreateSchema.safeParse(data);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
 
@@ -274,6 +299,9 @@ export async function createShareUpdate(
   shareId: string,
   data: ShareUpdateCreate
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const parsed = ShareUpdateCreateSchema.safeParse(data);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
 
@@ -302,6 +330,9 @@ export async function deleteShareUpdate(
   updateId: string,
   shareId: string
 ): Promise<ActionResult<void>> {
+  const admin = await authorizeAdmin();
+  if (!admin) return { ok: false, error: ADMIN_FORBIDDEN };
+
   const result = await withAudit({
     action: 'delete',
     entityType: 'share_update',
@@ -322,6 +353,9 @@ export async function deleteShareUpdate(
 }
 
 export async function deleteDeveloper(developerId: string, name: string): Promise<ActionResult<void>> {
+  const admin = await authorizeAdmin();
+  if (!admin) return { ok: false, error: ADMIN_FORBIDDEN };
+
   const result = await withAudit({
     action: 'delete',
     entityType: 'developer',
@@ -346,6 +380,9 @@ export async function updateShareNotes(
   assetId: string,
   notes: string | null
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'developer_share',
@@ -370,6 +407,9 @@ export async function upsertDeveloperPreferences(
   developerId: string,
   data: DeveloperPreferencesUpsert
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const parsed = DeveloperPreferencesUpsertSchema.safeParse(data);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
 
@@ -407,6 +447,9 @@ export async function updateShareOutcome(
   assetId: string,
   outcome: string
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'developer_share',

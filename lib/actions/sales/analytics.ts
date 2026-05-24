@@ -1,6 +1,7 @@
 'use server';
 
 import { createServiceClient } from '@/lib/supabase/service';
+import { authorizeSalesRole, canAccessProject } from '@/lib/rbac';
 
 export type DashboardKpis = {
   totalWalkins: number;
@@ -116,7 +117,21 @@ export type PriorityLeadRow = {
   priority_score: number;
 };
 
+// Project-scope gate for all analytics reads — prevents cross-project data
+// leakage (a member could otherwise read any project's analytics by id).
+async function assertProjectAccess(projectId: string): Promise<boolean> {
+  const member = await authorizeSalesRole();
+  return !!member && (await canAccessProject(member, projectId));
+}
+
+const EMPTY_KPIS: DashboardKpis = {
+  totalWalkins: 0, cpWalkins: 0, directWalkins: 0, booked: 0, warm: 0, cold: 0,
+  lost: 0, convPct: 0, totalMeetings: 0, uniqueObms: 0, totalIbms: 0,
+};
+
 export async function getDashboardKpis(projectId: string): Promise<DashboardKpis> {
+  if (!(await assertProjectAccess(projectId))) return EMPTY_KPIS;
+
   const supabase = createServiceClient();
 
   const [{ data: walkins }, { data: meetings }] = await Promise.all([
@@ -150,6 +165,7 @@ export async function getDashboardKpis(projectId: string): Promise<DashboardKpis
 }
 
 export async function getCpPerformance(projectId: string): Promise<CpPerformanceRow[]> {
+  if (!(await assertProjectAccess(projectId))) return [];
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('v_cp_performance')
@@ -160,6 +176,7 @@ export async function getCpPerformance(projectId: string): Promise<CpPerformance
 }
 
 export async function getSmPerformance(projectId: string): Promise<SmPerformanceRow[]> {
+  if (!(await assertProjectAccess(projectId))) return [];
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('v_sm_performance')
@@ -169,6 +186,7 @@ export async function getSmPerformance(projectId: string): Promise<SmPerformance
 }
 
 export async function getMonthlyTrend(projectId: string): Promise<MonthlyTrendRow[]> {
+  if (!(await assertProjectAccess(projectId))) return [];
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('v_monthly_trend')
@@ -179,6 +197,7 @@ export async function getMonthlyTrend(projectId: string): Promise<MonthlyTrendRo
 }
 
 export async function getLostAnalysis(projectId: string): Promise<LostAnalysisRow[]> {
+  if (!(await assertProjectAccess(projectId))) return [];
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('v_lost_analysis')
@@ -188,6 +207,7 @@ export async function getLostAnalysis(projectId: string): Promise<LostAnalysisRo
 }
 
 export async function getConfigBreakdown(projectId: string): Promise<ConfigBreakdownRow[]> {
+  if (!(await assertProjectAccess(projectId))) return [];
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('v_config_breakdown')
@@ -197,6 +217,7 @@ export async function getConfigBreakdown(projectId: string): Promise<ConfigBreak
 }
 
 export async function getPriorityLeads(projectId: string): Promise<PriorityLeadRow[]> {
+  if (!(await assertProjectAccess(projectId))) return [];
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('v_priority_leads')

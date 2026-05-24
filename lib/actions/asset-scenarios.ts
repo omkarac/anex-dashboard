@@ -6,6 +6,9 @@ import { ScenarioValuesSchema } from '@/lib/schemas/asset-scenario';
 import type { ActionResult } from '@/lib/actions/_base';
 import type { ScenarioValues } from '@/lib/schemas/asset-scenario';
 import { revalidatePath } from 'next/cache';
+import { authorizeCmWrite } from '@/lib/rbac';
+
+const CM_FORBIDDEN = 'Forbidden — capital-markets access required' as const;
 
 function revalidate(assetId: string) {
   revalidatePath(`/capital-markets/assets/${assetId}`);
@@ -15,6 +18,9 @@ export async function createScenario(
   assetId: string,
   name: string,
 ): Promise<ActionResult<{ id: string }>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const safeName = name.trim() || 'New Scenario';
 
   const result = await withAudit({
@@ -64,6 +70,9 @@ export async function updateScenarioValues(
   assetId: string,
   values: ScenarioValues,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const parsed = ScenarioValuesSchema.safeParse(values);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
 
@@ -110,6 +119,9 @@ export async function renameScenario(
   assetId: string,
   name: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const safeName = name.trim();
   if (!safeName) return { ok: false, error: 'Scenario name cannot be empty' };
 
@@ -138,6 +150,9 @@ export async function setPrimaryScenario(
   scenarioId: string,
   assetId: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'asset_scenario',
@@ -183,6 +198,9 @@ export async function deleteScenario(
   scenarioId: string,
   assetId: string,
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'delete',
     entityType: 'asset_scenario',

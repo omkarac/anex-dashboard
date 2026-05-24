@@ -2,6 +2,8 @@
 
 import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
+import { authorizeSalesRole, isSalesAdmin } from '@/lib/rbac';
+import { sanitizePostgrestTerm } from '@/lib/utils/search';
 import {
   RegisterCpInputSchema,
   UpdateCpInputSchema,
@@ -21,7 +23,8 @@ export async function checkCpDuplication(input: {
   rera?: string;
 }): Promise<DedupResult> {
   const supabase = createServiceClient();
-  const term = input.name.trim();
+  const term = sanitizePostgrestTerm(input.name);
+  if (term.length < 2) return { found: false, matches: [] };
 
   const { data } = await supabase
     .from('channel_partners')
@@ -41,12 +44,15 @@ export async function checkCpDuplication(input: {
 
 export async function searchChannelPartners(
   query: string,
-  projectId?: string
+  _projectId?: string
 ): Promise<ChannelPartner[]> {
-  const supabase = createServiceClient();
-  const term = query.trim();
-  if (!term) return [];
+  const member = await authorizeSalesRole();
+  if (!member) return [];
 
+  const term = sanitizePostgrestTerm(query);
+  if (term.length < 2) return [];
+
+  const supabase = createServiceClient();
   const { data } = await supabase
     .from('channel_partners')
     .select('*')
@@ -61,6 +67,9 @@ export async function searchChannelPartners(
 export async function registerChannelPartner(
   input: RegisterCpInput
 ): Promise<ActionResult<ChannelPartner>> {
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+
   const parsed = RegisterCpInputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
@@ -93,6 +102,9 @@ export async function updateChannelPartner(
   id: string,
   input: UpdateCpInput
 ): Promise<ActionResult<ChannelPartner>> {
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+
   const parsed = UpdateCpInputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
@@ -118,6 +130,10 @@ export async function updateChannelPartner(
 }
 
 export async function approveCp(id: string): Promise<ActionResult<ChannelPartner>> {
+  const member = await authorizeSalesRole();
+  if (!member || !isSalesAdmin(member)) {
+    return { ok: false, error: 'Forbidden — sales admin access required' };
+  }
   return withAudit({
     action: 'update',
     entityType: 'channel_partner',

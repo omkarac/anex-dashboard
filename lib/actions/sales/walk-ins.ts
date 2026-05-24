@@ -1,6 +1,7 @@
 'use server';
 
 import { createServiceClient } from '@/lib/supabase/service';
+import { authorizeSalesRole, canAccessProject } from '@/lib/rbac';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
 import {
   WalkInIntakeInputSchema,
@@ -32,6 +33,12 @@ export async function processWalkInIntake(
   }
 
   const data = parsed.data;
+
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  if (!(await canAccessProject(member, data.project_id))) {
+    return { ok: false, error: 'Forbidden — not assigned to this project' };
+  }
 
   // Step 1: upsert client
   const clientResult = await upsertClient({
@@ -149,6 +156,21 @@ export async function updateWalkInStatus(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
   }
 
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  {
+    const service = createServiceClient();
+    const { data: wi } = await service
+      .from('walk_ins')
+      .select('project_id')
+      .eq('id', parsed.data.walk_in_id)
+      .single();
+    if (!wi) return { ok: false, error: 'Walk-in not found' };
+    if (!(await canAccessProject(member, wi.project_id))) {
+      return { ok: false, error: 'Forbidden — not assigned to this project' };
+    }
+  }
+
   return withAudit({
     action: 'status_change',
     entityType: 'walk_in',
@@ -183,6 +205,21 @@ export async function addSiteVisitFeedback(
   }
 
   const { visit_id, ...rest } = parsed.data;
+
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  {
+    const service = createServiceClient();
+    const { data: sv } = await service
+      .from('site_visits')
+      .select('project_id')
+      .eq('id', visit_id)
+      .single();
+    if (!sv) return { ok: false, error: 'Site visit not found' };
+    if (!(await canAccessProject(member, sv.project_id))) {
+      return { ok: false, error: 'Forbidden — not assigned to this project' };
+    }
+  }
 
   return withAudit({
     action: 'update',

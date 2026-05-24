@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service';
 import { getAuthenticatedMember } from '@/lib/auth/member';
+import { authorizeSalesRole, isSalesHead, type TeamMember } from '@/lib/rbac';
 import { withAudit, type ActionResult } from '@/lib/actions/_base';
 import {
   CreateFollowUpTaskInputSchema,
@@ -39,6 +40,29 @@ export type FollowUpTaskRow = {
   walk_in_status: string | null;
   project_id: string | null;
 };
+
+/**
+ * Authorize an action on an existing follow-up task. The caller must be a sales
+ * user and must either own the task (assigned_to) or be sales leadership.
+ * Closes the IDOR where any logged-in user could mutate any task by id.
+ */
+async function authorizeTaskAction(
+  taskId: string
+): Promise<{ ok: true; member: TeamMember } | { ok: false; error: string }> {
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+  const service = createServiceClient();
+  const { data: task } = await service
+    .from('follow_up_tasks')
+    .select('assigned_to')
+    .eq('id', taskId)
+    .single();
+  if (!task) return { ok: false, error: 'Task not found' };
+  if (task.assigned_to !== member.id && !isSalesHead(member)) {
+    return { ok: false, error: 'Forbidden — this task is assigned to another member' };
+  }
+  return { ok: true, member };
+}
 
 export async function getMyFollowUpTasks(): Promise<FollowUpTaskRow[]> {
   const member = await getAuthenticatedMember();
@@ -165,6 +189,9 @@ export async function getTaskKpis(): Promise<{
 export async function createFollowUpTask(
   input: CreateFollowUpTaskInput
 ): Promise<ActionResult<FollowUpTask>> {
+  const member = await authorizeSalesRole();
+  if (!member) return { ok: false, error: 'Forbidden — sales access required' };
+
   const parsed = CreateFollowUpTaskInputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
@@ -201,6 +228,8 @@ export async function completeFollowUpTask(
   taskId: string,
   notes?: string
 ): Promise<ActionResult<FollowUpTask>> {
+  const auth = await authorizeTaskAction(taskId);
+  if (!auth.ok) return auth;
   return withAudit({
     action: 'update',
     entityType: 'follow_up_task',
@@ -232,6 +261,9 @@ export async function snoozeFollowUpTask(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
   }
+
+  const auth = await authorizeTaskAction(parsed.data.task_id);
+  if (!auth.ok) return auth;
 
   return withAudit({
     action: 'update',
@@ -271,6 +303,9 @@ export async function escalateFollowUpTask(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' };
   }
+
+  const auth = await authorizeTaskAction(parsed.data.task_id);
+  if (!auth.ok) return auth;
 
   return withAudit({
     action: 'update',

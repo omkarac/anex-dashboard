@@ -4,7 +4,10 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { withAudit } from '@/lib/actions/_base';
 import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
+import { authorizeCmWrite, authorizeAdmin } from '@/lib/rbac';
 import type { TaskStatus, TaskPriority } from '@/lib/schemas/task';
+
+const CM_FORBIDDEN = 'Forbidden — capital-markets access required' as const;
 
 export async function createTask(
   assetId: string,
@@ -16,6 +19,8 @@ export async function createTask(
     description?: string | null;
   }
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
   if (!data.title.trim()) return { ok: false, error: 'Title is required' };
 
   const result = await withAudit({
@@ -49,6 +54,9 @@ export async function updateTaskStatus(
   status: TaskStatus,
   fileUrl?: string | null
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'task',
@@ -78,6 +86,9 @@ export async function setTaskFileUrl(
   assetId: string,
   fileUrl: string | null
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'task',
@@ -103,6 +114,9 @@ export async function updateTaskAssignee(
   assetId: string,
   assignedTo: string | null
 ): Promise<ActionResult<void>> {
+  const member = await authorizeCmWrite();
+  if (!member) return { ok: false, error: CM_FORBIDDEN };
+
   const result = await withAudit({
     action: 'update',
     entityType: 'task',
@@ -127,6 +141,9 @@ export async function deleteTask(
   taskId: string,
   assetId: string
 ): Promise<ActionResult<void>> {
+  const admin = await authorizeAdmin();
+  if (!admin) return { ok: false, error: 'Forbidden — admin access required' };
+
   const result = await withAudit({
     action: 'delete',
     entityType: 'task',
@@ -148,6 +165,11 @@ export async function deleteTask(
 }
 
 export async function createMilestoneTasks(assetId: string): Promise<void> {
+  // Internal helper invoked by createAsset (already CM-gated). Guard anyway so a
+  // direct client invocation of this 'use server' export can't seed tasks.
+  const member = await authorizeCmWrite();
+  if (!member) return;
+
   const service = createServiceClient();
   const { data: actor } = await service
     .from('team_members')
