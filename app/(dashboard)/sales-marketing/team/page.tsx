@@ -8,7 +8,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function TeamPage() {
   const me = await getAuthenticatedMember();
-  const isAdmin = ['admin', 'sales_admin', 'sales_head'].includes(me.role);
+  // Member management (role/department/status/approval) is strict admin-only,
+  // matching the server-side guards in lib/actions/team.ts.
+  const isAdmin = me.role === 'admin';
   const members = await listTeamMembers().catch(() => []);
 
   return (
@@ -16,7 +18,7 @@ export default async function TeamPage() {
       <div className="border-b px-6 py-4">
         <h1 className="text-xl font-semibold tracking-tight">Team</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {members.length} member{members.length !== 1 ? 's' : ''} · new members join automatically on first login
+          {members.length} member{members.length !== 1 ? 's' : ''} · new members wait for admin approval before they can sign in
         </p>
       </div>
       <TeamPanel members={members} currentUserId={me.id} isAdmin={isAdmin} />

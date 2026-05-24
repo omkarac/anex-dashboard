@@ -19,3 +19,9 @@ export type TeamMemberRole = z.infer<typeof teamMemberRoleSchema>;
 export const MEMBER_DEPARTMENTS = ['cm', 'sm', 'both'] as const;
 export const memberDepartmentSchema = z.enum(MEMBER_DEPARTMENTS).nullable();
 export type MemberDepartment = z.infer<typeof memberDepartmentSchema>;
+
+// Mirrors the DB CHECK on team_members.status (0032_team_member_status.sql).
+// 'pending' = quarantined new joiner; 'active' = onboarded; 'deactivated' = offboarded.
+export const MEMBER_STATUSES = ['pending', 'active', 'deactivated'] as const;
+export const memberStatusSchema = z.enum(MEMBER_STATUSES);
+export type MemberStatus = z.infer<typeof memberStatusSchema>;

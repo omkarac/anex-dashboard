@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service';
+import type { TeamMemberRole, MemberStatus } from '@/lib/schemas/team';
 
 export type TeamMemberSelect = { id: string; full_name: string };
 
@@ -8,6 +9,7 @@ export async function getActiveTeamMembers(): Promise<TeamMemberSelect[]> {
     .from('team_members')
     .select('id, full_name')
     .eq('is_active', true)
+    .eq('status', 'active') // exclude quarantined ('pending') members from assignee pickers
     .order('full_name');
   return (data ?? []) as TeamMemberSelect[];
 }
@@ -18,8 +20,9 @@ export type TeamMemberWithWorkload = {
   id: string;
   full_name: string;
   email: string;
-  role: 'admin' | 'member';
+  role: TeamMemberRole;
   department: MemberDepartment;
+  status: MemberStatus;
   is_active: boolean;
   created_at: string;
   open_tasks: number;

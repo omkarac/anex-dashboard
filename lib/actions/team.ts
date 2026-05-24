@@ -6,7 +6,7 @@ import type { ActionResult } from '@/lib/actions/_base';
 import { revalidatePath } from 'next/cache';
 import type { MemberDepartment } from '@/lib/queries/team';
 import { authorizeAdmin } from '@/lib/rbac';
-import { teamMemberRoleSchema } from '@/lib/schemas/team';
+import { teamMemberRoleSchema, memberDepartmentSchema } from '@/lib/schemas/team';
 
 function revalidateTeam() {
   revalidatePath('/capital-markets/team');
@@ -157,6 +157,50 @@ export async function updateMemberName(
       const { error } = await service
         .from('team_members')
         .update({ full_name: trimmed })
+        .eq('id', memberId);
+      if (error) throw new Error(error.message);
+    },
+  });
+  if (result.ok) revalidateTeam();
+  return result;
+}
+
+/**
+ * Release a quarantined ('pending') member into the app by assigning a role and
+ * department in one atomic step. Admin-only. Department must be set (a member
+ * with no department has no surface to work in).
+ */
+export async function activateMember(
+  memberId: string,
+  role: string,
+  department: MemberDepartment
+): Promise<ActionResult<void>> {
+  const actor = await authorizeAdmin();
+  if (!actor) return { ok: false, error: FORBIDDEN };
+
+  const parsedRole = teamMemberRoleSchema.safeParse(role);
+  if (!parsedRole.success) return { ok: false, error: 'Invalid role' };
+
+  if (department == null) {
+    return { ok: false, error: 'Assign a department to approve this member' };
+  }
+  const parsedDept = memberDepartmentSchema.safeParse(department);
+  if (!parsedDept.success) return { ok: false, error: 'Invalid department' };
+
+  const result = await withAudit({
+    action: 'update',
+    entityType: 'team_member',
+    entityId: memberId,
+    summary: `Member approved — role ${parsedRole.data}, department ${parsedDept.data}`,
+    mutation: async () => {
+      const service = createServiceClient();
+      const { error } = await service
+        .from('team_members')
+        .update({
+          role: parsedRole.data,
+          department: parsedDept.data,
+          status: 'active',
+        })
         .eq('id', memberId);
       if (error) throw new Error(error.message);
     },

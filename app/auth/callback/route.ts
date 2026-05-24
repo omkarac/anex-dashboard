@@ -56,21 +56,31 @@ export async function GET(request: NextRequest) {
 
   const { data: existing } = await service
     .from('team_members')
-    .select('id, is_active')
+    .select('id, is_active, status')
     .eq('id', user.id)
     .single();
 
   if (!existing) {
+    // First login → quarantine. The member waits on the holding page until an
+    // admin assigns a role + department to release them.
     await service.from('team_members').insert({
       id: user.id,
       full_name: user.email!.split('@')[0],
       email: user.email!,
       role: 'member',
+      status: 'pending',
       is_active: true,
     });
-  } else if (!existing.is_active) {
+    return NextResponse.redirect(`${origin}/pending`);
+  }
+
+  if (!existing.is_active) {
     await supabase.auth.signOut();
     return NextResponse.redirect(`${origin}/login?error=deactivated`);
+  }
+
+  if (existing.status === 'pending') {
+    return NextResponse.redirect(`${origin}/pending`);
   }
 
   return redirectTo;

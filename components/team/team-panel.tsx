@@ -1,4 +1,5 @@
 import { MemberRow } from '@/components/team/member-row';
+import { PendingMemberRow } from '@/components/team/pending-member-row';
 import type { TeamMemberWithWorkload } from '@/lib/queries/team';
 
 type Props = {
@@ -56,7 +57,9 @@ function Section({
 }
 
 export function TeamPanel({ members, currentUserId, isAdmin }: Props) {
-  const active = members.filter((m) => m.is_active);
+  // Quarantined members waiting for approval — surfaced first so admins act on them.
+  const pending = members.filter((m) => m.status === 'pending');
+  const active = members.filter((m) => m.is_active && m.status !== 'pending');
   const inactive = members.filter((m) => !m.is_active);
 
   const admins = active.filter((m) => m.role === 'admin');
@@ -68,6 +71,26 @@ export function TeamPanel({ members, currentUserId, isAdmin }: Props) {
 
   return (
     <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">
+      {pending.length > 0 && (
+        <div className="rounded-lg border border-[#B45309]/30 overflow-hidden">
+          <div className="px-4 py-2 bg-[#B45309]/10 border-b border-[#B45309]/20 flex items-center gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#B45309]">
+              Pending Approval
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {pending.length} waiting
+            </span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>{TABLE_HEADER}</thead>
+            <tbody>
+              {pending.map((m) => (
+                <PendingMemberRow key={m.id} member={m} isCurrentUserAdmin={isAdmin} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <Section
         label="Admins"
         accent="bg-amber-50/60"

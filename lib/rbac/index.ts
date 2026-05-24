@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { IS_DEV_DEMO, getDemoMember } from '@/lib/auth/member';
 import { redirect } from 'next/navigation';
-import type { TeamMemberRole, MemberDepartment } from '@/lib/schemas/team';
+import type { TeamMemberRole, MemberDepartment, MemberStatus } from '@/lib/schemas/team';
 
 export type { TeamMemberRole };
 
@@ -12,6 +12,7 @@ export type TeamMember = {
   email: string;
   role: TeamMemberRole;
   department: MemberDepartment;
+  status: MemberStatus;
   is_active: boolean;
   avatar_url: string | null;
   created_at: string;
@@ -35,25 +36,27 @@ export async function currentUser(): Promise<TeamMember> {
     .single();
 
   if (!member) {
-    // Auto-provision via service role (bypasses RLS)
+    // Auto-provision via service role (bypasses RLS). New members land in the
+    // quarantine 'pending' state — no app access until an admin assigns a role +
+    // department to release them (see the /pending holding page).
     const service = createServiceClient();
-    const { data: newMember, error } = await service
+    const { error } = await service
       .from('team_members')
       .insert({
         id: user.id,
         full_name: user.email?.split('@')[0] ?? 'User',
         email: user.email!,
         role: 'member',
+        status: 'pending',
         is_active: true,
-      })
-      .select()
-      .single();
+      });
 
-    if (error || !newMember) redirect('/login');
-    return newMember as TeamMember;
+    if (error) redirect('/login');
+    redirect('/pending');
   }
 
   if (!member.is_active) redirect('/login?error=deactivated');
+  if (member.status === 'pending') redirect('/pending');
 
   return member as TeamMember;
 }

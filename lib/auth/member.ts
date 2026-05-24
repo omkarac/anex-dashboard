@@ -13,12 +13,13 @@ const DEMO_FALLBACK: TeamMember = {
   email: 'demo@anexadvisory.com',
   role: 'admin',
   department: 'both',
+  status: 'active',
   is_active: true,
   avatar_url: null,
   created_at: '1970-01-01T00:00:00.000Z',
 };
 
-const MEMBER_COLS = 'id, full_name, email, role, department, is_active, avatar_url, created_at';
+const MEMBER_COLS = 'id, full_name, email, role, department, status, is_active, avatar_url, created_at';
 
 // Demo identity for no-login localhost runs. Prefers a real admin (so writes
 // satisfy team_members FKs), then any active member, then a synthetic admin.
@@ -62,20 +63,23 @@ export async function getAuthenticatedMember(): Promise<TeamMember> {
     .single();
 
   if (!member) {
-    const { data: inserted } = await service
+    // New members are quarantined ('pending') until an admin assigns role +
+    // department. They go to the holding page, not into the app.
+    const { error } = await service
       .from('team_members')
       .insert({
         id: user.id,
         full_name: user.email!.split('@')[0],
         email: user.email!,
         role: 'member',
+        status: 'pending',
         is_active: true,
-      })
-      .select(MEMBER_COLS)
-      .single();
-    member = inserted;
+      });
+    if (error) redirect('/login');
+    redirect('/pending');
   }
 
-  if (!member || !member.is_active) redirect('/login');
+  if (!member.is_active) redirect('/login');
+  if (member.status === 'pending') redirect('/pending');
   return member as TeamMember;
 }
