@@ -6,6 +6,8 @@ type Props = {
   members: TeamMemberWithWorkload[];
   currentUserId: string;
   isAdmin: boolean;
+  // When true, render without the outer scroll/padding wrapper (the page supplies it).
+  embedded?: boolean;
 };
 
 const TABLE_HEADER = (
@@ -56,7 +58,7 @@ function Section({
   );
 }
 
-export function TeamPanel({ members, currentUserId, isAdmin }: Props) {
+export function TeamPanel({ members, currentUserId, isAdmin, embedded }: Props) {
   // Quarantined members waiting for approval — surfaced first so admins act on them.
   const pending = members.filter((m) => m.status === 'pending');
   const active = members.filter((m) => m.is_active && m.status !== 'pending');
@@ -69,8 +71,8 @@ export function TeamPanel({ members, currentUserId, isAdmin }: Props) {
   const sm = nonAdmins.filter((m) => m.department === 'sm' || m.department === 'both');
   const unassigned = nonAdmins.filter((m) => !m.department);
 
-  return (
-    <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">
+  const body = (
+    <>
       {pending.length > 0 && (
         <div className="rounded-lg border border-[#B45309]/30 overflow-hidden">
           <div className="px-4 py-2 bg-[#B45309]/10 border-b border-[#B45309]/20 flex items-center gap-2">
@@ -141,6 +143,10 @@ export function TeamPanel({ members, currentUserId, isAdmin }: Props) {
           </table>
         </div>
       )}
-    </div>
+    </>
+  );
+
+  return embedded ? body : (
+    <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">{body}</div>
   );
 }

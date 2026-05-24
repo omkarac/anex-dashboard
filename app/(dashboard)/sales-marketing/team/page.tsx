@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
 import { getAuthenticatedMember } from '@/lib/auth/member';
-import { listTeamMembers } from '@/lib/queries/team';
+import { listTeamMembers, getActiveTeamMembers } from '@/lib/queries/team';
+import { getOrphanedWork } from '@/lib/queries/orphaned';
 import { TeamPanel } from '@/components/team/team-panel';
+import { OrphanedWorkPanel } from '@/components/team/orphaned-work-panel';
 
 export const metadata: Metadata = { title: 'Team — Anex' };
 export const dynamic = 'force-dynamic';
@@ -11,7 +13,11 @@ export default async function TeamPage() {
   // Member management (role/department/status/approval) is strict admin-only,
   // matching the server-side guards in lib/actions/team.ts.
   const isAdmin = me.role === 'admin';
-  const members = await listTeamMembers().catch(() => []);
+  const [members, orphaned, activeMembers] = await Promise.all([
+    listTeamMembers().catch(() => []),
+    getOrphanedWork().catch(() => []),
+    getActiveTeamMembers().catch(() => []),
+  ]);
 
   return (
     <div className="flex flex-col h-full">
@@ -21,7 +27,15 @@ export default async function TeamPage() {
           {members.length} member{members.length !== 1 ? 's' : ''} · new members wait for admin approval before they can sign in
         </p>
       </div>
-      <TeamPanel members={members} currentUserId={me.id} isAdmin={isAdmin} />
+      <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">
+        <OrphanedWorkPanel
+          items={orphaned}
+          activeMembers={activeMembers}
+          currentUserId={me.id}
+          isAdmin={isAdmin}
+        />
+        <TeamPanel members={members} currentUserId={me.id} isAdmin={isAdmin} embedded />
+      </div>
     </div>
   );
 }
