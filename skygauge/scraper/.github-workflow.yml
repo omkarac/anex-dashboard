@@ -1,0 +1,154 @@
+# GitHub Actions workflow for the NOCAS scraper.
+#
+# Move this file to .github/workflows/scrape.yml at the repo root once the
+# project is initialized as a Git repo. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+# as repository secrets under Settings → Secrets and variables.
+#
+# Schedule (UTC):
+#   * Daily 22:00 UTC (= 03:30 IST next day) → incremental scrape of last 60 days
+#   * Sunday 19:00 UTC (= 00:30 IST Monday)  → full refresh of last 365 days
+#
+# Manual triggers come from:
+#   1. The admin "Refresh" button (calls workflow_dispatch via GitHub API)
+#   2. Direct human use from the Actions tab in GitHub
+#
+# Off-peak Indian timing keeps us polite to AAI's infrastructure.
+
+name: Skygauge NOCAS scraper
+
+# Only one scrape can run at a time. Newer triggers cancel pending ones.
+concurrency:
+  group: skygauge-scrape
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: '0 22 * * *'   # daily incremental
+    - cron: '0 19 * * 0'   # weekly full refresh (Sunday)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'manual_standard'
+        type: choice
+        options:
+          - manual_quick         # last 30 days
+          - manual_standard      # last 90 days
+          - manual_deep          # last 365 days
+          - manual_custom        # uses from_date / to_date inputs
+          - backfill             # uses from_date input, to=today
+      from_date:
+        description: 'From date YYYY-MM-DD (custom and backfill modes only)'
+        required: false
+        default: '2016-01-01'
+      to_date:
+        description: 'To date YYYY-MM-DD (custom mode only; defaults to today)'
+        required: false
+        default: ''
+      tracking_id:
+        description: 'UUID grouping this run in scrape_log (auto-generated if blank)'
+        required: false
+        default: ''
+      airport:
+        description: 'Single airport AAI ID (15/16/140). Leave blank for all MMR.'
+        required: false
+        default: ''
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Generate tracking ID if not provided
+        id: tracking
+        run: |
+          TID="${{ github.event.inputs.tracking_id }}"
+          if [ -z "$TID" ]; then
+            TID=$(python3 -c "import uuid; print(uuid.uuid4())")
+          fi
+          echo "id=$TID" >> $GITHUB_OUTPUT
+          echo "Tracking ID: $TID"
+
+      - name: Determine run mode + date range
+        id: dates
+        run: |
+          # Cron triggers don't set inputs; differentiate by schedule
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "0 19 * * 0" ]; then
+              MODE="cron_weekly"
+            else
+              MODE="cron_daily"
+            fi
+          fi
+
+          TO_DEFAULT=$(date -u +%Y-%m-%d)
+          case "$MODE" in
+            cron_daily|manual_quick)
+              FROM=$(date -u -d '30 days ago' +%Y-%m-%d)
+              TO="$TO_DEFAULT"
+              ;;
+            manual_standard)
+              FROM=$(date -u -d '90 days ago' +%Y-%m-%d)
+              TO="$TO_DEFAULT"
+              ;;
+            cron_weekly|manual_deep)
+              FROM=$(date -u -d '365 days ago' +%Y-%m-%d)
+              TO="$TO_DEFAULT"
+              ;;
+            manual_custom)
+              FROM="${{ github.event.inputs.from_date }}"
+              TO="${{ github.event.inputs.to_date }}"
+              [ -z "$TO" ] && TO="$TO_DEFAULT"
+              ;;
+            backfill)
+              FROM="${{ github.event.inputs.from_date }}"
+              TO="$TO_DEFAULT"
+              ;;
+          esac
+
+          echo "mode=$MODE" >> $GITHUB_OUTPUT
+          echo "from=$FROM" >> $GITHUB_OUTPUT
+          echo "to=$TO"     >> $GITHUB_OUTPUT
+          echo "Mode=$MODE  From=$FROM  To=$TO"
+
+      - name: Build airport argument
+        id: airport_arg
+        run: |
+          A="${{ github.event.inputs.airport }}"
+          if [ -z "$A" ]; then
+            echo "args=--all-mmr" >> $GITHUB_OUTPUT
+          else
+            echo "args=--airport $A" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python scraper/nocas_scraper.py \
+            ${{ steps.airport_arg.outputs.args }} \
+            --from           ${{ steps.dates.outputs.from }} \
+            --to             ${{ steps.dates.outputs.to }} \
+            --tracking-id    ${{ steps.tracking.outputs.id }} \
+            --trigger-source ${{ steps.dates.outputs.mode }} \
+            --delay 5 \
+            --verbose
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::warning::NOCAS scrape failed for mode=${{ steps.dates.outputs.mode }} window ${{ steps.dates.outputs.from }} → ${{ steps.dates.outputs.to }} (tracking ${{ steps.tracking.outputs.id }})"

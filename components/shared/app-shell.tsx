@@ -29,6 +29,7 @@ import {
   Grid3X3,
   Menu,
   X,
+  Plane,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,6 +51,7 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: React.Ele
     { href: '/capital-markets', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
     { href: '/capital-markets/assets', label: 'Assets', icon: Building2 },
     { href: '/capital-markets/developers', label: 'Developers', icon: Users2 },
+    { href: '/skygauge', label: 'Skygauge', icon: Plane },
     { href: '/audit', label: 'Audit Room', icon: ScrollText },
     { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
   ],

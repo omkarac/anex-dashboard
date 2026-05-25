@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skygauge — admin refresh</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #F7F6F1;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.20);
+    --text: #2C2C2A;
+    --text-muted: #5F5E5A;
+    --accent: #185FA5;
+    --success: #0F6E56;
+    --warn: #B45309;
+    --danger: #B91C1C;
+    --info-bg: #E6F1FB;
+    --warn-bg: #FAEEDA;
+    --success-bg: #E1F5EE;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Plus Jakarta Sans", sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 24px 60px; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 500; }
+  .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 12px; font-size: 14px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  .mode-btn { background: var(--surface); border: 0.5px solid var(--border-strong); border-radius: 10px; padding: 14px; text-align: left; cursor: pointer; font-family: inherit; transition: border-color 120ms; }
+  .mode-btn:hover { border-color: var(--accent); }
+  .mode-btn.selected { border: 2px solid var(--accent); padding: 13px; }
+  .mode-btn .name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .mode-btn .desc { font-size: 12px; color: var(--text-muted); }
+  .custom-fields { display: none; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .custom-fields.active { display: grid; }
+  label { display: block; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  input, select { width: 100%; padding: 8px 10px; font-size: 13px; border: 0.5px solid var(--border-strong); border-radius: 8px; font-family: inherit; background: var(--surface); color: var(--text); }
+  .actions { display: flex; gap: 10px; align-items: center; }
+  button.primary { background: var(--accent); color: #fff; border: none; padding: 10px 22px; font-size: 14px; font-weight: 500; border-radius: 8px; cursor: pointer; font-family: inherit; }
+  button.primary:disabled { opacity: 0.55; cursor: not-allowed; }
+  button.primary:hover:not(:disabled) { background: #0C447C; }
+  .status-line { font-size: 12px; color: var(--text-muted); }
+  .progress { background: var(--info-bg); color: #0C447C; padding: 12px 14px; border-radius: 8px; margin-top: 14px; display: none; font-size: 13px; }
+  .progress.active { display: block; }
+  .progress .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .progress .tracking { font-family: ui-monospace, "SF Mono", monospace; font-size: 11px; opacity: 0.7; }
+  .progress ul { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; }
+  .progress li { padding: 5px 0; border-bottom: 0.5px solid rgba(12,68,124,0.15); font-size: 12px; display: flex; justify-content: space-between; gap: 12px; }
+  .progress li:last-child { border-bottom: none; }
+  .progress li .state { font-weight: 500; }
+  .progress li.success .state { color: var(--success); }
+  .progress li.running .state { color: var(--warn); }
+  .progress li.failed  .state { color: var(--danger); }
+  .freshness { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .fresh-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .fresh-card .code { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .fresh-card .stamp { font-size: 16px; font-weight: 500; margin: 4px 0; }
+  .fresh-card .state-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 100px; font-weight: 500; }
+  .state-badge.fresh   { background: var(--success-bg); color: var(--success); }
+  .state-badge.recent  { background: var(--info-bg);    color: var(--accent); }
+  .state-badge.stale   { background: var(--warn-bg);    color: var(--warn); }
+  .state-badge.never   { background: #F1EFE8;           color: var(--text-muted); }
+  .recent-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .recent-table th { text-align: left; font-weight: 500; color: var(--text-muted); font-size: 11px; text-transform: uppercase; padding: 6px 8px 8px; border-bottom: 0.5px solid var(--border); }
+  .recent-table td { padding: 8px; border-bottom: 0.5px solid var(--border); }
+  .recent-table tr:last-child td { border-bottom: none; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 500; }
+  .pill.success { background: var(--success-bg); color: var(--success); }
+  .pill.running { background: var(--info-bg);    color: var(--accent); }
+  .pill.failed  { background: #FCEBEB;           color: var(--danger); }
+  .pill.partial { background: var(--warn-bg);    color: var(--warn); }
+  .setup-banner { background: var(--warn-bg); color: var(--warn); padding: 12px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 18px; }
+  .setup-banner a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Skygauge · admin</h1>
+  <div class="sub">Trigger manual refreshes, monitor scrape status, see per-airport data freshness.</div>
+
+  <!-- Setup check -->
+  <div id="setup-banner" class="setup-banner" style="display:none">
+    Configure <code>SUPABASE_URL</code>, <code>SUPABASE_ANON_KEY</code>, <code>EDGE_FN_URL</code> and the admin token below before this panel will work.
+    <a href="#config" id="config-link">Configure</a>
+  </div>
+
+  <!-- Trigger card -->
+  <div class="card">
+    <h2>Refresh data from AAI</h2>
+    <div class="modes" id="modes">
+      <button class="mode-btn selected" data-mode="manual_quick">
+        <div class="name">Quick</div>
+        <div class="desc">Last 30 days · ~10 min</div>
+      </button>
+      <button class="mode-btn" data-mode="manual_standard">
+        <div class="name">Standard</div>
+        <div class="desc">Last 90 days · ~25 min</div>
+      </button>
+      <button class="mode-btn" data-mode="manual_deep">
+        <div class="name">Deep refresh</div>
+        <div class="desc">Last 365 days · ~60 min</div>
+      </button>
+      <button class="mode-btn" data-mode="manual_custom">
+        <div class="name">Custom range</div>
+        <div class="desc">Pick dates + airport</div>
+      </button>
+    </div>
+
+    <div class="custom-fields" id="custom-fields">
+      <div>
+        <label>From date</label>
+        <input type="date" id="from-date" value="">
+      </div>
+      <div>
+        <label>To date</label>
+        <input type="date" id="to-date" value="">
+      </div>
+      <div>
+        <label>Airport (optional)</label>
+        <select id="airport">
+          <option value="">All MMR</option>
+          <option value="15">Santa Cruz (CSMIA)</option>
+          <option value="16">Juhu</option>
+          <option value="140">Navi Mumbai</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="refresh-btn">Refresh now</button>
+      <div class="status-line" id="status-line">Ready.</div>
+    </div>
+
+    <div class="progress" id="progress">
+      <div class="header">
+        <strong id="progress-summary">Refresh in progress…</strong>
+        <span class="tracking" id="tracking-display"></span>
+      </div>
+      <ul id="progress-list"></ul>
+    </div>
+  </div>
+
+  <!-- Freshness card -->
+  <div class="card">
+    <h2>Data freshness by airport</h2>
+    <div class="freshness" id="freshness">
+      <div class="status-line">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Recent runs card -->
+  <div class="card">
+    <h2>Recent manual refreshes</h2>
+    <table class="recent-table" id="recent-table">
+      <thead>
+        <tr>
+          <th>Started</th>
+          <th>Mode</th>
+          <th>Airports</th>
+          <th>Records</th>
+          <th>Duration</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="6" class="status-line">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Config -->
+  <div class="card" id="config">
+    <h2>Connection settings</h2>
+    <div class="custom-fields active" style="grid-template-columns: 1fr 1fr;">
+      <div>
+        <label>Supabase URL</label>
+        <input id="cfg-url" placeholder="https://xxxxx.supabase.co">
+      </div>
+      <div>
+        <label>Supabase anon key</label>
+        <input id="cfg-anon" placeholder="eyJhbGciOi…">
+      </div>
+      <div>
+        <label>Edge function URL</label>
+        <input id="cfg-edge" placeholder="https://xxxxx.supabase.co/functions/v1/admin-trigger-scrape">
+      </div>
+      <div>
+        <label>Admin token (X-Admin-Token)</label>
+        <input id="cfg-admin" type="password" placeholder="your shared secret">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="save-cfg">Save</button>
+      <div class="status-line" id="cfg-status">Stored locally only — never sent to anyone but your own Supabase + edge function.</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+
+// ---------- Config (stored in localStorage) ----------
+const cfgKeys = ["url", "anon", "edge", "admin"];
+function loadCfg() {
+  const cfg = {};
+  for (const k of cfgKeys) cfg[k] = localStorage.getItem("mmr_admin_" + k) || "";
+  return cfg;
+}
+function saveCfg(cfg) {
+  for (const k of cfgKeys) localStorage.setItem("mmr_admin_" + k, cfg[k] || "");
+}
+
+let cfg = loadCfg();
+for (const k of cfgKeys) {
+  const el = document.getElementById("cfg-" + k);
+  if (el) el.value = cfg[k];
+}
+document.getElementById("save-cfg").onclick = () => {
+  const next = {};
+  for (const k of cfgKeys) next[k] = document.getElementById("cfg-" + k).value.trim();
+  saveCfg(next);
+  cfg = next;
+  document.getElementById("cfg-status").textContent = "Saved. Reloading…";
+  setTimeout(() => location.reload(), 600);
+};
+
+// ---------- Supabase client (read-only with anon key) ----------
+let sb = null;
+if (cfg.url && cfg.anon) {
+  sb = createClient(cfg.url, cfg.anon);
+} else {
+  document.getElementById("setup-banner").style.display = "block";
+}
+
+// ---------- Mode selection ----------
+const modeButtons = document.querySelectorAll(".mode-btn");
+let selectedMode = "manual_quick";
+modeButtons.forEach(b => {
+  b.onclick = () => {
+    modeButtons.forEach(x => x.classList.remove("selected"));
+    b.classList.add("selected");
+    selectedMode = b.dataset.mode;
+    document.getElementById("custom-fields").classList.toggle("active", selectedMode === "manual_custom");
+  };
+});
+
+// ---------- Trigger refresh ----------
+const refreshBtn = document.getElementById("refresh-btn");
+const statusLine = document.getElementById("status-line");
+const progressEl = document.getElementById("progress");
+const progressList = document.getElementById("progress-list");
+const progressSummary = document.getElementById("progress-summary");
+const trackingDisplay = document.getElementById("tracking-display");
+
+let liveChannel = null;
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+function fmtAgo(iso) {
+  if (!iso) return "never";
+  const ms = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(ms / 60000);
+  if (m < 1)    return "just now";
+  if (m < 60)   return m + " min ago";
+  const h = Math.floor(m / 60);
+  if (h < 24)   return h + " hr ago";
+  return Math.floor(h / 24) + " d ago";
+}
+function fmtDur(seconds) {
+  if (!seconds && seconds !== 0) return "—";
+  if (seconds < 60) return seconds + "s";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m + "m " + s + "s";
+}
+
+refreshBtn.onclick = async () => {
+  if (!cfg.edge || !cfg.admin) {
+    statusLine.textContent = "Set the edge function URL and admin token in connection settings first.";
+    return;
+  }
+  refreshBtn.disabled = true;
+  statusLine.textContent = "Dispatching…";
+
+  const body = { mode: selectedMode };
+  if (selectedMode === "manual_custom") {
+    body.from_date = document.getElementById("from-date").value;
+    body.to_date   = document.getElementById("to-date").value;
+    const a        = document.getElementById("airport").value;
+    if (a) body.airport = parseInt(a, 10);
+  }
+
+  let resp;
+  try {
+    resp = await fetch(cfg.edge, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Token": cfg.admin,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    statusLine.textContent = "Network error: " + e.message;
+    refreshBtn.disabled = false;
+    return;
+  }
+  const data = await resp.json();
+  if (!resp.ok) {
+    statusLine.textContent = "Dispatch failed: " + (data.error || resp.status);
+    refreshBtn.disabled = false;
+    return;
+  }
+
+  statusLine.innerHTML = `Workflow dispatched. <a href="${data.github_run_url}" target="_blank">View on GitHub</a>`;
+  progressEl.classList.add("active");
+  trackingDisplay.textContent = data.tracking_id;
+  progressSummary.textContent = "Waiting for first log row…";
+  progressList.innerHTML = "";
+  subscribeToTracking(data.tracking_id);
+};
+
+// ---------- Live subscription via Supabase Realtime ----------
+function subscribeToTracking(trackingId) {
+  if (!sb) return;
+  if (liveChannel) sb.removeChannel(liveChannel);
+
+  let rowsByRunId = new Map();
+  let firstSeen = null;
+
+  const render = () => {
+    const all = [...rowsByRunId.values()].sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+    if (all.length === 0) return;
+    if (!firstSeen) firstSeen = all[0].started_at;
+    const total = all.length;
+    const done = all.filter(r => r.status !== "running").length;
+    const added = all.reduce((s, r) => s + (r.records_added || 0), 0);
+    progressSummary.textContent = `${done}/${total} windows · ${added} records added`;
+
+    progressList.innerHTML = all.map(r => {
+      const dur = r.completed_at && r.started_at
+        ? Math.round((new Date(r.completed_at) - new Date(r.started_at)) / 1000)
+        : null;
+      return `<li class="${r.status}">
+        <span>airport_id=${r.airport_id} · ${r.structure_type ?? "-"} · ${r.from_date} → ${r.to_date}</span>
+        <span class="state">${r.status}${r.records_added ? " · +" + r.records_added : ""}${dur != null ? " · " + dur + "s" : ""}</span>
+      </li>`;
+    }).join("");
+
+    if (done === total && total > 0) {
+      refreshBtn.disabled = false;
+      statusLine.textContent = `Done · ${added} records added across ${total} windows.`;
+      loadFreshness();
+      loadRecentRuns();
+    }
+  };
+
+  // Initial poll for any rows already inserted (race between dispatch and subscribe)
+  sb.from("scrape_log").select("*").eq("tracking_id", trackingId).then(({ data }) => {
+    if (data) for (const row of data) rowsByRunId.set(row.id, row);
+    render();
+  });
+
+  liveChannel = sb
+    .channel("scrape_log:" + trackingId)
+    .on("postgres_changes",
+        { event: "*", schema: "public", table: "scrape_log", filter: `tracking_id=eq.${trackingId}` },
+        (payload) => {
+          if (payload.eventType === "DELETE") rowsByRunId.delete(payload.old.id);
+          else rowsByRunId.set(payload.new.id, payload.new);
+          render();
+        })
+    .subscribe();
+
+  // Safety: if no rows arrive in 90s, the workflow may have failed to start
+  setTimeout(() => {
+    if (rowsByRunId.size === 0) {
+      progressSummary.textContent = "No log rows yet — workflow may still be starting. Check GitHub Actions.";
+    }
+  }, 90000);
+}
+
+// ---------- Freshness ----------
+async function loadFreshness() {
+  if (!sb) return;
+  const el = document.getElementById("freshness");
+  const { data, error } = await sb.from("data_freshness").select("*").order("airport_code");
+  if (error || !data) { el.innerHTML = `<div class="status-line">Error: ${error?.message || "no data"}</div>`; return; }
+  if (data.length === 0) { el.innerHTML = `<div class="status-line">No airports configured yet — run seed_airports.sql.</div>`; return; }
+  el.innerHTML = data.map(r => `
+    <div class="fresh-card">
+      <div class="code">${r.airport_code}</div>
+      <div class="stamp">${fmtAgo(r.last_successful_at)}</div>
+      <span class="state-badge ${r.freshness_state}">${r.freshness_state}</span>
+      <div class="status-line" style="margin-top:8px">${r.total_records ?? 0} records · ${r.records_last_7d ?? 0} added in 7d</div>
+    </div>
+  `).join("");
+}
+
+// ---------- Recent manual runs ----------
+async function loadRecentRuns() {
+  if (!sb) return;
+  const tbody = document.querySelector("#recent-table tbody");
+  const { data, error } = await sb.rpc("recent_manual_runs", { limit_n: 10 });
+  if (error) { tbody.innerHTML = `<tr><td colspan="6" class="status-line">Error: ${error.message}</td></tr>`; return; }
+  if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="status-line">No manual refreshes yet.</td></tr>`; return; }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${fmtTime(r.started_at)}</td>
+      <td>${(r.trigger_source || "").replace("manual_", "")}</td>
+      <td>${r.airports_covered || "—"}</td>
+      <td>${r.total_added ?? 0}</td>
+      <td>${fmtDur(r.duration_seconds)}</td>
+      <td><span class="pill ${r.overall_status}">${r.overall_status}</span></td>
+    </tr>
+  `).join("");
+}
+
+if (sb) {
+  loadFreshness();
+  loadRecentRuns();
+  setInterval(loadFreshness, 60000);
+}
+</script>
+</body>
+</html>

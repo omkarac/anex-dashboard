@@ -11,6 +11,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
@@ -30,5 +31,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "skygauge"]
+  "exclude": [
+    "node_modules",
+    "skygauge/scraper",
+    "skygauge/api/edge-functions",
+    "skygauge/web",
+    "skygauge/data",
+    "skygauge/.venv",
+    "skygauge/node_modules"
+  ]
 }
