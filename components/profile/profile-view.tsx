@@ -7,6 +7,7 @@ import {
   Mail, Phone, Calendar, Building2, CheckSquare, Zap,
   ExternalLink, Shield, User, Pencil, Check, X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,7 +65,7 @@ const TASK_STATUS_LABELS: Record<string, string> = {
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color: string }) {
+function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: number; color: string }) {
   return (
     <div className="flex-1 rounded-xl border bg-card p-4 flex items-center gap-4">
       <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>

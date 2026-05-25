@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getNeighborhoodStats } from '@/lib/queries/skygauge';
+import { getNearbyAppeals, getNearbyNocs, getNeighborhoodStats } from '@/lib/queries/skygauge';
 
 // lat/lon required; radius optional, clamped to a sane window. `?? undefined`
 // turns missing params into `undefined` so coercion yields NaN (→ validation
@@ -26,8 +26,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const { lat, lon, radius } = parsed.data;
-    const stats = await getNeighborhoodStats(lat, lon, radius);
-    return NextResponse.json({ stats });
+    const [stats, appeals, nocs] = await Promise.all([
+      getNeighborhoodStats(lat, lon, radius),
+      getNearbyAppeals(lat, lon, radius),
+      getNearbyNocs(lat, lon, radius),
+    ]);
+    return NextResponse.json({ stats, appeals, nocs });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Neighborhood lookup failed';
     return NextResponse.json({ error: message }, { status: 500 });

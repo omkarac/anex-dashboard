@@ -1,4 +1,5 @@
 import { Activity, CalendarDays, Users, Trash2, Layers } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { AuditStats } from '@/lib/queries/audit';
 
 function Tile({
@@ -11,7 +12,7 @@ function Tile({
   label: string;
   value: string;
   hint?: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   accent: string;
 }) {
   return (

@@ -57,10 +57,14 @@ skygauge/
 - [x] 2D map wired to the engine — search (Google Places / lat-lon paste), click-to-analyze, result panel (binding surface, max top AMSL, AGL headroom from manual site elevation), AAI disclaimer
 - [x] NOCs loaded into Supabase PostGIS (11,578 records; migration `0033`, GIST spatial index)
 - [x] Empirical-analysis layer — neighborhood median permissible top (recency-weighted), range, % restricted, and the theoretical-vs-empirical delta, surfaced in the result panel with a radius toggle
-- [ ] Site-elevation DEM lookup (Bhuvan SRTM) — manual input ships today; automated lookup is v2
+- [x] Appellate cases — 727 historical committee cases seeded (`appeal_case`); nearby cases shown in the panel with deep-links to AAI minutes PDFs
+- [x] 3D scene (React Three Fiber) — engine-driven OLS-ceiling heightfield, the site's buildable massing, and nearby NOC/appeal structures as procedural buildings; surfaces colour-coded by binding type
+- [x] Street View companion — Google Maps Embed panorama of the site (view mode), aimed at the binding airport
+- [x] Photorealistic 3D Tiles overlay — Google Earth city mesh re-centred on the site (`3d-tiles-renderer`), with the OLS ceiling + structures at real-world scale (4th view mode); pending an in-browser alignment check
+- [ ] Live monthly appellate PDF cron parser (`appeals_parser.py`) — historical seed is in; this keeps it fresh
+- [ ] Per-NOC PDF letter extraction (owner / address / detailed coords)
+- [x] Auto site elevation via Google Elevation API (client-side ElevationService); auto-fills AGL headroom, manual override retained
 - [ ] Edge function for `/analyze`
-- [ ] Appellate PDF parser (populates `appeal_case`; Maitree gives us the historical seed)
-- [ ] 3D scene frontend (Three.js)
 - [ ] PDF report generation
 
 ## Maitree backfill — the fastest path to a complete dataset

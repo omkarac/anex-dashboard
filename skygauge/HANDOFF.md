@@ -4,7 +4,7 @@
 
 ## Where we are
 
-Five slices complete. The NOCs are now in Supabase (PostGIS), the theoretical OLS engine is wired into the 2D map, **and** the empirical layer is live — every analyzed point shows the theoretical OLS ceiling alongside the neighborhood band of real AAI approvals, with the delta between them called out. The tool delivers its core value end-to-end. Remaining work is the appellate-override data (Slice 12), the 3D scene (Slice 4), and richer per-NOC PDF extraction (Slice 18).
+Seven slices' worth of work complete. In Supabase (PostGIS): 11,578 NOCs **and** 727 appellate-committee cases. Every analyzed point shows — in 2D and now 3D — the theoretical OLS ceiling, the empirical neighborhood band of real AAI approvals (with the delta called out), and a deep-linked list of nearby appellate cases. The tool delivers its core value end-to-end. Remaining: the *live* monthly appellate PDF cron (the historical seed is in), and richer per-NOC PDF extraction (Slice 18).
 
 ### Slice 1 — Data ingestion (done)
 
@@ -47,37 +47,64 @@ Five slices complete. The NOCs are now in Supabase (PostGIS), the theoretical OL
 - **Query + API.** `lib/queries/skygauge.ts` (`getNeighborhoodStats`, service client in dev demo / anon+RLS in prod) → `app/api/skygauge/neighborhood/route.ts` (GET, Zod-validated, clamps radius 100–5000 m).
 - **Domain logic.** `skygauge/api/empirical/{types,band}.ts` — pure `buildEmpiricalBand(stats, theoreticalAmsl)` computes the recency-weighted median + theoretical-vs-empirical delta.
 - **UI.** Result panel gains the blue "Empirical · nearby NOCs" block: median permissible top (m AMSL), sample count, range, % restricted, latest issue, a 500 m / 1 km / 2 km radius toggle, and a colour-coded delta callout (approvals running above/below the OLS ceiling). Warm RPC queries ≈35 ms via the GIST index.
-- **Note:** `appeal_count_within_1km` is wired but reads 0 everywhere until Slice 12 populates `appeal_case`.
+### Slice 12 — Appellate data (historical seed done; live cron is follow-up)
+
+- **Migration `0034_skygauge_appeals_unique.sql`** — unique index on `appeal_case (noc_id, meeting_date, item_no)` so the seed upserts idempotently. Applied via SQL Editor.
+- **`skygauge/scripts/import_appeals_to_supabase.py`** — seeds the **727** historical cases from `data/skygauge_nocs_appeals.csv` (the Maitree `appealCases` extract). Date parse is DD/MM/YY (`10/12/25` → 2025-12-10, confirmed against the PDF filenames); 0 skips.
+- **`lib/queries/skygauge.ts` `getNearbyAppeals`** → the `nearby_appeals` RPC; the neighborhood route now returns `{ stats, appeals }` (parallel). The result panel renders an "Appellate cases nearby" list (committee-approved top, meeting month/year, distance, deep-link to the AAI minutes PDF). `appeal_count_within_1km` is now real (e.g. 6 near Chembur, 52 near Juhu).
+- **Still open:** the *live* monthly PDF parser (`appeals_parser.py`) that fetches + parses new minutes from `nocas2.aai.aero/.../AppealProceeding/` on a cron. Deferred because it depends on AAI's flaky endpoint + PDF structures that can't be verified offline. The schema, RPC, importer pattern, and UI are all ready for it.
+
+### Slice 4 — 3D scene (done)
+
+- **Approach:** an *engine-driven OLS-ceiling heightfield* rather than an airport panorama. `components/skygauge/scene-geometry.ts` samples `computeOLSLimit` over a 29×29 grid (±1.2 km) around the site and emits typed arrays (positions, per-vertex colours by binding surface, indices) for a `THREE.BufferGeometry`. Reuses the engine — no re-derived surface math.
+- **Render:** `skygauge-scene-inner.tsx` (R3F) draws the coloured ceiling surface, the site's buildable massing box, a reference grid, `OrbitControls`, an orientation gizmo, a legend, and an AMSL label. `skygauge-scene.tsx` is the `dynamic(ssr:false)` wrapper so three/R3F never touch SSR or the 2D path.
+- **Nearby structures:** issued NOCs (`nearby_nocs` RPC, capped 120) and appellate cases (`nearby_appeals`) are rendered as **procedural building massings** at their true positions — apex height = permissible/approved top AMSL, colour-coded (issued / restricted / appeal). Both the heightfield and the structures go through the single `projectToScene` ENU projection, so distances are calibrated to the coordinates (verified: projection distance == PostGIS `st_distance` to 0.00 m). The neighborhood route returns `{ stats, appeals, nocs }`; the radius toggle controls the scene footprint + which structures are in frame.
+- **Building styles:** `components/skygauge/building-geometry.ts` builds 5 unit massings (flat, setback/tiered, tapered, hip-roof low-rise, cylindrical-with-spire) as merged THREE geometries, normalised to base y=0 / apex y=1 for instancing. Style is deterministic per `noc_id` (stable across renders) and height-biased — permits < 22 m get low-rise forms, taller ones get towers. Instanced per style (one `<Instances>` per style, shared material, per-instance scale + colour) so the whole neighbourhood is ~5 draw calls.
+
+### Realism via Google — Phase 1 (Street View) + Phase 2 (3D Tiles) both built
+
+- **Street View companion:** `components/skygauge/skygauge-street-view.tsx` — embeds the Google Maps Embed API panorama at the site, aimed toward the binding airport via `initialBearingDeg`. Free API, graceful fallback when no key. Ground-level only.
+- **Photoreal (3D Tiles):** `skygauge-photoreal-inner.tsx` (+ `skygauge-photoreal.tsx` ssr:false wrapper). Loads Google Photorealistic 3D Tiles via `3d-tiles-renderer` (`TilesRenderer` + `GoogleCloudAuthPlugin`), re-centred on the site with `ReorientationPlugin({ up:'+y', recenter, lat, lon, height })` so the site is at the world origin. The OLS ceiling + NOC/appeal buildings + site massing render in the SAME frame at **real-world 1:1 scale** (the abstract scene's ×4 exaggeration is off here) so they sit on the real city. Geometry is shared via the `frame` param on `projectToScene`/`buildOlsHeightfield` (`REAL_FRAME` vs `ABSTRACT_FRAME`).
+- **View toggle is now 4-way:** `2D map / 3D scene / Photoreal / Street view`.
+- **Density + hover:** `getNearbyNocs` caps at 400 (was 120 — Bandra has ~274 within 1 km), `getNearbyAppeals` at 50; photoreal clips structures to the panel radius (not a fixed 700 m) and clamps low/below-datum permits to a 3 m stub so none vanish. Each building has a pointer handler → a drei `<Html>` tooltip showing its permitted top (AMSL) + height above datum; the ceiling mesh has `raycast={()=>null}` so it doesn't steal hovers.
+- **Datum / geoid:** Google Elevation returns AMSL (orthometric); the tiles' ellipsoid frame wants ellipsoidal height. `GEOID_UNDULATION_M = -60` (Indian Ocean geoid low) converts AMSL → ellipsoidal in the ReorientationPlugin `height` so the overlay seats on the real terrain instead of floating ~60 m up. The robust-but-heavier alternative (if a constant proves too coarse) is to raycast down against the loaded tiles at the site and offset the overlay group to the hit point — datum-agnostic.
+- **⚠ NEEDS VISUAL VERIFICATION + likely a tuning pass** (built blind — no browser here). Knobs in `skygauge-photoreal-inner.tsx`: `GEOID_UNDULATION_M` (more negative if structures still float, less if they sink), `NORTH_SIGN` (flip to `-1` if the overlay is mirrored N/S vs the tiles), and the site-elevation input (the AMSL datum).
+- **Key + APIs:** `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in `.env.local` (gitignored). Enable: **Maps JavaScript API + Places API** (search), **Maps Embed API** (Street View), **Map Tiles API** (+ billing, Photoreal). Browser key → restrict by HTTP referrer + API.
+- **Deps added:** `3d-tiles-renderer`, plus its optional peers `@mapbox/vector-tile` / `pbf` / `pmtiles` (needed only so Turbopack can resolve the plugins barrel's lazy imports — not loaded at runtime for Google tiles).
+- **Toggle:** a 2D/3D segmented control (top-centre) in `skygauge-workspace.tsx` swaps map ↔ scene; the result panel overlays both. Vertical exaggeration ×4 (labelled) so tens-of-metres height reads against the km footprint.
+- **Deps added:** `three`, `@react-three/fiber@9`, `@react-three/drei@10`, `@types/three`.
+- **⚠ Gotcha (important for future work):** R3F v9 augments the global `JSX.IntrinsicElements` with three elements (no `className`). Any app component typed as the loose `React.ElementType` and rendered with `className` then collapses to `className: never`. This surfaced 6 pre-existing icon props (app-shell, audit ×2, profile, file-drawer) which were tightened from `React.ElementType` → `LucideIcon`. **If you add a new component prop for an icon/dynamic element, type it as `LucideIcon`/`ComponentType<…>`, not `React.ElementType`.**
 
 ## What's NOT done (suggested ordering)
 
 | Slice | Description | Why it matters |
 |---|---|---|
-| 12 | Appellate Committee PDF parser (monthly cron) → populate `appeal_case` | Catches the cases that overrule the standard OLS, and lights up the already-wired `appeal_count` in the empirical panel. The `appeal_case` table + `nearby_appeals` RPC already exist. |
-| 4 | Three.js 3D scene showing OLS surfaces around a site | Visual polish; not on the critical path. |
+| 4-tiles-verify | Visually verify + tune the Photoreal 3D Tiles overlay alignment (NORTH_SIGN, ground datum) | Built but unverified-by-eye. First real-browser pass to confirm tiles load + overlay lines up. |
+| 12-live | Live monthly appellate PDF cron parser → keep `appeal_case` fresh | Historical seed is in; this keeps it current. Needs the AAI PDF endpoint. |
 | 18 | Per-NOC PDF letter extraction (owner / address / detailed coords) | Only 7.9 % of records have owner+address today. Phase 2. |
+| — | PDF report generation | Noted earlier; nice-to-have once the above land. |
 
 ## Recommended next prompt
 
 Paste this into your next Claude Code session:
 
 ```
-Read @skygauge/HANDOFF.md and @skygauge/README.md, then start Slice 12: the
-Appellate Committee PDF parser. Concretely:
+Read @skygauge/HANDOFF.md and @skygauge/README.md, then start Slice 18: per-NOC
+PDF letter extraction. Concretely:
 
-1. Build skygauge/scraper/appeals_parser.py — fetch the monthly Appellate
-   Committee Meeting Minutes PDFs from nocas2.aai.aero/nocas/AppealProceeding/,
-   extract per-case rows (meeting_date, item_no, lat/lon, approved top, decision
-   text, pdf_url) into the appeal_case shape. The Maitree backfill already gives
-   ~727 historical cases in data/skygauge_nocs_appeals.csv — seed from that first.
-2. Import appeal_case rows into Supabase (table + nearby_appeals RPC already
-   exist from migration 0033). Mirror import_workbook_to_supabase.py.
-3. The empirical panel already reads appeal_count_within_1km — once appeal_case
-   has rows it lights up automatically. Optionally surface the nearest few
-   appeal cases in the result panel.
+1. Build skygauge/scraper/noc_pdf_parser.py — for NOCs whose pdf_url is set but
+   owner_name/site_address are empty (~92% of records), fetch the AAI NOC letter
+   PDF and extract owner, address, and detailed coordinates.
+2. Backfill noc_issued.owner_name / site_address / sacfa_id via an idempotent
+   updater (mirror import_workbook_to_supabase.py; update-by-noc_id).
+3. Surface owner/address in the result panel's nearby-NOC context where present.
 
-State the file list before writing code. Don't touch the OLS engine.
+Be resilient to missing/garbled PDFs (log + skip). State the file list first.
+Don't touch the OLS engine or the 3D scene.
 ```
+
+(Alternatively, knock out **Slice 12-live** — the monthly appellate cron — first;
+the schema/RPC/UI are already in place for it.)
 
 ## Local dev setup
 
@@ -96,4 +123,4 @@ npm run validate                # benchmark engine vs. real NOCs
 
 - **Empirical layer location — resolved.** It lives in Supabase PostGIS. Migration `0033` is applied to the shared dashboard project and all 11,578 NOCs are imported. The skygauge tables are namespaced/additive and use RLS public-read (the AAI data is public); they do not touch any dashboard table. If skygauge ever needs isolation from the dashboard DB, the query layer (`lib/queries/skygauge.ts`) is the single swap point.
 - **Threshold coordinate refinement.** The AIP-derived thresholds in `db/seed_airports.sql` give bearings 5-15° off from the published `true_bearing`. The engine works around this by anchoring on `true_bearing`, but the seed coords should still be refined against the latest AIP charts before going to production.
-- **DEM source for site elevation.** Slice 5 shipped with a manual site-elevation input as the v1 fallback (drives the AGL headroom readout). The automated lookup — Bhuvan India 30 m or NASA SRTM global — is still open and is now a v2 follow-up. Either needs a small server-side proxy because the public Bhuvan API is unreliable from the browser.
+- **Site elevation — resolved (Google Elevation API).** Auto-fetched on site select via the client-side `google.maps.ElevationService` (`getGoogleElevation` in `components/skygauge/google-maps-loader.ts`), which populates the elevation field and the AGL headroom. The manual input remains as an override (the panel badges the source: `auto · Google` / `manual` / `fetching…`). Client-side service is used (not the web service) so it survives HTTP-referrer key restriction. Bhuvan/NASA SRTM no longer needed.

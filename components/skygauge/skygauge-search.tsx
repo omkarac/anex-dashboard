@@ -19,6 +19,7 @@ import { MapPin, Search } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { LatLon } from '@/skygauge/api/ols/types';
+import { hasGoogleKey, loadGoogleMaps } from './google-maps-loader';
 
 // ─── MMR bounding box ───────────────────────────────────────────────────────
 // Generous box around the Mumbai Metropolitan Region: Mira-Bhayandar/Thane in
@@ -26,69 +27,7 @@ import type { LatLon } from '@/skygauge/api/ols/types';
 // foothills in the east.
 const MMR_BBOX = { north: 19.45, south: 18.85, east: 73.3, west: 72.75 } as const;
 
-const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-// ─── Minimal Google Maps Places typings ─────────────────────────────────────
-// Just the slice of the API we touch — avoids pulling in @types/google.maps.
-interface GPlaceGeometry {
-  location?: { lat(): number; lng(): number };
-}
-interface GPlace {
-  geometry?: GPlaceGeometry;
-  name?: string;
-  formatted_address?: string;
-}
-interface GAutocomplete {
-  addListener(event: 'place_changed', handler: () => void): void;
-  getPlace(): GPlace;
-}
-interface GAutocompleteOptions {
-  bounds?: { north: number; south: number; east: number; west: number };
-  strictBounds?: boolean;
-  fields?: readonly string[];
-  componentRestrictions?: { country: string | string[] };
-}
-interface GoogleMapsApi {
-  maps: {
-    places: {
-      Autocomplete: new (
-        input: HTMLInputElement,
-        opts?: GAutocompleteOptions,
-      ) => GAutocomplete;
-    };
-  };
-}
-declare global {
-  interface Window {
-    google?: GoogleMapsApi;
-  }
-}
-
-let placesPromise: Promise<GoogleMapsApi> | null = null;
-
-/** Load the Google Maps JS API (Places library) exactly once. */
-function loadPlaces(apiKey: string): Promise<GoogleMapsApi> {
-  if (typeof window === 'undefined') {
-    return Promise.reject(new Error('Places unavailable during SSR'));
-  }
-  if (window.google?.maps?.places) return Promise.resolve(window.google);
-  if (placesPromise) return placesPromise;
-
-  placesPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      apiKey,
-    )}&libraries=places&loading=async`;
-    script.async = true;
-    script.onload = () => {
-      if (window.google?.maps?.places) resolve(window.google);
-      else reject(new Error('Places library missing after load'));
-    };
-    script.onerror = () => reject(new Error('Google Maps script failed to load'));
-    document.head.appendChild(script);
-  });
-  return placesPromise;
-}
+const HAS_KEY = hasGoogleKey();
 
 /** Parse "lat, lon" (comma- or space-separated) into a coordinate, or null. */
 function parseLatLon(raw: string): LatLon | null {
@@ -114,10 +53,10 @@ export function SkygaugeSearch({ onSelect, className }: SkygaugeSearchProps) {
 
   // Attach Google Places Autocomplete when a key is configured.
   useEffect(() => {
-    if (!GOOGLE_KEY || !inputRef.current) return;
+    if (!HAS_KEY || !inputRef.current) return;
     let cancelled = false;
 
-    loadPlaces(GOOGLE_KEY)
+    loadGoogleMaps()
       .then((google) => {
         if (cancelled || !inputRef.current) return;
         const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {

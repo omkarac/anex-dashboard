@@ -31,6 +31,7 @@ import {
   X,
   Plane,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -46,12 +47,12 @@ import type { TeamMember } from '@/lib/rbac';
 
 export type Vertical = 'capital_markets' | 'sales_marketing';
 
-const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: React.ElementType; exact?: boolean; adminOnly?: boolean }[]> = {
+const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: LucideIcon; exact?: boolean; adminOnly?: boolean }[]> = {
   capital_markets: [
     { href: '/capital-markets', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
     { href: '/capital-markets/assets', label: 'Assets', icon: Building2 },
     { href: '/capital-markets/developers', label: 'Developers', icon: Users2 },
-    { href: '/skygauge', label: 'Skygauge', icon: Plane },
+    { href: '/skygauge', label: 'Skygauge', icon: Plane, adminOnly: true },
     { href: '/audit', label: 'Audit Room', icon: ScrollText },
     { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
   ],
@@ -77,7 +78,7 @@ function initials(name: string) {
 function NavLink({
   href, label, icon: Icon, exact, collapsed, onClick,
 }: {
-  href: string; label: string; icon: React.ElementType; exact?: boolean; collapsed?: boolean; onClick?: () => void;
+  href: string; label: string; icon: LucideIcon; exact?: boolean; collapsed?: boolean; onClick?: () => void;
 }) {
   const pathname = usePathname();
   const active = exact ? pathname === href : pathname.startsWith(href);

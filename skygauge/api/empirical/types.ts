@@ -28,6 +28,32 @@ export interface NeighborhoodStats {
   readonly appeal_count_within_1km: number;
 }
 
+/** A nearby issued NOC point (subset of the `nearby_nocs` RPC) — for the 3D scene. */
+export interface NearbyNoc {
+  readonly noc_id: string | null;
+  readonly lat: number | null;
+  readonly lon: number | null;
+  /** Distance from the query point, metres. */
+  readonly distance_m: number;
+  /** Permissible top, m AMSL (null when unparsed). */
+  readonly permissible_top_m: number | null;
+  readonly is_restricted: boolean;
+}
+
+/** A nearby appellate-committee case (subset of the `nearby_appeals` RPC). */
+export interface NearbyAppeal {
+  readonly noc_id: string | null;
+  readonly lat: number | null;
+  readonly lon: number | null;
+  /** Distance from the query point, metres. */
+  readonly distance_m: number;
+  /** ISO meeting date. */
+  readonly meeting_date: string | null;
+  /** Committee-approved top, m AMSL (may be null when "not specified"). */
+  readonly approved_top_m: number | null;
+  readonly pdf_url: string | null;
+}
+
 /** Which median the band is reporting. */
 export type MedianBasis = 'recent_5y' | 'all_time';
 

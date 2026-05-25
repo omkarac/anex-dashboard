@@ -2,10 +2,11 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Table2, Clock, BarChart3, ShieldAlert } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export type AuditView = 'table' | 'timeline' | 'analytics' | 'flags';
 
-const VIEWS: { id: AuditView; label: string; icon: React.ElementType }[] = [
+const VIEWS: { id: AuditView; label: string; icon: LucideIcon }[] = [
   { id: 'table', label: 'Events', icon: Table2 },
   { id: 'timeline', label: 'Timeline', icon: Clock },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },

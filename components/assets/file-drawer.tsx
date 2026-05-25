@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { FileText, FileSpreadsheet, Layers, Image, File, Plus, X, ExternalLink, GripVertical } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { AssetFile } from '@/lib/schemas/asset-file';
 import { addAssetFile, removeAssetFile, updateAssetFileTitle, reorderAssetFiles } from '@/lib/actions/asset-files';
 
@@ -13,7 +14,7 @@ type FileTypeConfig = {
   foldBg: string;
   iconBg: string;
   iconColor: string;
-  Icon: React.ElementType;
+  Icon: LucideIcon;
   label: string;
 };
 

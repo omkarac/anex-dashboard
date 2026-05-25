@@ -13,15 +13,17 @@
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { LatLon, OLSResult, SurfaceHit } from '@/skygauge/api/ols/types';
-import type { EmpiricalBand } from '@/skygauge/api/empirical/types';
+import type { EmpiricalBand, NearbyAppeal } from '@/skygauge/api/empirical/types';
 
 import { SURFACE_META } from './surface-meta';
 
 export type EmpiricalStatus = 'idle' | 'loading' | 'ready' | 'error';
+export type ElevationSource = 'loading' | 'google' | 'manual' | null;
 
 export interface EmpiricalPanelData {
   status: EmpiricalStatus;
   band: EmpiricalBand | null;
+  appeals: NearbyAppeal[];
   radiusM: number;
   onRadiusChange: (radiusM: number) => void;
 }
@@ -32,6 +34,7 @@ interface SkygaugeResultPanelProps {
   result: OLSResult | null;
   /** Raw elevation field value (string, so the input can be cleared). */
   elevationStr: string;
+  elevationSource: ElevationSource;
   onElevationChange: (value: string) => void;
   empirical: EmpiricalPanelData;
   className?: string;
@@ -70,6 +73,7 @@ export function SkygaugeResultPanel({
   label,
   result,
   elevationStr,
+  elevationSource,
   onElevationChange,
   empirical,
   className,
@@ -167,12 +171,15 @@ export function SkygaugeResultPanel({
         {/* Elevation + AGL headroom */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label
-              htmlFor="skygauge-elevation"
-              className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              Site elevation
-            </label>
+            <div className="flex items-center justify-between gap-1">
+              <label
+                htmlFor="skygauge-elevation"
+                className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Site elevation
+              </label>
+              <ElevationSourceBadge source={elevationSource} />
+            </div>
             <div className="mt-1 flex items-center gap-1">
               <Input
                 id="skygauge-elevation"
@@ -250,7 +257,7 @@ export function SkygaugeResultPanel({
 // ─── Empirical block ──────────────────────────────────────────────────────────
 
 function EmpiricalBlock({ empirical }: { empirical: EmpiricalPanelData }) {
-  const { status, band, radiusM, onRadiusChange } = empirical;
+  const { status, band, appeals, radiusM, onRadiusChange } = empirical;
 
   return (
     <div className="rounded-lg border border-sky-200/70 bg-sky-50/50 p-3 dark:border-sky-900/50 dark:bg-sky-950/20">
@@ -291,7 +298,47 @@ function EmpiricalBlock({ empirical }: { empirical: EmpiricalPanelData }) {
           <p className="text-xs text-muted-foreground">Select a site to compare.</p>
         )}
         {status === 'ready' && band && <EmpiricalBody band={band} radiusM={radiusM} />}
+        {status === 'ready' && appeals.length > 0 && <AppealsList appeals={appeals} />}
       </div>
+    </div>
+  );
+}
+
+function AppealsList({ appeals }: { appeals: NearbyAppeal[] }) {
+  return (
+    <div className="mt-2 border-t border-sky-200/60 pt-2 dark:border-sky-900/40">
+      <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+        Appellate cases nearby
+      </h4>
+      <ul className="space-y-0.5">
+        {appeals.slice(0, 4).map((a, i) => {
+          const when = fmtMonthYear(a.meeting_date);
+          return (
+            <li
+              key={`${a.noc_id ?? 'appeal'}-${a.meeting_date ?? ''}-${i}`}
+              className="flex items-center gap-2 text-[11px]"
+            >
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                <span className="font-mono tabular-nums text-foreground">
+                  {a.approved_top_m !== null ? `${a.approved_top_m.toFixed(0)} m` : 'n/s'}
+                </span>
+                {when && <> · {when}</>}
+                {Number.isFinite(a.distance_m) && <> · {Math.round(a.distance_m)} m away</>}
+              </span>
+              {a.pdf_url && (
+                <a
+                  href={a.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-300 dark:hover:text-sky-100"
+                >
+                  PDF
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -373,6 +420,21 @@ function DeltaCallout({ deltaM }: { deltaM: number | null }) {
         : ' — case-by-case relief has been granted above the geometric surface.'}
     </p>
   );
+}
+
+function ElevationSourceBadge({ source }: { source: ElevationSource }) {
+  if (source === 'google') {
+    return (
+      <span className="text-[10px] font-medium text-sky-600 dark:text-sky-400">auto · Google</span>
+    );
+  }
+  if (source === 'loading') {
+    return <span className="text-[10px] text-muted-foreground">fetching…</span>;
+  }
+  if (source === 'manual') {
+    return <span className="text-[10px] text-muted-foreground">manual</span>;
+  }
+  return null;
 }
 
 function SiteHeading({ label, site }: { label?: string; site: LatLon }) {
