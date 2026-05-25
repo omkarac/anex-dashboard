@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { IS_DEV_DEMO, getDemoMember } from '@/lib/auth/member';
 
 export type AuditAction =
   | 'create'
@@ -27,8 +28,15 @@ export async function withAudit<T>(params: {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: 'Not authenticated' };
-    const actorId = user.id;
+    let actorId: string;
+    if (user) {
+      actorId = user.id;
+    } else if (IS_DEV_DEMO) {
+      // Localhost demo (no login) — attribute writes to the demo member.
+      actorId = (await getDemoMember()).id;
+    } else {
+      return { ok: false, error: 'Not authenticated' };
+    }
 
     const service = createServiceClient();
 

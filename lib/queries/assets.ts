@@ -1,5 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
+import { IS_DEV_DEMO } from '@/lib/auth/member';
 import type { Asset } from '@/lib/schemas/asset';
+
+// Assets reads go through anon RLS in production; in localhost demo (no login)
+// there's no auth.uid(), so use the service client so the list still populates.
+async function readClient() {
+  return IS_DEV_DEMO ? createServiceClient() : await createClient();
+}
 
 const PAGE_SIZE = 50;
 
@@ -37,7 +45,7 @@ export async function listAssets(filters: AssetFilters = {}): Promise<{
   pageCount: number;
   page: number;
 }> {
-  const supabase = await createClient();
+  const supabase = await readClient();
   const page = Math.max(1, filters.page ?? 1);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -78,7 +86,7 @@ export async function listAssets(filters: AssetFilters = {}): Promise<{
 }
 
 export async function getAsset(id: string): Promise<Asset | null> {
-  const supabase = await createClient();
+  const supabase = await readClient();
   const { data, error } = await supabase
     .from('assets')
     .select('*')
@@ -95,7 +103,7 @@ export async function getAssetNumericBounds(): Promise<{
   inv_max: number;
   plot_max: number;
 }> {
-  const supabase = await createClient();
+  const supabase = await readClient();
   const { data } = await supabase
     .from('assets')
     .select('topline_cr, initial_investment_cr, plot_size_sqm')
@@ -118,7 +126,7 @@ export async function getAssetNumericBounds(): Promise<{
 }
 
 export async function getDistinctSpocAgents(): Promise<string[]> {
-  const supabase = await createClient();
+  const supabase = await readClient();
   const { data } = await supabase
     .from('assets')
     .select('spoc_agent')

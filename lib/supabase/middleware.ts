@@ -37,7 +37,11 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon');
 
-  if (!user && !isPublicRoute) {
+  // Localhost demo: skip the login gate in development only. Production builds
+  // (Vercel) run with NODE_ENV='production', so real auth is always enforced there.
+  const demoBypass = process.env.NODE_ENV === 'development';
+
+  if (!user && !isPublicRoute && !demoBypass) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
