@@ -29,17 +29,22 @@ export async function currentUser(): Promise<TeamMember> {
     redirect('/login');
   }
 
-  const { data: member } = await supabase
+  // Read the member with the SERVICE client (not the RLS-scoped anon client).
+  // The anon client can intermittently return no row for an EXISTING member when
+  // the access token hasn't propagated to PostgREST inside a server component —
+  // which would wrongly drop the caller into the provisioning branch below, hit a
+  // duplicate-key error on insert, and bounce a valid admin to /login. Matches
+  // getAuthenticatedMember (lib/auth/member.ts), which already reads via service.
+  const service = createServiceClient();
+  const { data: member } = await service
     .from('team_members')
     .select('*')
     .eq('id', user.id)
     .single();
 
   if (!member) {
-    // Auto-provision via service role (bypasses RLS). New members land in the
-    // quarantine 'pending' state — no app access until an admin assigns a role +
-    // department to release them (see the /pending holding page).
-    const service = createServiceClient();
+    // First login → quarantine. New members land 'pending' until an admin
+    // assigns a role + department to release them (see the /pending holding page).
     const { error } = await service
       .from('team_members')
       .insert({
