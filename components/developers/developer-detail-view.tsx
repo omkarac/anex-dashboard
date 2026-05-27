@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition, useRef, useEffect } from 'react';
+import React, { useState, useTransition, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Phone, ExternalLink, ChevronLeft, Building2, Pencil, X, Check } from 'lucide-react';
@@ -151,10 +151,13 @@ function ShareRow({ share, members }: { share: DeveloperShareFull; members: Team
   return (
     <div
       id={`share-${share.id}`}
-      className={`rounded-xl border p-4 flex flex-col gap-0 scroll-mt-4 transition-colors ${
-        isPassed ? 'bg-slate-50/60 border-slate-200/80' : ''
+      className={`rounded-xl border p-4 flex flex-col gap-0 scroll-mt-4 transition-[filter,opacity] duration-200 ${
+        isPassed
+          ? 'blur-[0.6px] opacity-75 hover:blur-none hover:opacity-100 focus-within:blur-none focus-within:opacity-100'
+          : ''
       }`}
       aria-disabled={isPassed || undefined}
+      title={isPassed ? 'Developer passed — hover to interact' : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -209,6 +212,79 @@ function ShareRow({ share, members }: { share: DeveloperShareFull; members: Team
   );
 }
 
+// ─── Share sort options ───────────────────────────────────────────────────────
+
+type DevShareSort = 'newest' | 'oldest' | 'asset' | 'outcome' | 'open_tasks' | 'recent_activity';
+
+const DEV_SHARE_SORT_KEY = 'anex:developer-shares-sort:v1';
+
+const DEV_SHARE_SORT_OPTIONS: { value: DevShareSort; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'asset', label: 'Asset A–Z' },
+  { value: 'outcome', label: 'Outcome' },
+  { value: 'open_tasks', label: 'Most open tasks' },
+  { value: 'recent_activity', label: 'Recent activity' },
+];
+
+// Won → Interested → Pursuing → Pending → Passed
+const DEV_OUTCOME_RANK: Record<string, number> = {
+  won: 0, interested: 1, pursuing: 2, pending: 3, passed: 4,
+};
+
+function lastTouchTs(share: DeveloperShareFull): number {
+  const candidates: number[] = [new Date(share.shared_at).getTime()];
+  if (share.outcome_at) candidates.push(new Date(share.outcome_at).getTime());
+  for (const u of share.updates) candidates.push(new Date(u.created_at).getTime());
+  for (const t of share.tasks) {
+    if (t.completed_at) candidates.push(new Date(t.completed_at).getTime());
+  }
+  return Math.max(...candidates);
+}
+
+function sortDevShares(shares: DeveloperShareFull[], sort: DevShareSort): DeveloperShareFull[] {
+  const arr = [...shares];
+  switch (sort) {
+    case 'newest':
+      return arr.sort((a, b) => new Date(b.shared_at).getTime() - new Date(a.shared_at).getTime());
+    case 'oldest':
+      return arr.sort((a, b) => new Date(a.shared_at).getTime() - new Date(b.shared_at).getTime());
+    case 'asset':
+      return arr.sort((a, b) => a.asset_name.localeCompare(b.asset_name));
+    case 'outcome':
+      return arr.sort((a, b) => {
+        const ra = DEV_OUTCOME_RANK[a.outcome ?? 'pending'] ?? 99;
+        const rb = DEV_OUTCOME_RANK[b.outcome ?? 'pending'] ?? 99;
+        if (ra !== rb) return ra - rb;
+        return new Date(b.shared_at).getTime() - new Date(a.shared_at).getTime();
+      });
+    case 'open_tasks':
+      return arr.sort((a, b) => {
+        const oa = a.tasks.filter((t) => t.status !== 'done').length;
+        const ob = b.tasks.filter((t) => t.status !== 'done').length;
+        if (ob !== oa) return ob - oa;
+        return new Date(b.shared_at).getTime() - new Date(a.shared_at).getTime();
+      });
+    case 'recent_activity':
+      return arr.sort((a, b) => lastTouchTs(b) - lastTouchTs(a));
+  }
+}
+
+function DevSharesSortDropdown({ value, onChange }: { value: DevShareSort; onChange: (v: DevShareSort) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as DevShareSort)}
+      aria-label="Sort shared assets"
+      className="h-7 rounded-md border bg-background px-2 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+    >
+      {DEV_SHARE_SORT_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  );
+}
+
 export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats; members: TeamMemberSelect[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -247,6 +323,23 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
   const outcomeEntries = Object.entries(dev.outcome_counts)
     .filter(([, n]) => n > 0)
     .sort(([a], [b]) => a.localeCompare(b));
+
+  const [shareSort, setShareSort] = useState<DevShareSort>('newest');
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(DEV_SHARE_SORT_KEY);
+      if (stored && DEV_SHARE_SORT_OPTIONS.some((opt) => opt.value === stored)) {
+        setShareSort(stored as DevShareSort);
+      }
+    } catch {}
+  }, []);
+
+  function handleShareSortChange(next: DevShareSort) {
+    setShareSort(next);
+    try { localStorage.setItem(DEV_SHARE_SORT_KEY, next); } catch {}
+  }
+
+  const sortedShares = useMemo(() => sortDevShares(dev.shares, shareSort), [dev.shares, shareSort]);
 
   function field(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -556,16 +649,21 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
 
           {/* Shared assets */}
           <section>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <h2 className="text-sm font-semibold">
                 Shared Assets
                 {dev.share_count > 0 && (
                   <span className="ml-2 text-xs text-muted-foreground font-normal">· {dev.share_count} total</span>
                 )}
               </h2>
-              {dev.last_shared_at && (
-                <p className="text-xs text-muted-foreground">Last shared {formatTimeAgo(dev.last_shared_at)}</p>
-              )}
+              <div className="flex items-center gap-3">
+                {dev.last_shared_at && (
+                  <p className="text-xs text-muted-foreground">Last shared {formatTimeAgo(dev.last_shared_at)}</p>
+                )}
+                {dev.shares.length > 1 && (
+                  <DevSharesSortDropdown value={shareSort} onChange={handleShareSortChange} />
+                )}
+              </div>
             </div>
 
             {dev.shares.length === 0 ? (
@@ -575,7 +673,7 @@ export function DeveloperDetailView({ dev, members }: { dev: DeveloperWithStats;
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
-                {dev.shares.map((s) => (
+                {sortedShares.map((s) => (
                   <ShareRow key={s.id} share={s} members={members} />
                 ))}
               </div>

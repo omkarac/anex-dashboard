@@ -338,7 +338,7 @@ export function ShareTasksUpdates({
   return (
     <div className="flex flex-col gap-0 mt-3 border-t pt-3">
       {disabled && (
-        <div className="mb-3 flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-medium text-slate-600">
+        <div className="mb-3 flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
           <Lock className="h-3 w-3" />
           Developer passed — change outcome to add new tasks or updates.
         </div>
