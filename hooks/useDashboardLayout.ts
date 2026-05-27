@@ -11,7 +11,10 @@ import {
   type WidgetSize,
 } from '@/lib/dashboard-widgets';
 
-const STORAGE_KEY = 'anex-cm-dashboard-v1';
+// Bumped from v1 → v2 with the productivity/synergy widget set + redesigned
+// default presets. Existing users see the new "My Day / Team Synergy / Velocity"
+// layout on first load; they can still customize freely from there.
+const STORAGE_KEY = 'anex-cm-dashboard-v2';
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 

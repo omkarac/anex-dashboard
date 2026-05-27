@@ -13,6 +13,17 @@ import { RecentActivityWidget } from '@/components/dashboard/recent-activity-wid
 import { HotDealsWidget } from '@/components/dashboard/widgets/HotDealsWidget';
 import { WinRateWidget } from '@/components/dashboard/widgets/WinRateWidget';
 import { StaleDealsWidget } from '@/components/dashboard/widgets/StaleDealsWidget';
+import { MyDayWidget } from '@/components/dashboard/widgets-v2/MyDayWidget';
+import { UpdateStreakWidget } from '@/components/dashboard/widgets-v2/UpdateStreakWidget';
+import { ClosingLoopWidget } from '@/components/dashboard/widgets-v2/ClosingLoopWidget';
+import { HandoffHealthWidget } from '@/components/dashboard/widgets-v2/HandoffHealthWidget';
+import { CollabGraphWidget } from '@/components/dashboard/widgets-v2/CollabGraphWidget';
+import { QuietAssetsOwnerWidget } from '@/components/dashboard/widgets-v2/QuietAssetsOwnerWidget';
+import { WeekOverWeekWidget } from '@/components/dashboard/widgets-v2/WeekOverWeekWidget';
+import { StageThroughputWidget } from '@/components/dashboard/widgets-v2/StageThroughputWidget';
+import { TaskSlaWidget } from '@/components/dashboard/widgets-v2/TaskSlaWidget';
+import { OrphanedWorkWidget } from '@/components/dashboard/widgets-v2/OrphanedWorkWidget';
+import { EngagementCoverageWidget } from '@/components/dashboard/widgets-v2/EngagementCoverageWidget';
 import type { WidgetId } from '@/lib/dashboard-widgets';
 import type {
   CommandStats,
@@ -22,6 +33,19 @@ import type {
   MemberWorkload,
   RecentLog,
 } from '@/lib/queries/dashboard';
+import type {
+  MyDay,
+  UpdateStreak,
+  ClosingLoop,
+  HandoffHealth,
+  CollabGraph,
+  QuietAssetsByOwner,
+  WeekOverWeek,
+  StageThroughput,
+  TaskSla,
+  OrphanedWork,
+  EngagementCoverage,
+} from '@/lib/queries/dashboard-productivity';
 
 // Tailwind col-span classes must be present as full strings so the JIT includes them
 const MD_SPAN: Record<1 | 2 | 3 | 4, string> = {
@@ -38,13 +62,25 @@ export type DashboardData = {
   signals: AttentionSignal[];
   workload: MemberWorkload[];
   recentLogs: RecentLog[];
+  myDay: MyDay;
+  updateStreak: UpdateStreak;
+  closingLoop: ClosingLoop;
+  handoffHealth: HandoffHealth;
+  collabGraph: CollabGraph;
+  quietByOwner: QuietAssetsByOwner;
+  weekOverWeek: WeekOverWeek;
+  stageThroughput: StageThroughput;
+  taskSla: TaskSla;
+  orphanedWork: OrphanedWork;
+  engagementCoverage: EngagementCoverage;
 };
 
 interface Props {
   data: DashboardData;
+  memberName: string;
 }
 
-export function DashboardWorkspace({ data }: Props) {
+export function DashboardWorkspace({ data, memberName }: Props) {
   const {
     state, mounted, activeWindow,
     setActiveWindow, addWindow, removeWindow, renameWindow,
@@ -61,6 +97,7 @@ export function DashboardWorkspace({ data }: Props) {
 
   function renderWidget(id: WidgetId) {
     switch (id) {
+      // Existing
       case 'pipeline-board':   return <PipelineBoardWidget board={data.board} />;
       case 'attention-panel':  return <AttentionPanel signals={data.signals} />;
       case 'deal-aging':       return <DealAgingWidget aging={data.aging} />;
@@ -69,6 +106,21 @@ export function DashboardWorkspace({ data }: Props) {
       case 'hot-deals':        return <HotDealsWidget deals={data.board.hotDeals} />;
       case 'win-rate':         return <WinRateWidget stats={data.stats} />;
       case 'stale-deals':      return <StaleDealsWidget deals={data.board.staleDeals} />;
+      // Personal
+      case 'my-day':           return <MyDayWidget data={data.myDay} memberName={memberName} />;
+      case 'update-streak':    return <UpdateStreakWidget data={data.updateStreak} />;
+      case 'closing-loop':     return <ClosingLoopWidget data={data.closingLoop} />;
+      // Synergy
+      case 'handoff-health':   return <HandoffHealthWidget data={data.handoffHealth} />;
+      case 'collab-graph':     return <CollabGraphWidget data={data.collabGraph} />;
+      case 'quiet-assets-owner': return <QuietAssetsOwnerWidget data={data.quietByOwner} />;
+      // Velocity
+      case 'week-over-week':   return <WeekOverWeekWidget data={data.weekOverWeek} />;
+      case 'stage-throughput': return <StageThroughputWidget data={data.stageThroughput} />;
+      case 'task-sla':         return <TaskSlaWidget data={data.taskSla} />;
+      // Hygiene
+      case 'orphaned-work':    return <OrphanedWorkWidget data={data.orphanedWork} />;
+      case 'engagement-coverage': return <EngagementCoverageWidget data={data.engagementCoverage} />;
     }
   }
 
@@ -128,7 +180,7 @@ export function DashboardWorkspace({ data }: Props) {
                   className="text-xs font-medium bg-transparent border-b border-indigo-400 outline-none w-24 text-foreground"
                 />
               ) : (
-                <span className="text-xs font-medium truncate max-w-[120px]">{win.name}</span>
+                <span className="text-xs font-medium truncate max-w-[140px]">{win.name}</span>
               )}
 
               {!isRenaming && (
@@ -168,7 +220,7 @@ export function DashboardWorkspace({ data }: Props) {
         })}
 
         {/* Add window button */}
-        {state.windows.length < 5 && (
+        {state.windows.length < 6 && (
           <button
             onClick={addWindow}
             className="flex items-center gap-1 h-10 px-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"

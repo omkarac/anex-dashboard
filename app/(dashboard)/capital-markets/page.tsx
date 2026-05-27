@@ -7,6 +7,20 @@ import {
   getTeamWorkload,
   getRecentActivity,
 } from '@/lib/queries/dashboard';
+import {
+  getMyDay,
+  getUpdateStreak,
+  getClosingLoop,
+  getHandoffHealth,
+  getCollabGraph,
+  getQuietAssetsByOwner,
+  getWeekOverWeek,
+  getStageThroughput,
+  getTaskSla,
+  getOrphanedWork,
+  getEngagementCoverage,
+} from '@/lib/queries/dashboard-productivity';
+import { getAuthenticatedMember } from '@/lib/auth/member';
 import { CommandHeader } from '@/components/dashboard/command-header';
 import { DashboardWorkspace } from '@/components/dashboard/workspace/DashboardWorkspace';
 
@@ -15,7 +29,27 @@ export const metadata: Metadata = { title: 'Capital Markets — Anex' };
 export const revalidate = 30;
 
 export default async function CapitalMarketsDashboardPage() {
-  const [stats, board, aging, signals, workload, recentLogs] = await Promise.all([
+  const member = await getAuthenticatedMember();
+
+  const [
+    stats,
+    board,
+    aging,
+    signals,
+    workload,
+    recentLogs,
+    myDay,
+    updateStreak,
+    closingLoop,
+    handoffHealth,
+    collabGraph,
+    quietByOwner,
+    weekOverWeek,
+    stageThroughput,
+    taskSla,
+    orphanedWork,
+    engagementCoverage,
+  ] = await Promise.all([
     getCommandStats().catch(() => ({
       activePipelineValue: 0,
       activeCount: 0,
@@ -34,6 +68,47 @@ export default async function CapitalMarketsDashboardPage() {
     getAttentionSignals().catch(() => []),
     getTeamWorkload().catch(() => []),
     getRecentActivity().catch(() => []),
+    getMyDay(member.id).catch(() => ({
+      tasks_due: [],
+      silent_assets: [],
+      this_week_moves: [],
+      updates_today: 0,
+    })),
+    getUpdateStreak(member.id).catch(() => ({
+      current_streak: 0,
+      longest_streak_30d: 0,
+      days: [],
+    })),
+    getClosingLoop(member.id).catch(() => ({
+      ball_in_your_court: [],
+      waiting_on_others: [],
+    })),
+    getHandoffHealth().catch(() => ({
+      shares: [],
+      stage_medians_days: { im: 0, ff: 0, eoi: 0 },
+      totals: { shared: 0, im: 0, ff: 0, eoi: 0 },
+    })),
+    getCollabGraph().catch(() => ({
+      lone_wolf_assets: [],
+      shared_assets: [],
+      total_active_assets: 0,
+    })),
+    getQuietAssetsByOwner().catch(() => ({ rows: [] })),
+    getWeekOverWeek().catch(() => ({
+      metrics: [],
+      week_start_iso: new Date().toISOString(),
+      last_week_start_iso: new Date().toISOString(),
+    })),
+    getStageThroughput().catch(() => ({ stages: [] })),
+    getTaskSla().catch(() => ({ rows: [], overall_pct: 0, total_tasks: 0 })),
+    getOrphanedWork().catch(() => ({ items: [], total_assets: 0, total_tasks: 0 })),
+    getEngagementCoverage().catch(() => ({
+      active_assets: 0,
+      with_engagement: 0,
+      without_engagement: 0,
+      coverage_pct: 0,
+      uncovered_examples: [],
+    })),
   ]);
 
   return (
@@ -60,7 +135,28 @@ export default async function CapitalMarketsDashboardPage() {
 
       {/* Customizable workspace */}
       <div className="flex-1 overflow-hidden">
-        <DashboardWorkspace data={{ stats, board, aging, signals, workload, recentLogs }} />
+        <DashboardWorkspace
+          memberName={member.full_name}
+          data={{
+            stats,
+            board,
+            aging,
+            signals,
+            workload,
+            recentLogs,
+            myDay,
+            updateStreak,
+            closingLoop,
+            handoffHealth,
+            collabGraph,
+            quietByOwner,
+            weekOverWeek,
+            stageThroughput,
+            taskSla,
+            orphanedWork,
+            engagementCoverage,
+          }}
+        />
       </div>
     </div>
   );

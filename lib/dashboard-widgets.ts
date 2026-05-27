@@ -1,4 +1,5 @@
 export type WidgetId =
+  // Existing
   | 'pipeline-board'
   | 'attention-panel'
   | 'deal-aging'
@@ -6,15 +7,40 @@ export type WidgetId =
   | 'activity-feed'
   | 'hot-deals'
   | 'win-rate'
-  | 'stale-deals';
+  | 'stale-deals'
+  // Personal productivity
+  | 'my-day'
+  | 'update-streak'
+  | 'closing-loop'
+  // Team synergy
+  | 'handoff-health'
+  | 'collab-graph'
+  | 'quiet-assets-owner'
+  // Velocity / flow
+  | 'week-over-week'
+  | 'stage-throughput'
+  | 'task-sla'
+  // Hygiene
+  | 'orphaned-work'
+  | 'engagement-coverage';
 
 export type WidgetSize = 1 | 2 | 3 | 4;
+
+export type WidgetCategory =
+  | 'Personal'
+  | 'Synergy'
+  | 'Velocity'
+  | 'Pipeline'
+  | 'Activity'
+  | 'Team'
+  | 'Insights'
+  | 'Hygiene';
 
 export type WidgetDef = {
   id: WidgetId;
   name: string;
   description: string;
-  category: 'Pipeline' | 'Activity' | 'Team' | 'Insights';
+  category: WidgetCategory;
   defaultSize: WidgetSize;
   minSize: WidgetSize;
   maxSize: WidgetSize;
@@ -37,6 +63,7 @@ export type DashboardState = {
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
+  // Existing
   'pipeline-board': {
     id: 'pipeline-board',
     name: 'Pipeline Board',
@@ -117,11 +144,173 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
     maxSize: 2,
     icon: '○',
   },
+
+  // ─── Personal productivity ────────────────────────────────────────────────
+  'my-day': {
+    id: 'my-day',
+    name: 'My Day',
+    description: 'Your tasks due today, silent owned assets, and stage moves you made this week.',
+    category: 'Personal',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 4,
+    icon: '☀',
+  },
+  'update-streak': {
+    id: 'update-streak',
+    name: 'Update Streak',
+    description: 'Consecutive days you logged activity — calendar dots over the last 30 days.',
+    category: 'Personal',
+    defaultSize: 1,
+    minSize: 1,
+    maxSize: 2,
+    icon: '✦',
+  },
+  'closing-loop': {
+    id: 'closing-loop',
+    name: 'Closing the Loop',
+    description: 'Assets where the ball is in your court vs. where you are waiting on others.',
+    category: 'Personal',
+    defaultSize: 2,
+    minSize: 1,
+    maxSize: 2,
+    icon: '↔',
+  },
+
+  // ─── Team synergy ─────────────────────────────────────────────────────────
+  'handoff-health': {
+    id: 'handoff-health',
+    name: 'Handoff Health',
+    description: 'Developer share lifecycle — IM → FF → EOI — with stalled stages surfaced.',
+    category: 'Synergy',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 4,
+    icon: '⇢',
+  },
+  'collab-graph': {
+    id: 'collab-graph',
+    name: 'Collaboration Graph',
+    description: 'Lone-wolf assets vs. genuinely shared ones — surfaces hidden bus-factor risk.',
+    category: 'Synergy',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 3,
+    icon: '⌬',
+  },
+  'quiet-assets-owner': {
+    id: 'quiet-assets-owner',
+    name: 'Quiet Assets by Owner',
+    description: 'Heatmap of how many of each owner’s assets are aging silent across buckets.',
+    category: 'Synergy',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 4,
+    icon: '▦',
+  },
+
+  // ─── Velocity / flow ──────────────────────────────────────────────────────
+  'week-over-week': {
+    id: 'week-over-week',
+    name: 'This Week vs Last',
+    description: 'Net deltas in stage moves, updates, tasks closed, and new assets.',
+    category: 'Velocity',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 3,
+    icon: '↗',
+  },
+  'stage-throughput': {
+    id: 'stage-throughput',
+    name: 'Stage Throughput',
+    description: 'Median days in each stage over 90 days, overlaid with current cohort age.',
+    category: 'Velocity',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 3,
+    icon: '⌛',
+  },
+  'task-sla': {
+    id: 'task-sla',
+    name: 'Task SLA',
+    description: 'High/urgent task on-time completion rate over the last 30 days, by assignee.',
+    category: 'Velocity',
+    defaultSize: 2,
+    minSize: 2,
+    maxSize: 4,
+    icon: '✓',
+  },
+
+  // ─── Hygiene ──────────────────────────────────────────────────────────────
+  'orphaned-work': {
+    id: 'orphaned-work',
+    name: 'Orphaned Work',
+    description: 'Assets and tasks still owned by offboarded members — waiting for handover.',
+    category: 'Hygiene',
+    defaultSize: 1,
+    minSize: 1,
+    maxSize: 2,
+    icon: '◌',
+  },
+  'engagement-coverage': {
+    id: 'engagement-coverage',
+    name: 'Engagement Coverage',
+    description: 'Active assets with vs. without a live engagement — paperwork hygiene.',
+    category: 'Hygiene',
+    defaultSize: 1,
+    minSize: 1,
+    maxSize: 2,
+    icon: '⊕',
+  },
 };
 
-export const WIDGET_CATEGORIES = ['Pipeline', 'Activity', 'Team', 'Insights'] as const;
+export const WIDGET_CATEGORIES: WidgetCategory[] = [
+  'Personal',
+  'Synergy',
+  'Velocity',
+  'Pipeline',
+  'Activity',
+  'Team',
+  'Insights',
+  'Hygiene',
+];
 
 // ─── Default presets ──────────────────────────────────────────────────────────
+
+export const PRESET_MY_DAY: DashboardWindow = {
+  id: 'my-day-view',
+  name: 'My Day',
+  widgets: [
+    { id: 'my-day', size: 2 },
+    { id: 'update-streak', size: 1 },
+    { id: 'closing-loop', size: 1 },
+    { id: 'pipeline-board', size: 4 },
+    { id: 'activity-feed', size: 4 },
+  ],
+};
+
+export const PRESET_TEAM_SYNERGY: DashboardWindow = {
+  id: 'team-synergy-view',
+  name: 'Team Synergy',
+  widgets: [
+    { id: 'team-bandwidth', size: 2 },
+    { id: 'collab-graph', size: 2 },
+    { id: 'handoff-health', size: 2 },
+    { id: 'quiet-assets-owner', size: 2 },
+  ],
+};
+
+export const PRESET_VELOCITY: DashboardWindow = {
+  id: 'velocity-view',
+  name: 'Velocity',
+  widgets: [
+    { id: 'week-over-week', size: 2 },
+    { id: 'stage-throughput', size: 2 },
+    { id: 'task-sla', size: 4 },
+    { id: 'orphaned-work', size: 1 },
+    { id: 'engagement-coverage', size: 1 },
+  ],
+};
 
 export const PRESET_COMMAND_VIEW: DashboardWindow = {
   id: 'command-view',
@@ -148,6 +337,6 @@ export const PRESET_MY_PIPELINE: DashboardWindow = {
 };
 
 export const DEFAULT_DASHBOARD_STATE: DashboardState = {
-  windows: [PRESET_COMMAND_VIEW, PRESET_MY_PIPELINE],
+  windows: [PRESET_MY_DAY, PRESET_TEAM_SYNERGY, PRESET_VELOCITY, PRESET_COMMAND_VIEW],
   activeIndex: 0,
 };
