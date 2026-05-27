@@ -7,7 +7,7 @@ import ReactGridLayout, { useContainerWidth, verticalCompactor } from 'react-gri
 import type { Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon, Search, GripVertical, RotateCcw } from 'lucide-react';
+import { Trash2, CheckCircle2, Circle, AlertCircle, Clock, Ban, ExternalLink, Pencil, Link as LinkIcon, Search, GripVertical, RotateCcw, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,7 @@ type Props = {
   activity: ActivityLogEntry[];
   shares: ShareWithDetails[];
   teamMembers: TeamMemberOption[];
+  isClosed?: boolean;
 };
 
 const LAYOUT_KEY = 'anex:asset-panels-layout:v1';
@@ -134,11 +135,12 @@ function UpdateCard({ update, currentUserId, onDelete }: {
   );
 }
 
-function UpdatesPanel({ assetId, currentUserId, updates, teamMembers }: {
+function UpdatesPanel({ assetId, currentUserId, updates, teamMembers, disabled = false }: {
   assetId: string;
   currentUserId: string;
   updates: UpdateWithAuthor[];
   teamMembers: TeamMemberOption[];
+  disabled?: boolean;
 }) {
   const [updateDate, setUpdateDate] = useState(todayIso);
   const [updateTask, setUpdateTask] = useState('');
@@ -248,14 +250,26 @@ function UpdatesPanel({ assetId, currentUserId, updates, teamMembers }: {
       </div>
 
       {/* Structured input form */}
-      <div className="border-t px-3 pt-3 pb-2.5 shrink-0 flex flex-col gap-2 bg-muted/20">
+      <div
+        className={`border-t px-3 pt-3 pb-2.5 shrink-0 flex flex-col gap-2 bg-muted/20 transition-opacity ${
+          disabled ? 'opacity-50 pointer-events-none select-none' : ''
+        }`}
+        aria-disabled={disabled || undefined}
+      >
+        {disabled && (
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 pb-1">
+            <Lock className="h-3 w-3" />
+            Closed prospect — reopen the asset to log updates.
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0">Date</span>
           <input
             type="date"
             value={updateDate}
             onChange={(e) => setUpdateDate(e.target.value)}
-            className="h-7 flex-1 rounded border border-slate-200 px-2 text-xs bg-white outline-none focus:border-slate-400"
+            disabled={disabled}
+            className="h-7 flex-1 rounded border border-slate-200 px-2 text-xs bg-white outline-none focus:border-slate-400 disabled:bg-slate-100"
           />
         </div>
         <div className="flex gap-2">
@@ -265,7 +279,8 @@ function UpdatesPanel({ assetId, currentUserId, updates, teamMembers }: {
             onChange={(e) => setUpdateTask(e.target.value)}
             placeholder="What happened or needs to happen…"
             rows={2}
-            className="text-xs resize-none flex-1 min-h-[48px] bg-white"
+            disabled={disabled}
+            className="text-xs resize-none flex-1 min-h-[48px] bg-white disabled:bg-slate-100"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
           />
         </div>
@@ -276,13 +291,14 @@ function UpdatesPanel({ assetId, currentUserId, updates, teamMembers }: {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Additional context (optional)…"
             rows={1}
-            className="text-xs resize-none flex-1 min-h-[32px] bg-white"
+            disabled={disabled}
+            className="text-xs resize-none flex-1 min-h-[32px] bg-white disabled:bg-slate-100"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
           />
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-slate-400">⌘↵ to submit</span>
-          <Button size="sm" onClick={submit} disabled={!updateTask.trim()} className="h-7 text-xs px-4">
+          <Button size="sm" onClick={submit} disabled={disabled || !updateTask.trim()} className="h-7 text-xs px-4">
             Log Update
           </Button>
         </div>
@@ -505,8 +521,8 @@ function TaskRow({ task, assetId }: { task: TaskWithAssignee; assetId: string })
   );
 }
 
-function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
-  assetId: string; tasks: TaskWithAssignee[]; teamMembers: TeamMemberOption[]; currentUserId: string;
+function TasksPanel({ assetId, tasks, teamMembers, currentUserId, disabled = false }: {
+  assetId: string; tasks: TaskWithAssignee[]; teamMembers: TeamMemberOption[]; currentUserId: string; disabled?: boolean;
 }) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
@@ -566,22 +582,37 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId }: {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      {disabled && (
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 px-0.5">
+          <Lock className="h-3 w-3" />
+          Closed prospect — reopen the asset to add tasks.
+        </div>
+      )}
+      <div
+        className={`flex flex-wrap items-center gap-1.5 transition-opacity ${
+          disabled ? 'opacity-50 pointer-events-none select-none' : ''
+        }`}
+        aria-disabled={disabled || undefined}
+      >
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add task…"
-          className="h-8 text-sm flex-1 min-w-[140px]"
+          disabled={disabled}
+          className="h-8 text-sm flex-1 min-w-[140px] disabled:bg-slate-100"
           onKeyDown={(e) => { if (e.key === 'Enter') submitTask(); }} />
         <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}
-          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0">
+          disabled={disabled}
+          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 disabled:bg-slate-100">
           {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>)}
         </select>
         <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px]">
+          disabled={disabled}
+          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px] disabled:bg-slate-100">
           <option value="">Assign to self</option>
           {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
         </select>
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-          className="h-8 w-32 rounded-md border border-input bg-background px-1.5 text-xs shrink-0" />
-        <Button size="sm" className="h-8 shrink-0" onClick={submitTask} disabled={!title.trim()}>Add</Button>
+          disabled={disabled}
+          className="h-8 w-32 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 disabled:bg-slate-100" />
+        <Button size="sm" className="h-8 shrink-0" onClick={submitTask} disabled={disabled || !title.trim()}>Add</Button>
       </div>
 
       {openTasks.length === 0 && milestones.length === 0 && (
@@ -744,7 +775,7 @@ function SharesPanel({ shares, sort }: { shares: ShareWithDetails[]; sort: Share
 
 // ─── Root export ──────────────────────────────────────────────────────────────
 
-export function DetailPanels({ assetId, currentUserId, updates, tasks, activity, shares, teamMembers }: Props) {
+export function DetailPanels({ assetId, currentUserId, updates, tasks, activity, shares, teamMembers, isClosed = false }: Props) {
   const openTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled').length;
   const { width, containerRef, mounted } = useContainerWidth();
 
@@ -791,6 +822,19 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, activity,
         <RotateCcw className="h-3 w-3" />
         Reset
       </button>
+
+      {isClosed && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50/70 dark:bg-rose-950/20 dark:border-rose-900 px-3.5 py-2.5">
+          <Lock className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xs font-semibold text-rose-800 dark:text-rose-200">Closed prospect</p>
+            <p className="text-[11px] text-rose-700/80 dark:text-rose-300/80 leading-snug">
+              The developer passed on this asset. New updates and tasks are locked. Change the status away from <span className="font-medium">Dropped</span> to reopen.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div ref={containerRef}>
         {mounted && (
           <ReactGridLayout
@@ -804,12 +848,12 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, activity,
           >
             <div key="updates" className="h-full">
               <PanelShell title="Updates" count={updates.length} chatMode>
-                <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} teamMembers={teamMembers} />
+                <UpdatesPanel assetId={assetId} currentUserId={currentUserId} updates={updates} teamMembers={teamMembers} disabled={isClosed} />
               </PanelShell>
             </div>
             <div key="tasks" className="h-full">
               <PanelShell title="Tasks" count={openTasks}>
-                <TasksPanel assetId={assetId} tasks={tasks} teamMembers={teamMembers} currentUserId={currentUserId} />
+                <TasksPanel assetId={assetId} tasks={tasks} teamMembers={teamMembers} currentUserId={currentUserId} disabled={isClosed} />
               </PanelShell>
             </div>
             <div key="activity" className="h-full">

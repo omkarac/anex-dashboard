@@ -150,6 +150,7 @@ export default async function AssetDetailPage({
               activity={activity}
               shares={shares}
               teamMembers={teamMembers}
+              isClosed={asset.status === 'dropped'}
             />
           </div>
         </div>
