@@ -196,13 +196,9 @@ export function SkygaugeWorkspace() {
         )}
 
         {/* View toggle — top center, clear of the panel (left) and layer toggles (right) */}
-        {/* 'photoreal' is temporarily disabled: the Google 3D Tiles renderer throws
-            inside the WebGL frame loop (bypasses the React error boundary, piling up
-            errors). All photoreal code is intact — re-add 'photoreal' below once the
-            tiles issue is debugged in-browser. */}
         <div className="pointer-events-none absolute inset-x-0 top-3 z-[1000] flex justify-center">
           <div className="pointer-events-auto inline-flex rounded-lg border bg-card/90 p-0.5 shadow-sm backdrop-blur-sm">
-            {(['2d', '3d', 'street'] as const).map((v) => (
+            {(['2d', '3d', 'photoreal', 'street'] as const).map((v) => (
               <button
                 key={v}
                 type="button"

@@ -1,5 +1,15 @@
 'use client';
 
+/**
+ * Skygauge 2D map — Leaflet + Carto tiles (free, open source).
+ *
+ * Theme-aware Carto basemap, with the OLS overlays drawn declaratively:
+ * ARP markers, runway centerlines (anchored on the canonical true_bearing —
+ * AIP threshold coordinates are precise to ±10 m which compounds to ~13°
+ * bearing error over 3 km), and approach/take-off footprints. Controlled
+ * selected point (search or click) with fly-to when it lands off-screen.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import {
@@ -56,8 +66,8 @@ interface RecenterOnSelectProps {
 
 /**
  * Pan to the selected point when it changes — but only if it's currently
- * off-screen. A map click inside the viewport shouldn't jolt the view; a search
- * result in another part of the MMR should fly into frame.
+ * off-screen. A map click inside the viewport shouldn't jolt the view; a
+ * search result far away should fly into frame.
  */
 function RecenterOnSelect({ point }: RecenterOnSelectProps) {
   const map = useMap();
@@ -122,9 +132,8 @@ export default function SkygaugeMapInner({
     const lines: { airport: string; designator: string; from: LatLon; to: LatLon }[] = [];
     for (const airport of MMR_AIRPORTS) {
       for (const r of airport.runways) {
-        // Use the published true_bearing as the canonical axis (the raw
-        // threshold coordinates can disagree by several degrees due to AIP
-        // coordinate imprecision).
+        // Use the published true_bearing as the canonical axis (raw threshold
+        // coordinates can disagree by several degrees due to AIP imprecision).
         const a = { lat: r.threshold_a.lat, lon: r.threshold_a.lon };
         const b = destinationPoint(a, r.true_bearing, r.length_m);
         lines.push({ airport: airport.code, designator: r.designator, from: a, to: b });
@@ -145,7 +154,7 @@ export default function SkygaugeMapInner({
         zoomControl={false}
         style={{ height: '100%', width: '100%' }}
       >
-        {/* Moved to bottom-right so the top-left result panel doesn't cover it */}
+        {/* Bottom-right — clear of the left result panel + centre view toggle */}
         <ZoomControl position="bottomright" />
 
         <TileLayer
@@ -176,8 +185,12 @@ export default function SkygaugeMapInner({
             >
               <Tooltip direction="top" sticky>
                 <div className="text-xs">
-                  <div className="font-medium">{f.airport_code} take-off past {f.threshold_name}</div>
-                  <div className="text-muted-foreground">{f.runway_designator} · {(f.length_m / 1000).toFixed(1)} km · 2 % slope</div>
+                  <div className="font-medium">
+                    {f.airport_code} take-off past {f.threshold_name}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {f.runway_designator} · {(f.length_m / 1000).toFixed(1)} km · 2 % slope
+                  </div>
                 </div>
               </Tooltip>
             </Polygon>
@@ -199,8 +212,12 @@ export default function SkygaugeMapInner({
             >
               <Tooltip direction="top" sticky>
                 <div className="text-xs">
-                  <div className="font-medium">{f.airport_code} approach to {f.threshold_name}</div>
-                  <div className="text-muted-foreground">{f.runway_designator} · {(f.length_m / 1000).toFixed(1)} km · 2 % / 2.5 % / flat</div>
+                  <div className="font-medium">
+                    {f.airport_code} approach to {f.threshold_name}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {f.runway_designator} · {(f.length_m / 1000).toFixed(1)} km · 2 % / 2.5 % / flat
+                  </div>
                 </div>
               </Tooltip>
             </Polygon>
@@ -269,7 +286,7 @@ export default function SkygaugeMapInner({
         )}
       </MapContainer>
 
-      {/* Layer toggle panel */}
+      {/* OLS layer toggles — top-right (clear of the left result panel + centre view toggle) */}
       <div
         className="absolute top-3 right-3 z-[1000] rounded-md px-3 py-2 text-xs"
         style={{
@@ -302,11 +319,7 @@ export default function SkygaugeMapInner({
           />
           <span
             className="inline-block h-2.5 w-3 rounded-sm border border-dashed"
-            style={{
-              background: '#a78bfa',
-              opacity: 0.6,
-              borderColor: '#7c3aed',
-            }}
+            style={{ background: '#a78bfa', opacity: 0.6, borderColor: '#7c3aed' }}
           />
           <span>Take-off</span>
         </label>

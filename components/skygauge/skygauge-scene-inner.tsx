@@ -12,7 +12,7 @@
  * Loaded only via the ssr:false wrapper.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import {
   GizmoHelper,
@@ -67,6 +67,10 @@ interface Pillar {
   footprint: number;
   style: BuildingStyle;
   color: string;
+  /** Display label for the hover tooltip. */
+  label: string;
+  /** Permitted top in metres AMSL (un-projected) — for the tooltip. */
+  topAmsl: number;
 }
 
 interface StructureItem {
@@ -75,6 +79,7 @@ interface StructureItem {
   lon: number | null;
   top: number | null;
   color: string;
+  label: string;
 }
 
 /** Project structures into the scene frame, clip to the footprint, drop null tops. */
@@ -98,6 +103,8 @@ function toPillars(
       footprint: buildingFootprintUnits(it.id),
       style: pickBuildingStyle(it.id, it.top - groundAmsl),
       color: it.color,
+      label: it.label,
+      topAmsl: it.top,
     });
   }
   return out;
@@ -128,6 +135,7 @@ export default function SkygaugeSceneInner({
           lon: n.lon,
           top: n.permissible_top_m,
           color: n.is_restricted ? COLOR.nocRestricted : COLOR.noc,
+          label: n.is_restricted ? 'Restricted NOC' : 'Issued NOC',
         })),
         site,
         groundAmsl,
@@ -145,6 +153,7 @@ export default function SkygaugeSceneInner({
           lon: a.lon,
           top: a.approved_top_m,
           color: COLOR.appeal,
+          label: 'Appellate case',
         })),
         site,
         groundAmsl,
@@ -182,6 +191,19 @@ export default function SkygaugeSceneInner({
   const span = hf.spanUnits;
   const targetY = hf.siteCeilingY !== null ? hf.siteCeilingY * 0.5 : span * 0.15;
   const bindingColor = result?.binding ? SURFACE_META[result.binding.surface].color : '#64748b';
+
+  // Hover state for the height tooltip. Either a real structure (Pillar) or
+  // the user's own site massing (a synthetic Pillar-shaped record).
+  const [hovered, setHovered] = useState<Pillar | null>(null);
+
+  const handleEnter = useCallback((p: Pillar) => {
+    setHovered(p);
+    if (typeof document !== 'undefined') document.body.style.cursor = 'pointer';
+  }, []);
+  const handleLeave = useCallback(() => {
+    setHovered(null);
+    if (typeof document !== 'undefined') document.body.style.cursor = 'default';
+  }, []);
 
   return (
     <div
@@ -225,6 +247,11 @@ export default function SkygaugeSceneInner({
                   position={[p.x, 0, p.z]}
                   scale={[p.footprint, p.height, p.footprint]}
                   color={p.color}
+                  onPointerOver={(e) => {
+                    e.stopPropagation();
+                    handleEnter(p);
+                  }}
+                  onPointerOut={handleLeave}
                 />
               ))}
             </Instances>
@@ -234,7 +261,25 @@ export default function SkygaugeSceneInner({
         {/* Buildable massing at the site */}
         {hf.siteCeilingY !== null && hf.siteCeilingY > 0.01 && (
           <>
-            <mesh position={[0, hf.siteCeilingY / 2, 0]}>
+            <mesh
+              position={[0, hf.siteCeilingY / 2, 0]}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                if (hf.siteCeilingAmsl === null) return;
+                handleEnter({
+                  key: 'site-massing',
+                  x: 0,
+                  z: 0,
+                  height: hf.siteCeilingY ?? 0,
+                  footprint: SITE_FOOTPRINT_UNITS,
+                  style: 'flat',
+                  color: COLOR.site,
+                  label: 'Buildable site massing',
+                  topAmsl: hf.siteCeilingAmsl,
+                });
+              }}
+              onPointerOut={handleLeave}
+            >
               <boxGeometry args={[SITE_FOOTPRINT_UNITS, hf.siteCeilingY, SITE_FOOTPRINT_UNITS]} />
               <meshStandardMaterial color={COLOR.site} transparent opacity={0.5} />
             </mesh>
@@ -244,6 +289,25 @@ export default function SkygaugeSceneInner({
               </div>
             </Html>
           </>
+        )}
+
+        {/* Hover tooltip — anchored at the hovered structure's apex */}
+        {hovered && (
+          <Html
+            position={[hovered.x, hovered.height + span * 0.04, hovered.z]}
+            center
+            distanceFactor={span * 2.4}
+            zIndexRange={[100, 0]}
+            style={{ pointerEvents: 'none' }}
+          >
+            <div className="whitespace-nowrap rounded-md bg-slate-900/90 px-2.5 py-1.5 text-[11px] text-white shadow-lg">
+              <div className="font-semibold">{hovered.label}</div>
+              <div>{hovered.topAmsl.toFixed(1)} m AMSL</div>
+              <div className="text-white/70">
+                ~{Math.max(0, hovered.topAmsl - groundAmsl).toFixed(0)} m above ground
+              </div>
+            </div>
+          </Html>
         )}
 
         {/* Site ground marker */}

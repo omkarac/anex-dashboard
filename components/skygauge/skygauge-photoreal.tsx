@@ -7,12 +7,15 @@ import { SceneErrorBoundary } from './scene-error-boundary';
 
 type SkygaugePhotorealProps = ComponentProps<typeof SkygaugePhotorealInner>;
 
-// three + 3d-tiles-renderer are heavy and browser-only — load lazily.
+// Map3DElement (and the `maps3d` library it ships in) are browser-only and
+// pull a fair amount of code in lazily — keep it out of the initial bundle.
 const SkygaugePhotorealInnerDynamic = dynamic(() => import('./skygauge-photoreal-inner'), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center bg-muted/30">
-      <span className="text-xs text-muted-foreground">Loading photoreal tiles…</span>
+      <span className="text-xs text-muted-foreground">
+        Fetching photoreal module… (dynamic import)
+      </span>
     </div>
   ),
 });

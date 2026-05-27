@@ -60,7 +60,7 @@ skygauge/
 - [x] Appellate cases — 727 historical committee cases seeded (`appeal_case`); nearby cases shown in the panel with deep-links to AAI minutes PDFs
 - [x] 3D scene (React Three Fiber) — engine-driven OLS-ceiling heightfield, the site's buildable massing, and nearby NOC/appeal structures as procedural buildings; surfaces colour-coded by binding type
 - [x] Street View companion — Google Maps Embed panorama of the site (view mode), aimed at the binding airport
-- [x] Photorealistic 3D Tiles overlay — Google Earth city mesh re-centred on the site (`3d-tiles-renderer`), with the OLS ceiling + structures at real-world scale (4th view mode); pending an in-browser alignment check
+- [x] Photorealistic 3D Tiles overlay — Google Earth city mesh via Google's native `Map3DElement` (`maps3d` library, `v=beta`), with the OLS ceiling + structures rendered as `Polygon3D` overlays at native AMSL (4th view mode)
 - [ ] Live monthly appellate PDF cron parser (`appeals_parser.py`) — historical seed is in; this keeps it fresh
 - [ ] Per-NOC PDF letter extraction (owner / address / detailed coords)
 - [x] Auto site elevation via Google Elevation API (client-side ElevationService); auto-fills AGL headroom, manual override retained

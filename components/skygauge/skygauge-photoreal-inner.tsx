@@ -1,66 +1,106 @@
 'use client';
 
 /**
- * Skygauge Photoreal scene (inner) — Phase 2.
+ * Skygauge Photoreal — Google's native Map3DElement.
  *
- * Google Photorealistic 3D Tiles (the real Google Earth city mesh) re-centred on
- * the site via ReorientationPlugin, with our OLS-ceiling surface + nearby
- * NOC/appeal buildings + the site massing overlaid in the SAME real-world ENU
- * frame (1 unit = 1 m, no exaggeration) so the constraint sits on the real city.
+ * The renderer is the `maps3d` library on the Maps JS API (v=alpha). The
+ * React layer only:
+ *   1. Mounts `<gmp-map-3d>` once and pans via `flyCameraTo` on site change.
+ *   2. Recomputes overlay descriptors when site / elevation / data change.
+ *   3. Replaces overlay children imperatively.
  *
- * Alignment knobs (if a visual check shows a mismatch):
- *   • NORTH_SIGN — flip if N/S is mirrored vs the tiles.
- *   • groundAmsl — set via the site-elevation input if the overlay floats above
- *     or sinks below the real terrain.
- * Loaded only via the ssr:false wrapper.
+ * Structures are rendered as **stacks of `Polygon3DInteractiveElement`s** —
+ * one extruded polygon per slab of the building. We tried `Model3DElement`
+ * driven by GLBs of the procedural shapes from `building-geometry.ts`, but
+ * Map3D's alpha glTF path collapses the model to its bounding box, so every
+ * building rendered as a uniform rectangular block. Stacked extruded
+ * polygons are declarative geometry the renderer can't simplify; they read
+ * as proper setback / taper / pitched / cylinder silhouettes.
+ *
+ * Datum: native AMSL on the OLS ceiling cells (`ABSOLUTE`); buildings sit on
+ * the real terrain via `RELATIVE_TO_GROUND` so they're insensitive to local
+ * AMSL drift vs the site's measured ground.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { Html, OrbitControls } from '@react-three/drei';
-import { TilesPlugin, TilesRenderer, TilesAttributionOverlay } from '3d-tiles-renderer/r3f';
-import { GoogleCloudAuthPlugin, ReorientationPlugin } from '3d-tiles-renderer/plugins';
-import * as THREE from 'three';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from 'next-themes';
 
+import { loadMap3DLibrary } from './google-maps-loader';
+import { computeOLSLimit } from '@/skygauge/api/ols/engine';
 import type { LatLon } from '@/skygauge/api/ols/types';
 import type { NearbyAppeal, NearbyNoc } from '@/skygauge/api/empirical/types';
 
 import {
-  buildOlsHeightfield,
-  projectToScene,
-  REAL_FRAME,
-  type OlsHeightfield,
-} from './scene-geometry';
-import {
-  ALL_STYLES,
-  buildUnitBuildings,
-  buildingFootprintMeters,
-  pickBuildingStyle,
-  type BuildingStyle,
-} from './building-geometry';
+  buildCeilingCells,
+  buildPillars,
+  buildSiteMassing,
+  PILLAR_COLORS,
+  type LatLngAlt,
+  type PillarOverlay,
+} from './photoreal-overlays';
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-// Set the root URL explicitly so the renderer has the correct base from frame 1
-// (the GoogleCloudAuthPlugin only sets it if null, which can race the first load).
-const GOOGLE_3D_TILES_ROOT = 'https://tile.googleapis.com/v1/3dtiles/root.json';
-const DEG2RAD = Math.PI / 180;
 const DEFAULT_RADIUS_M = 1200;
-const MIN_BUILDING_M = 3; // floor so low/below-datum permits stay visible + hoverable
-const NORTH_SIGN = 1; // flip to -1 if the overlay is mirrored N/S against the tiles
 
-// Google Elevation returns orthometric height (AMSL, above the geoid), but the
-// 3D Tiles ellipsoid frame expects height above the WGS84 ellipsoid. Across the
-// MMR the geoid sits ~60 m BELOW the ellipsoid (Indian Ocean geoid low), so we
-// add the undulation to convert AMSL → ellipsoidal and seat the overlay on the
-// real terrain. Tune if structures still float (more negative) or sink (less).
-const GEOID_UNDULATION_M = -60;
+// ─── Minimal Map3D typings — @types/google.maps doesn't ship maps3d yet ──────
 
-const COLOR = {
-  noc: '#10b981',
-  nocRestricted: '#f43f5e',
-  appeal: '#8b5cf6',
-  site: '#f59e0b',
-} as const;
+type AltitudeModeValue =
+  | 'ABSOLUTE'
+  | 'CLAMP_TO_GROUND'
+  | 'RELATIVE_TO_GROUND'
+  | 'RELATIVE_TO_MESH';
+
+type Map3DMode = 'HYBRID' | 'SATELLITE';
+
+interface LatLngAltitudeInit {
+  lat: number;
+  lng: number;
+  altitude: number;
+}
+
+interface Map3DCameraOptions {
+  center: LatLngAltitudeInit;
+  tilt?: number;
+  heading?: number;
+  range?: number;
+  roll?: number;
+}
+
+interface Map3DElement extends HTMLElement {
+  center: LatLngAltitudeInit;
+  tilt: number;
+  heading: number;
+  range: number;
+  mode: Map3DMode;
+  defaultLabelsDisabled: boolean;
+  flyCameraTo(options: { endCamera: Map3DCameraOptions; durationMillis?: number }): void;
+}
+
+interface Polygon3DElement extends HTMLElement {
+  outerCoordinates: readonly LatLngAlt[];
+  altitudeMode: AltitudeModeValue;
+  extruded: boolean;
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  drawsOccludedSegments: boolean;
+}
+
+type Polygon3DInteractiveElement = Polygon3DElement;
+
+interface Marker3DElement extends HTMLElement {
+  position: LatLngAltitudeInit;
+  altitudeMode: AltitudeModeValue;
+  label: string;
+}
+
+interface Map3DLibrary {
+  Map3DElement: new (options: Map3DCameraOptions & { mode?: Map3DMode }) => Map3DElement;
+  Polygon3DElement: new () => Polygon3DElement;
+  Polygon3DInteractiveElement?: new () => Polygon3DInteractiveElement;
+  Marker3DElement: new () => Marker3DElement;
+  AltitudeMode?: Record<AltitudeModeValue, AltitudeModeValue>;
+}
 
 interface SkygaugePhotorealInnerProps {
   site: LatLon;
@@ -71,54 +111,7 @@ interface SkygaugePhotorealInnerProps {
   height?: string;
 }
 
-interface Pillar {
-  key: string;
-  x: number;
-  z: number;
-  height: number;
-  footprint: number;
-  style: BuildingStyle;
-  color: string;
-  /** Permitted/approved top, m AMSL (for the hover tooltip). */
-  topAmsl: number;
-  kind: string;
-}
-
-interface StructureItem {
-  id: string;
-  lat: number | null;
-  lon: number | null;
-  top: number | null;
-  color: string;
-  kind: string;
-}
-
-/** Real-world-scale pillars (metres), aligned to the re-centred tiles. */
-function toRealPillars(
-  items: StructureItem[],
-  site: LatLon,
-  groundAmsl: number,
-  radiusM: number,
-): Pillar[] {
-  const out: Pillar[] = [];
-  for (const it of items) {
-    if (it.lat === null || it.lon === null || it.top === null) continue;
-    const p = projectToScene(site, it.lat, it.lon, it.top, groundAmsl, REAL_FRAME);
-    if (p.distanceM > radiusM) continue;
-    out.push({
-      key: it.id,
-      x: p.x,
-      z: p.z * NORTH_SIGN,
-      height: Math.max(p.y, MIN_BUILDING_M),
-      footprint: buildingFootprintMeters(it.id),
-      style: pickBuildingStyle(it.id, it.top - groundAmsl),
-      color: it.color,
-      topAmsl: it.top,
-      kind: it.kind,
-    });
-  }
-  return out;
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SkygaugePhotorealInner({
   site,
@@ -128,53 +121,254 @@ export default function SkygaugePhotorealInner({
   appeals = [],
   height = '100%',
 }: SkygaugePhotorealInnerProps) {
-  const groundAmsl = elevationM ?? 0;
-  const [hovered, setHovered] = useState<Pillar | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<Map3DElement | null>(null);
+  const libRef = useRef<Map3DLibrary | null>(null);
+  const overlaysRef = useRef<HTMLElement[]>([]);
+  const labelMarkerRef = useRef<Marker3DElement | null>(null);
+  // Lookup from a polygon DOM node back to its descriptor so click/hover
+  // handlers surface the right height data. Multiple polygons per pillar all
+  // resolve to the same `PillarOverlay`.
+  const pillarByElementRef = useRef<WeakMap<HTMLElement, PillarOverlay>>(new WeakMap());
+  const initialSiteRef = useRef<LatLon>(site);
 
-  const hf = useMemo(
-    () => buildOlsHeightfield(site, groundAmsl, radiusM, REAL_FRAME),
-    [site, groundAmsl, radiusM],
-  );
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [showLabels, setShowLabels] = useState(false);
+  const [showCeiling, setShowCeiling] = useState(false);
+  const [selectedPillar, setSelectedPillar] = useState<PillarOverlay | null>(null);
 
-  const pillars = useMemo(() => {
-    const nocItems: StructureItem[] = nocs.map((n, i) => ({
-      id: `noc-${n.noc_id ?? i}`,
-      lat: n.lat,
-      lon: n.lon,
-      top: n.permissible_top_m,
-      color: n.is_restricted ? COLOR.nocRestricted : COLOR.noc,
-      kind: n.is_restricted ? 'Restricted NOC' : 'Issued NOC',
-    }));
-    const appealItems: StructureItem[] = appeals.map((a, i) => ({
-      id: `appeal-${a.noc_id ?? i}-${a.meeting_date ?? i}`,
-      lat: a.lat,
-      lon: a.lon,
-      top: a.approved_top_m,
-      color: COLOR.appeal,
-      kind: 'Appellate case',
-    }));
-    return toRealPillars([...nocItems, ...appealItems], site, groundAmsl, radiusM);
-  }, [nocs, appeals, site, groundAmsl, radiusM]);
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === 'dark';
 
-  const byStyle = useMemo(() => {
-    const groups: Record<BuildingStyle, Pillar[]> = {
-      flat: [],
-      setback: [],
-      taper: [],
-      pitched: [],
-      cylinder: [],
+  // ── Mount the Map3D element. Recreated only on Retry (retryNonce changes).
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    let cancelled = false;
+    setStatus('loading');
+    setErrorMessage(null);
+
+    loadMap3DLibrary()
+      .then((lib) => {
+        if (cancelled || !hostRef.current) return;
+        const m3d = lib as Map3DLibrary;
+        if (typeof m3d?.Map3DElement !== 'function') {
+          throw new Error(
+            'maps3d resolved but Map3DElement constructor is missing — channel mismatch?',
+          );
+        }
+        libRef.current = m3d;
+
+        const initialSite = initialSiteRef.current;
+        const map = new m3d.Map3DElement({
+          center: { lat: initialSite.lat, lng: initialSite.lon, altitude: 250 },
+          range: 1200,
+          tilt: 67,
+          heading: 0,
+          mode: 'SATELLITE',
+        });
+        map.defaultLabelsDisabled = true;
+        map.style.width = '100%';
+        map.style.height = '100%';
+
+        // Background click — only clears the selection if no pillar element
+        // was in the click path (pillar handlers stop propagation).
+        map.addEventListener('gmp-click', (event: Event) => {
+          const composed =
+            (event as Event & { composedPath?: () => EventTarget[] }).composedPath?.() ?? [];
+          const hitPillar = composed.some(
+            (node) => node instanceof HTMLElement && pillarByElementRef.current.has(node),
+          );
+          if (!hitPillar) setSelectedPillar(null);
+        });
+
+        host.appendChild(map);
+        mapRef.current = map;
+        setStatus('ready');
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : 'Failed to load photoreal';
+        console.error('[skygauge/photoreal] load failed:', error);
+        setStatus('error');
+        setErrorMessage(message);
+      });
+
+    return () => {
+      cancelled = true;
+      const map = mapRef.current;
+      if (map && host.contains(map)) host.removeChild(map);
+      mapRef.current = null;
+      libRef.current = null;
+      overlaysRef.current = [];
+      labelMarkerRef.current = null;
+      pillarByElementRef.current = new WeakMap();
     };
-    for (const p of pillars) groups[p.style].push(p);
-    return groups;
-  }, [pillars]);
+  }, [retryNonce]);
 
-  const unitGeoms = useMemo(() => buildUnitBuildings(), []);
-  useEffect(
-    () => () => {
-      Object.values(unitGeoms).forEach((g) => g.dispose());
-    },
-    [unitGeoms],
+  // ── Mode + label toggle is a single property update on the live element.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== 'ready') return;
+    map.mode = showLabels ? 'HYBRID' : 'SATELLITE';
+    map.defaultLabelsDisabled = !showLabels;
+  }, [showLabels, status]);
+
+  // ── Recompute overlay descriptors when site / elevation / data change.
+  const groundAmsl = elevationM ?? 0;
+  const siteResult = useMemo(
+    () => computeOLSLimit({ lat: site.lat, lon: site.lon, elevation_m: elevationM }),
+    [site, elevationM],
   );
+  const ceilingCells = useMemo(() => buildCeilingCells(site, radiusM), [site, radiusM]);
+  const siteMassing = useMemo(
+    () => buildSiteMassing(site, groundAmsl, siteResult),
+    [site, groundAmsl, siteResult],
+  );
+  const pillars = useMemo(
+    () => buildPillars(site, radiusM, nocs, appeals, groundAmsl),
+    [site, radiusM, nocs, appeals, groundAmsl],
+  );
+
+  // ── Apply descriptors imperatively. Synchronous — no GLB pipeline.
+  useEffect(() => {
+    const map = mapRef.current;
+    const lib = libRef.current;
+    if (!map || !lib || status !== 'ready') return;
+
+    // Tear down previous overlays deterministically.
+    for (const node of overlaysRef.current) {
+      if (node.parentNode === map) map.removeChild(node);
+    }
+    overlaysRef.current = [];
+    pillarByElementRef.current = new WeakMap();
+
+    const altAbs: AltitudeModeValue = lib.AltitudeMode?.ABSOLUTE ?? 'ABSOLUTE';
+    const altRel: AltitudeModeValue =
+      lib.AltitudeMode?.RELATIVE_TO_GROUND ?? 'RELATIVE_TO_GROUND';
+    const PolyInteractive = lib.Polygon3DInteractiveElement ?? lib.Polygon3DElement;
+
+    const created: HTMLElement[] = [];
+    const allPillars: PillarOverlay[] = siteMassing ? [...pillars, siteMassing] : pillars;
+
+    // 1. OLS ceiling cells (only when the user toggled them on).
+    if (showCeiling) {
+      for (const cell of ceilingCells) {
+        const poly = new lib.Polygon3DElement();
+        poly.altitudeMode = altAbs;
+        poly.extruded = false;
+        poly.fillColor = withAlpha(cell.fillColor, 0.18);
+        poly.strokeColor = withAlpha(cell.fillColor, 0.55);
+        poly.strokeWidth = 1;
+        poly.drawsOccludedSegments = false;
+        poly.outerCoordinates = cell.ring;
+        map.appendChild(poly);
+        created.push(poly);
+      }
+    }
+
+    // 2. Pillars — one extruded polygon per segment. Nested polygons stack
+    //    to make setback / taper / pitched / cylinder silhouettes (smaller
+    //    polygons extrude through the larger ones; the widest ring at each
+    //    altitude is what's visible from outside).
+    for (const pillar of allPillars) {
+      for (const segment of pillar.segments) {
+        const poly = new PolyInteractive() as Polygon3DInteractiveElement;
+        poly.altitudeMode = altRel;
+        poly.extruded = true;
+        poly.fillColor = withAlpha(pillar.fillColor, 0.92);
+        poly.strokeColor = pillar.fillColor;
+        poly.strokeWidth = 1.4;
+        // Pillars must draw through the (translucent) OLS ceiling when it's
+        // enabled — otherwise the segments behind the ceiling vanish.
+        poly.drawsOccludedSegments = true;
+        poly.outerCoordinates = segment.ring;
+
+        pillarByElementRef.current.set(poly, pillar);
+
+        poly.addEventListener('gmp-click', (event: Event) => {
+          event.stopPropagation();
+          setSelectedPillar(pillar);
+        });
+        // Hover events — fire on the runtimes that ship them, harmless when
+        // they don't. Click stays as the dependable fallback.
+        poly.addEventListener('gmp-pointerenter', () => setSelectedPillar(pillar));
+        poly.addEventListener('gmp-pointerleave', () =>
+          setSelectedPillar((current) => (current?.key === pillar.key ? null : current)),
+        );
+
+        map.appendChild(poly);
+        created.push(poly);
+      }
+    }
+
+    // 3. Shared label marker — hidden until a pillar is picked.
+    const marker = new lib.Marker3DElement();
+    marker.altitudeMode = altRel;
+    marker.position = { lat: site.lat, lng: site.lon, altitude: 0 };
+    marker.style.display = 'none';
+    map.appendChild(marker);
+    labelMarkerRef.current = marker;
+    created.push(marker);
+
+    overlaysRef.current = created;
+    console.info(
+      `[skygauge/photoreal] mounted ${allPillars.length} structures (${created.length} elements)`,
+    );
+  }, [status, showCeiling, ceilingCells, pillars, siteMassing, site]);
+
+  // ── Drive the floating label off the selection state.
+  useEffect(() => {
+    const marker = labelMarkerRef.current;
+    if (!marker) return;
+    if (!selectedPillar) {
+      // Don't write `label = ''` — Map3D throws InvalidValueError for that.
+      marker.style.display = 'none';
+      return;
+    }
+    const aboveGround = Math.max(0, selectedPillar.topAmsl - selectedPillar.groundAmsl);
+    marker.position = {
+      lat: selectedPillar.centre.lat,
+      lng: selectedPillar.centre.lng,
+      altitude: selectedPillar.heightM,
+    };
+    marker.label = `${selectedPillar.label} · ${selectedPillar.topAmsl.toFixed(1)} m AMSL · ~${aboveGround.toFixed(0)} m above ground`;
+    marker.style.display = '';
+  }, [selectedPillar]);
+
+  // ── Camera follows the site when it changes (animated, keeps tile cache).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== 'ready') return;
+    const altitude = siteResult.max_top_amsl_m ?? groundAmsl + 200;
+    map.flyCameraTo({
+      endCamera: {
+        center: { lat: site.lat, lng: site.lon, altitude },
+        tilt: 67,
+        heading: map.heading ?? 0,
+        range: Math.max(radiusM * 0.9, 600),
+      },
+      durationMillis: 1200,
+    });
+  }, [status, site, radiusM, groundAmsl, siteResult]);
+
+  const handleResetCamera = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const altitude = siteResult.max_top_amsl_m ?? groundAmsl + 200;
+    map.flyCameraTo({
+      endCamera: {
+        center: { lat: site.lat, lng: site.lon, altitude },
+        tilt: 67,
+        heading: 0,
+        range: Math.max(radiusM * 0.9, 600),
+      },
+      durationMillis: 800,
+    });
+  }, [site, radiusM, groundAmsl, siteResult]);
 
   if (!GOOGLE_KEY) {
     return (
@@ -183,167 +377,99 @@ export default function SkygaugePhotorealInner({
         className="flex items-center justify-center bg-muted/30 px-6 text-center"
       >
         <p className="max-w-sm text-sm text-muted-foreground">
-          Photoreal view needs a Google key with the{' '}
-          <span className="font-medium">Map Tiles API</span> enabled (+ billing). Set{' '}
+          Photoreal needs a Google key with the <span className="font-medium">Map Tiles API</span>{' '}
+          enabled (+ billing). Set{' '}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
         </p>
       </div>
     );
   }
 
-  const siteCeilingY = hf.siteCeilingY ?? 0;
-  const orbitTarget: [number, number, number] = [0, Math.max(siteCeilingY * 0.5, 40), 0];
-
   return (
     <div style={{ height }} className="relative bg-slate-200 dark:bg-slate-900">
-      <Canvas camera={{ position: [600, 450, 600], near: 1, far: 4_000_000, fov: 55 }} dpr={[1, 2]}>
-        <ambientLight intensity={1.1} />
-        <directionalLight position={[800, 1600, 600]} intensity={1.1} />
+      <div
+        ref={hostRef}
+        className="h-full w-full"
+        style={dark ? { filter: 'brightness(0.78) saturate(0.85) contrast(1.05)' } : undefined}
+      />
 
-        <TilesRenderer url={GOOGLE_3D_TILES_ROOT}>
-          <TilesPlugin
-            plugin={GoogleCloudAuthPlugin}
-            args={[{ apiToken: GOOGLE_KEY, autoRefreshToken: true }]}
-          />
-          <TilesPlugin
-            plugin={ReorientationPlugin}
-            args={[
-              {
-                up: '+y',
-                recenter: true,
-                lat: site.lat * DEG2RAD,
-                lon: site.lon * DEG2RAD,
-                // AMSL → ellipsoidal so the origin (overlay base) lands on terrain.
-                height: groundAmsl + GEOID_UNDULATION_M,
-              },
-            ]}
-          />
-          <TilesAttributionOverlay />
-        </TilesRenderer>
+      {status === 'loading' && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground">
+          Initialising Map3DElement…
+        </div>
+      )}
 
-        {/* OLS ceiling surface — translucent so the real city shows through */}
-        {hf.hasData && <CeilingMesh hf={hf} northSign={NORTH_SIGN} />}
-
-        {/* Nearby structures as buildings, grouped by style; hover for height */}
-        {ALL_STYLES.map((style) => {
-          const list = byStyle[style];
-          if (list.length === 0) return null;
-          return (
-            <BuildingGroup key={style} unit={unitGeoms[style]} list={list} onHover={setHovered} />
-          );
-        })}
-
-        {hovered && (
-          <Html
-            position={[hovered.x, hovered.height + 6, hovered.z]}
-            center
-            zIndexRange={[100, 0]}
-            style={{ pointerEvents: 'none' }}
-          >
-            <div className="whitespace-nowrap rounded-md bg-slate-900/90 px-2 py-1 text-[11px] text-white shadow-lg">
-              <div className="font-semibold">{hovered.kind}</div>
-              <div>Permitted top: {hovered.topAmsl.toFixed(0)} m AMSL</div>
-              <div className="text-white/70">≈ {hovered.height.toFixed(0)} m above site datum</div>
+      {status === 'error' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 px-6 text-center">
+          <div className="max-w-md space-y-3">
+            <p className="text-sm font-medium text-foreground">Photoreal failed to load</p>
+            <p className="text-xs text-muted-foreground">{errorMessage ?? 'Unknown error.'}</p>
+            <p className="text-xs text-muted-foreground">
+              Confirm <span className="font-medium">Map Tiles API</span> is enabled on the key and
+              billing is active. If the dev server was running before the loader was switched to
+              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-[10px]">v=alpha</code>, a
+              hard reload (Cmd+Shift+R) is needed to pick up the new script.
+            </p>
+            <div className="flex justify-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRetryNonce((n) => n + 1)}
+                className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+              >
+                Hard reload
+              </button>
             </div>
-          </Html>
-        )}
+          </div>
+        </div>
+      )}
 
-        {/* Site buildable massing */}
-        {siteCeilingY > 0.5 && (
-          <mesh position={[0, siteCeilingY / 2, 0]}>
-            <boxGeometry args={[34, siteCeilingY, 34]} />
-            <meshStandardMaterial color={COLOR.site} transparent opacity={0.5} />
-          </mesh>
-        )}
-
-        <OrbitControls target={orbitTarget} enableDamping minDistance={60} maxDistance={3500} maxPolarAngle={Math.PI / 2.02} />
-      </Canvas>
-
-      {/* Legend */}
       <div className="pointer-events-none absolute bottom-3 left-3 space-y-1 rounded-md bg-card/90 px-3 py-2 text-[11px] shadow backdrop-blur-sm">
         <div className="font-semibold text-foreground">
-          Photoreal · real-world scale{' '}
-          <span className="font-normal text-muted-foreground">({pillars.length} structures)</span>
+          Photoreal · Google 3D Tiles{' '}
+          <span className="font-normal text-muted-foreground">
+            ({pillars.length} structures
+            {showCeiling ? ` · ${ceilingCells.length} ceiling cells` : ''})
+          </span>
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          <LegendDot color={COLOR.noc} label="Issued NOC" />
-          <LegendDot color={COLOR.nocRestricted} label="Restricted" />
-          <LegendDot color={COLOR.appeal} label="Appeal" />
-          <LegendDot color={COLOR.site} label="Your site" />
+          <LegendDot color={PILLAR_COLORS.noc} label="Issued NOC" />
+          <LegendDot color={PILLAR_COLORS.noc_restricted} label="Restricted" />
+          <LegendDot color={PILLAR_COLORS.appeal} label="Appeal" />
+          <LegendDot color={PILLAR_COLORS.site} label="Your site" />
         </div>
-        <div className="text-muted-foreground">Hover a building for its permitted height · imagery © Google</div>
+        <div className="text-muted-foreground">
+          Hover or click a building for its permitted top · imagery © Google
+        </div>
       </div>
+
+      {status === 'ready' && (
+        <div className="absolute bottom-3 right-3 flex flex-col items-end gap-2">
+          <div className="inline-flex rounded-md border bg-card/90 p-0.5 text-[11px] shadow backdrop-blur-sm">
+            <ToggleButton active={showLabels} onClick={() => setShowLabels((v) => !v)}>
+              Labels {showLabels ? 'on' : 'off'}
+            </ToggleButton>
+            <ToggleButton active={showCeiling} onClick={() => setShowCeiling((v) => !v)}>
+              OLS ceiling {showCeiling ? 'on' : 'off'}
+            </ToggleButton>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetCamera}
+            className="rounded-md border bg-card/90 px-3 py-1.5 text-xs font-medium shadow backdrop-blur-sm hover:bg-card"
+          >
+            Reset camera
+          </button>
+        </div>
+      )}
     </div>
   );
-}
-
-function BuildingGroup({
-  unit,
-  list,
-  onHover,
-}: {
-  unit: THREE.BufferGeometry;
-  list: Pillar[];
-  onHover: (p: Pillar | null) => void;
-}) {
-  // Plain per-structure meshes sharing one geometry, each with its own colour
-  // material + pointer handlers for the height tooltip.
-  return (
-    <group>
-      {list.map((p) => (
-        <mesh
-          key={p.key}
-          geometry={unit}
-          position={[p.x, 0, p.z]}
-          scale={[p.footprint, p.height, p.footprint]}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            onHover(p);
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={() => {
-            onHover(null);
-            document.body.style.cursor = 'default';
-          }}
-        >
-          <meshStandardMaterial color={p.color} flatShading roughness={0.7} metalness={0.05} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function CeilingMesh({ hf, northSign }: { hf: OlsHeightfield; northSign: number }) {
-  const geometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const pos =
-      northSign === 1 ? hf.positions : flipZ(hf.positions);
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(hf.colors, 3));
-    g.setIndex(new THREE.BufferAttribute(hf.indices, 1));
-    g.computeVertexNormals();
-    return g;
-  }, [hf, northSign]);
-
-  return (
-    <mesh geometry={geometry} raycast={() => null}>
-      <meshStandardMaterial
-        vertexColors
-        transparent
-        opacity={0.45}
-        side={THREE.DoubleSide}
-        depthWrite={false}
-        metalness={0.05}
-        roughness={0.9}
-      />
-    </mesh>
-  );
-}
-
-function flipZ(src: Float32Array): Float32Array {
-  const out = Float32Array.from(src);
-  for (let i = 2; i < out.length; i += 3) out[i] = -out[i];
-  return out;
 }
 
 function LegendDot({ color, label }: { color: string; label: string }) {
@@ -353,4 +479,39 @@ function LegendDot({ color, label }: { color: string; label: string }) {
       <span className="text-muted-foreground">{label}</span>
     </div>
   );
+}
+
+function ToggleButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        'rounded-sm px-2.5 py-1 font-medium transition-colors ' +
+        (active
+          ? 'bg-primary text-primary-foreground'
+          : 'text-muted-foreground hover:bg-muted')
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Append an alpha channel to a #rrggbb hex. Map3D accepts #rrggbbaa. */
+function withAlpha(hex: string, alpha: number): string {
+  const clamped = Math.max(0, Math.min(1, alpha));
+  const a = Math.round(clamped * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `${hex}${a}`;
 }
