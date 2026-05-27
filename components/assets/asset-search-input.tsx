@@ -3,32 +3,39 @@
 import { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, Loader2 } from 'lucide-react';
+import { useAssetSearchContext } from './asset-list-provider';
 
-const DEBOUNCE_MS = 150;
+const DEBOUNCE_MS = 120;
 
 export function AssetSearchInput() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const ctx = useAssetSearchContext();
   const [value, setValue] = useState(searchParams.get('q') ?? '');
-  const [isPending, startTransition] = useTransition();
+  const [isLocalPending, startLocal] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync from URL when the change came from elsewhere (e.g. Clear All).
-  // Skip while the user is actively typing, or we'd clobber in-flight input
-  // when the server response from a prior keystroke catches up.
+  // Skip while the user is actively typing, or in-flight server responses
+  // could clobber the input value.
   useEffect(() => {
     if (document.activeElement === inputRef.current) return;
     setValue(searchParams.get('q') ?? '');
   }, [searchParams]);
 
-  function pushQuery(q: string) {
+  function dispatchSearch(q: string) {
+    if (ctx) {
+      ctx.runSearch(q);
+      return;
+    }
+    // Fallback: provider isn't mounted, fall back to URL navigation.
     const params = new URLSearchParams(searchParams.toString());
     const trimmed = q.trim();
     if (trimmed) params.set('q', trimmed);
     else params.delete('q');
     params.delete('page');
-    startTransition(() => {
+    startLocal(() => {
       router.replace(`/capital-markets/assets?${params.toString()}`);
     });
   }
@@ -37,13 +44,13 @@ export function AssetSearchInput() {
     const q = e.target.value;
     setValue(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => pushQuery(q), DEBOUNCE_MS);
+    debounceRef.current = setTimeout(() => dispatchSearch(q), DEBOUNCE_MS);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      pushQuery(value);
+      dispatchSearch(value);
     }
     if (e.key === 'Escape') {
       clear();
@@ -53,8 +60,10 @@ export function AssetSearchInput() {
   function clear() {
     setValue('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    pushQuery('');
+    dispatchSearch('');
   }
+
+  const isPending = ctx?.isSearching ?? isLocalPending;
 
   return (
     <div className="relative w-full max-w-sm">

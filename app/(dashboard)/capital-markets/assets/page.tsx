@@ -8,7 +8,8 @@ import { getTeamMembers } from '@/lib/queries/tasks';
 import { getUnassignedTasks, getMyTasks, getOpenTasksForAssets, getAssetIdsWithOpenTasks } from '@/lib/queries/developers';
 import { getAuthenticatedMember } from '@/lib/auth/member';
 import type { SortOption } from '@/lib/queries/assets';
-import { AssetTable } from '@/components/assets/asset-table';
+import { AssetTableLive } from '@/components/assets/asset-table-live';
+import { AssetListProvider } from '@/components/assets/asset-list-provider';
 import { FilterBar } from '@/components/assets/filter-bar';
 import { AssetCreateSheet } from '@/components/assets/asset-create-sheet';
 
@@ -75,29 +76,47 @@ export default async function AssetsPage({
   ]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Asset Registry</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              All real-estate opportunities tracked by Anex
-            </p>
+    <AssetListProvider
+      initialAssets={assets}
+      initialCount={count}
+      initialPageCount={pageCount}
+      initialLatestUpdates={latestUpdates}
+      initialOpenTasks={openTasks}
+    >
+      <div className="flex flex-col h-full">
+        <div className="border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">Asset Registry</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                All real-estate opportunities tracked by Anex
+              </p>
+            </div>
+            <AssetCreateSheet teamMembers={teamMembers} />
           </div>
-          <AssetCreateSheet teamMembers={teamMembers} />
+          <div className="mt-3">
+            <Suspense>
+              <FilterBar spocOptions={spocOptions} toplineBound={bounds.topline_max} invBound={bounds.inv_max} plotBound={bounds.plot_max} />
+            </Suspense>
+          </div>
         </div>
-        <div className="mt-3">
+
+        <div className="flex-1 overflow-auto p-6">
           <Suspense>
-            <FilterBar spocOptions={spocOptions} toplineBound={bounds.topline_max} invBound={bounds.inv_max} plotBound={bounds.plot_max} />
+            <AssetTableLive
+              page={page}
+              teamMembers={teamMembers}
+              unassignedTasks={unassignedTasks}
+              myTasks={myTasks}
+              initialAssets={assets}
+              initialCount={count}
+              initialPageCount={pageCount}
+              initialLatestUpdates={latestUpdates}
+              initialOpenTasks={openTasks}
+            />
           </Suspense>
         </div>
       </div>
-
-      <div className="flex-1 overflow-auto p-6">
-        <Suspense>
-          <AssetTable data={assets} count={count} pageCount={pageCount} page={page} teamMembers={teamMembers} latestUpdates={latestUpdates} unassignedTasks={unassignedTasks} openTasks={openTasks} myTasks={myTasks} />
-        </Suspense>
-      </div>
-    </div>
+    </AssetListProvider>
   );
 }
