@@ -100,7 +100,7 @@ function PlotSizeRow({ assetId, initialValue }: { assetId: string; initialValue:
           />
           <span className="text-xs text-muted-foreground">sq.m.</span>
           <button onClick={save} className="text-green-600 hover:text-green-800 ml-1"><Check className="h-3.5 w-3.5" /></button>
-          <button onClick={() => setEditing(false)} className="text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>
+          <button onClick={() => setEditing(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
         </div>
       ) : (
         <button
@@ -170,7 +170,7 @@ function ScenarioView({
         {canDelete && (
           <button
             onClick={onDelete}
-            className="text-slate-300 hover:text-rose-500 transition-colors"
+            className="text-muted-foreground/60 hover:text-rose-500 transition-colors"
             title="Delete scenario"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -321,10 +321,10 @@ export function ScenariosPanel({
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); if (e.key === 'Escape') { setCreating(false); setNewName(''); } }}
               placeholder={`Scenario ${scenarios.length + 1}`}
-              className="h-6 w-28 rounded border border-slate-300 px-2 text-xs outline-none focus:border-slate-500"
+              className="h-6 w-28 rounded border border-input bg-background text-foreground px-2 text-xs outline-none focus:border-ring"
             />
             <button onClick={submitCreate} className="text-green-600 hover:text-green-800"><Check className="h-3.5 w-3.5" /></button>
-            <button onClick={() => { setCreating(false); setNewName(''); }} className="text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>
+            <button onClick={() => { setCreating(false); setNewName(''); }} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
       </div>
@@ -352,7 +352,7 @@ export function ScenariosPanel({
                     onChange={(e) => setNameDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingId(null); }}
                     onBlur={commitRename}
-                    className="h-5 w-24 rounded border border-slate-300 px-1.5 text-xs outline-none focus:border-slate-500"
+                    className="h-5 w-24 rounded border border-input bg-background text-foreground px-1.5 text-xs outline-none focus:border-ring"
                   />
                 </div>
               ) : (

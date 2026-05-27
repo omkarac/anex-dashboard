@@ -99,16 +99,17 @@ function FileCard({
       className={[
         'relative group flex flex-col rounded-md border transition-all duration-150 overflow-hidden cursor-grab active:cursor-grabbing select-none',
         cfg.cardBg,
+        'dark:bg-card',
         isDragOver
           ? 'border-indigo-400 shadow-md ring-1 ring-indigo-300 scale-[1.02]'
-          : 'border-slate-200 hover:border-slate-300 hover:shadow-sm',
+          : 'border-border hover:border-foreground/20 hover:shadow-sm',
       ].join(' ')}
       style={{ borderTopRightRadius: 0 }}
     >
       {/* Folded corner */}
       <div
-        className={`absolute top-0 right-0 w-5 h-5 border-l border-b ${cfg.foldBg}`}
-        style={{ borderBottomLeftRadius: 3, borderColor: '#e2e8f0' }}
+        className={`absolute top-0 right-0 w-5 h-5 border-l border-b border-border ${cfg.foldBg} dark:bg-muted`}
+        style={{ borderBottomLeftRadius: 3 }}
       />
 
       {/* Top colour stripe */}
@@ -117,7 +118,7 @@ function FileCard({
       <div className="flex flex-col gap-2 p-3 pt-2.5 flex-1">
         {/* Drag handle + type label */}
         <div className="flex items-center justify-between">
-          <GripVertical className="w-3 h-3 text-slate-300 group-hover:text-slate-400 shrink-0" />
+          <GripVertical className="w-3 h-3 text-muted-foreground/50 group-hover:text-muted-foreground shrink-0" />
           <span className={`text-[9px] font-bold tracking-wider px-1 py-0.5 rounded ${cfg.iconBg} ${cfg.iconColor}`}>
             {cfg.label}
           </span>
@@ -140,12 +141,12 @@ function FileCard({
                 if (e.key === 'Enter') commitRename();
                 if (e.key === 'Escape') { setEditing(false); setDraft(file.title); }
               }}
-              className="w-full text-[11px] bg-white/80 border border-indigo-300 rounded px-1 py-0.5 outline-none text-slate-800"
+              className="w-full text-[11px] bg-background border border-indigo-300 dark:border-indigo-500 rounded px-1 py-0.5 outline-none text-foreground"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <p
-              className="text-[11px] font-medium text-slate-700 line-clamp-2 leading-tight cursor-text hover:text-slate-900 text-center"
+              className="text-[11px] font-medium text-foreground/85 line-clamp-2 leading-tight cursor-text hover:text-foreground text-center"
               onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
               title="Double-click to rename"
             >
@@ -160,7 +161,7 @@ function FileCard({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-indigo-600 transition-colors"
+          className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
         >
           <ExternalLink className="w-2.5 h-2.5" />
           Open
@@ -170,7 +171,7 @@ function FileCard({
       {/* Remove button */}
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded bg-white/80 border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-200 flex items-center justify-center"
+        className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded bg-background/90 border border-border text-muted-foreground hover:text-rose-500 hover:border-rose-300 flex items-center justify-center"
         title="Remove file"
       >
         <X className="w-2.5 h-2.5" />
@@ -217,7 +218,7 @@ function AddFileForm({ assetId, onAdded }: { assetId: string; onAdded: (file: As
     return (
       <button
         onClick={handleOpen}
-        className="flex items-center gap-1.5 w-full justify-center rounded-md border border-dashed border-slate-300 py-2.5 text-xs text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-colors"
+        className="flex items-center gap-1.5 w-full justify-center rounded-md border border-dashed border-border py-2.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
       >
         <Plus className="w-3.5 h-3.5" />
         Add file
@@ -226,34 +227,34 @@ function AddFileForm({ assetId, onAdded }: { assetId: string; onAdded: (file: As
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-md border border-indigo-200 bg-indigo-50/40 p-3 flex flex-col gap-2">
+    <form onSubmit={handleSubmit} className="rounded-md border border-indigo-200 dark:border-indigo-500/40 bg-indigo-50/40 dark:bg-indigo-500/10 p-3 flex flex-col gap-2">
       <input
         ref={urlRef}
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="SharePoint or file URL"
-        className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-indigo-400 bg-white placeholder:text-slate-400"
+        className="w-full text-xs border border-input rounded px-2 py-1.5 outline-none focus:border-indigo-400 bg-background text-foreground placeholder:text-muted-foreground"
         required
       />
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Title (optional — extracted from URL if blank)"
-        className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-indigo-400 bg-white placeholder:text-slate-400"
+        className="w-full text-xs border border-input rounded px-2 py-1.5 outline-none focus:border-indigo-400 bg-background text-foreground placeholder:text-muted-foreground"
       />
       {error && <p className="text-[11px] text-rose-500">{error}</p>}
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={loading || !url.trim()}
-          className="flex-1 text-xs font-medium bg-slate-900 text-white rounded px-3 py-1.5 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          className="flex-1 text-xs font-medium bg-primary text-primary-foreground rounded px-3 py-1.5 hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {loading ? 'Adding…' : 'Add'}
         </button>
         <button
           type="button"
           onClick={handleClose}
-          className="text-xs text-slate-500 hover:text-slate-700 px-2"
+          className="text-xs text-muted-foreground hover:text-foreground px-2"
         >
           Cancel
         </button>
@@ -314,7 +315,7 @@ export function FileDrawer({ assetId, initialFiles }: { assetId: string; initial
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Files</h2>
         {files.length > 0 && (
-          <span className="text-[11px] text-slate-400">{files.length} attached</span>
+          <span className="text-[11px] text-muted-foreground">{files.length} attached</span>
         )}
       </div>
 
@@ -339,7 +340,7 @@ export function FileDrawer({ assetId, initialFiles }: { assetId: string; initial
       <AddFileForm assetId={assetId} onAdded={handleAdded} />
 
       {files.length > 0 && (
-        <p className="text-[10px] text-slate-400 text-center">Drag to reorder · Double-click title to rename</p>
+        <p className="text-[10px] text-muted-foreground text-center">Drag to reorder · Double-click title to rename</p>
       )}
     </section>
   );

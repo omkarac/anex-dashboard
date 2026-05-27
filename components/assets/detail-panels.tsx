@@ -90,24 +90,24 @@ function UpdateCard({ update, currentUserId, onDelete }: {
   const isStructured = !!update.update_task;
 
   return (
-    <div className={`group rounded-md border bg-white flex flex-col overflow-hidden transition-opacity ${isOptimistic ? 'opacity-60' : 'opacity-100'}`}>
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 bg-slate-50/60">
-        <div className="h-5 w-5 rounded-full bg-slate-800 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+    <div className={`group rounded-md border bg-card flex flex-col overflow-hidden transition-opacity ${isOptimistic ? 'opacity-60' : 'opacity-100'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/40">
+        <div className="h-5 w-5 rounded-full bg-foreground/85 flex items-center justify-center text-[9px] font-bold text-background shrink-0">
           {initial}
         </div>
-        <span className="text-xs font-semibold text-slate-800 flex-1 truncate">{authorName}</span>
+        <span className="text-xs font-semibold text-foreground flex-1 truncate">{authorName}</span>
         {update.update_date && (
-          <span className="text-[11px] font-medium text-slate-500 shrink-0 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+          <span className="text-[11px] font-medium text-muted-foreground shrink-0 bg-background border px-1.5 py-0.5 rounded">
             {formatDate(update.update_date)}
           </span>
         )}
-        <span className="text-[11px] text-slate-400 shrink-0">
+        <span className="text-[11px] text-muted-foreground/70 shrink-0">
           {isOptimistic ? 'Logging…' : formatTimeAgo(update.created_at)}
         </span>
         {isOwn && !isOptimistic && (
           <button
             onClick={() => onDelete(update.id)}
-            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition-opacity shrink-0"
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground/60 hover:text-rose-500 transition-opacity shrink-0"
             title="Delete"
           >
             <Trash2 className="h-3 w-3" />
@@ -118,17 +118,17 @@ function UpdateCard({ update, currentUserId, onDelete }: {
       <div className="px-3 py-2.5 flex flex-col gap-1.5">
         {isStructured ? (
           <>
-            <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">
+            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
               {update.update_task}
             </p>
             {update.comment && (
-              <p className="text-[11px] text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-2.5 italic">
+              <p className="text-[11px] text-muted-foreground leading-relaxed border-l-2 border-border pl-2.5 italic">
                 {update.comment}
               </p>
             )}
           </>
         ) : (
-          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{update.body}</p>
+          <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap">{update.body}</p>
         )}
       </div>
     </div>
@@ -226,12 +226,12 @@ function UpdatesPanel({ assetId, currentUserId, updates, teamMembers, disabled =
       {/* Search */}
       <div className="px-3 pt-2.5 pb-2 border-b shrink-0">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search updates…"
-            className="w-full pl-7 pr-3 h-7 text-xs border border-slate-200 rounded-md outline-none focus:border-slate-400 bg-white placeholder:text-slate-400"
+            className="w-full pl-7 pr-3 h-7 text-xs border border-input rounded-md outline-none focus:border-ring bg-background placeholder:text-muted-foreground"
           />
         </div>
       </div>
@@ -257,47 +257,47 @@ function UpdatesPanel({ assetId, currentUserId, updates, teamMembers, disabled =
         aria-disabled={disabled || undefined}
       >
         {disabled && (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 pb-1">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground pb-1">
             <Lock className="h-3 w-3" />
             Closed prospect — reopen the asset to log updates.
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0">Date</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-16 shrink-0">Date</span>
           <input
             type="date"
             value={updateDate}
             onChange={(e) => setUpdateDate(e.target.value)}
             disabled={disabled}
-            className="h-7 flex-1 rounded border border-slate-200 px-2 text-xs bg-white outline-none focus:border-slate-400 disabled:bg-slate-100"
+            className="h-7 flex-1 rounded border border-input px-2 text-xs bg-background text-foreground outline-none focus:border-ring disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:light] dark:[color-scheme:dark]"
           />
         </div>
         <div className="flex gap-2">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0 pt-1.5">Update</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-16 shrink-0 pt-1.5">Update</span>
           <Textarea
             value={updateTask}
             onChange={(e) => setUpdateTask(e.target.value)}
             placeholder="What happened or needs to happen…"
             rows={2}
             disabled={disabled}
-            className="text-xs resize-none flex-1 min-h-[48px] bg-white disabled:bg-slate-100"
+            className="text-xs resize-none flex-1 min-h-[48px]"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
           />
         </div>
         <div className="flex gap-2">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-16 shrink-0 pt-1.5">Comment</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-16 shrink-0 pt-1.5">Comment</span>
           <Textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Additional context (optional)…"
             rows={1}
             disabled={disabled}
-            className="text-xs resize-none flex-1 min-h-[32px] bg-white disabled:bg-slate-100"
+            className="text-xs resize-none flex-1 min-h-[32px]"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">⌘↵ to submit</span>
+          <span className="text-[11px] text-muted-foreground">⌘↵ to submit</span>
           <Button size="sm" onClick={submit} disabled={disabled || !updateTask.trim()} className="h-7 text-xs px-4">
             Log Update
           </Button>
@@ -583,7 +583,7 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId, disabled = fal
       )}
 
       {disabled && (
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 px-0.5">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground px-0.5">
           <Lock className="h-3 w-3" />
           Closed prospect — reopen the asset to add tasks.
         </div>
@@ -596,22 +596,22 @@ function TasksPanel({ assetId, tasks, teamMembers, currentUserId, disabled = fal
       >
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add task…"
           disabled={disabled}
-          className="h-8 text-sm flex-1 min-w-[140px] disabled:bg-slate-100"
+          className="h-8 text-sm flex-1 min-w-[140px]"
           onKeyDown={(e) => { if (e.key === 'Enter') submitTask(); }} />
         <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}
           disabled={disabled}
-          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 disabled:bg-slate-100">
+          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
           {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>)}
         </select>
         <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}
           disabled={disabled}
-          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px] disabled:bg-slate-100">
+          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 max-w-[130px] disabled:opacity-50 disabled:cursor-not-allowed">
           <option value="">Assign to self</option>
           {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
         </select>
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
           disabled={disabled}
-          className="h-8 w-32 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 disabled:bg-slate-100" />
+          className="h-8 w-32 rounded-md border border-input bg-background px-1.5 text-xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:light] dark:[color-scheme:dark]" />
         <Button size="sm" className="h-8 shrink-0" onClick={submitTask} disabled={disabled || !title.trim()}>Add</Button>
       </div>
 
@@ -722,7 +722,7 @@ function SharesSortDropdown({ value, onChange }: { value: ShareSort; onChange: (
       value={value}
       onChange={(e) => onChange(e.target.value as ShareSort)}
       aria-label="Sort developer shares"
-      className="h-6 rounded border border-slate-200 bg-white px-1.5 text-[11px] outline-none focus:border-slate-400 cursor-pointer"
+      className="h-6 rounded border border-input bg-background px-1.5 text-[11px] outline-none focus:border-ring cursor-pointer"
     >
       {SHARE_SORT_OPTIONS.map((opt) => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -750,9 +750,9 @@ function SharesPanel({ shares, sort }: { shares: ShareWithDetails[]; sort: Share
               </Link>
               <p className="text-xs text-muted-foreground">by {s.shared_by_name} · {_formatDate(s.shared_at)}</p>
               {lu && (
-                <div className="mt-1.5 rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1.5">
+                <div className="mt-1.5 rounded-md border bg-muted/40 px-2 py-1.5">
                   <p
-                    className={`text-xs leading-snug line-clamp-2 ${isAuto ? 'text-muted-foreground italic' : 'text-slate-700'}`}
+                    className={`text-xs leading-snug line-clamp-2 ${isAuto ? 'text-muted-foreground italic' : 'text-foreground/90'}`}
                     title={lu.body}
                   >
                     {lu.body}
