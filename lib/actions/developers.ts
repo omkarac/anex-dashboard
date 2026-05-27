@@ -10,11 +10,13 @@ import {
   DeveloperPreferencesUpsertSchema,
   ShareTaskCreateSchema,
   ShareUpdateCreateSchema,
+  ShareWithDeveloperInputSchema,
 } from '@/lib/schemas/developer';
 import type {
   DeveloperPreferencesUpsert,
   ShareTaskCreate,
   ShareUpdateCreate,
+  ShareWithDeveloperInput,
 } from '@/lib/schemas/developer';
 
 const CM_FORBIDDEN = 'Forbidden — capital-markets access required' as const;
@@ -89,21 +91,40 @@ export async function updateDeveloper(
 }
 
 const ALL_ROUTINE_TASKS = [
-  { title: 'Share Information Memorandum', task_type: 'im_shared', priority: 'medium' },
-  { title: 'Share Financial Feasibility',  task_type: 'ff_shared', priority: 'medium' },
-  { title: 'Issue EOI',                   task_type: 'eoi_issued', priority: 'high'   },
+  { title: 'Share Information Memorandum', task_type: 'im_shared',  priority: 'medium' },
+  { title: 'Share Financial Feasibility',  task_type: 'ff_shared',  priority: 'medium' },
+  { title: 'Issue EOI',                    task_type: 'eoi_issued', priority: 'high'   },
 ] as const;
+
+const TASK_COMPLETED_BODY: Record<string, string> = {
+  im_shared:  'Information Memorandum shared',
+  ff_shared:  'Financial Feasibility shared',
+  eoi_issued: 'EOI issued',
+};
+
+function dateOnlyToTimestamp(dateOnly: string): string {
+  return new Date(`${dateOnly}T12:00:00Z`).toISOString();
+}
 
 export async function shareWithDeveloper(
   assetId: string,
   developerId: string,
-  notes: string,
-  selectedTaskTypes: string[] = ['im_shared']
+  input: ShareWithDeveloperInput
 ): Promise<ActionResult<void>> {
   const member = await authorizeCmWrite();
   if (!member) return { ok: false, error: CM_FORBIDDEN };
 
-  const tasksToCreate = ALL_ROUTINE_TASKS.filter((t) => selectedTaskTypes.includes(t.task_type));
+  const parsed = ShareWithDeveloperInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' };
+
+  const { notes, share_date, selected_tasks } = parsed.data;
+  const taskMetaByType = new Map(ALL_ROUTINE_TASKS.map((t) => [t.task_type, t] as const));
+  const tasksToCreate = selected_tasks
+    .map((s) => {
+      const meta = taskMetaByType.get(s.type);
+      return meta ? { ...meta, completedAt: dateOnlyToTimestamp(s.date) } : null;
+    })
+    .filter((t): t is NonNullable<typeof t> => t !== null);
 
   const result = await withAudit({
     action: 'share',
@@ -114,6 +135,7 @@ export async function shareWithDeveloper(
     mutation: async (actorId) => {
       const service = createServiceClient();
 
+      const sharedAt = share_date ? dateOnlyToTimestamp(share_date) : null;
       const { data: share, error } = await service
         .from('developer_shares')
         .insert({
@@ -121,23 +143,42 @@ export async function shareWithDeveloper(
           developer_id: developerId,
           shared_by: actorId,
           notes: notes.trim() || null,
+          ...(sharedAt ? { shared_at: sharedAt } : {}),
         })
         .select('id')
         .single();
       if (error) throw new Error(error.message);
 
-      if (tasksToCreate.length > 0) {
-        const { error: tasksError } = await service.from('share_tasks').insert(
+      if (tasksToCreate.length === 0) return;
+
+      const { data: insertedTasks, error: tasksError } = await service
+        .from('share_tasks')
+        .insert(
           tasksToCreate.map((t) => ({
             share_id: share.id,
             title: t.title,
             task_type: t.task_type,
-            status: 'todo',
+            status: 'done',
             priority: t.priority,
+            completed_at: t.completedAt,
             created_by: actorId,
           }))
-        );
-        if (tasksError) throw new Error(tasksError.message);
+        )
+        .select('id, task_type, completed_at');
+      if (tasksError) throw new Error(tasksError.message);
+
+      const updates = (insertedTasks ?? []).map((t) => ({
+        share_id:   share.id,
+        body:       TASK_COMPLETED_BODY[t.task_type ?? ''] ?? 'Share task completed',
+        source:     'task_completed',
+        task_id:    t.id,
+        created_by: actorId,
+        created_at: t.completed_at,
+      }));
+
+      if (updates.length > 0) {
+        const { error: updatesError } = await service.from('share_updates').insert(updates);
+        if (updatesError) throw new Error(updatesError.message);
       }
     },
   });
@@ -148,12 +189,6 @@ export async function shareWithDeveloper(
   }
   return result;
 }
-
-const TASK_COMPLETE_LABELS: Record<string, string> = {
-  im_shared: 'Information Memorandum shared',
-  ff_shared: 'Financial Feasibility shared',
-  eoi_issued: 'EOI issued',
-};
 
 export async function completeShareTask(
   taskId: string,
@@ -179,7 +214,7 @@ export async function completeShareTask(
         .eq('id', taskId);
       if (taskError) throw new Error(taskError.message);
 
-      const body = taskType ? (TASK_COMPLETE_LABELS[taskType] ?? `${taskTitle} completed`) : `${taskTitle} completed`;
+      const body = taskType ? (TASK_COMPLETED_BODY[taskType] ?? `${taskTitle} completed`) : `${taskTitle} completed`;
       const { error: updateError } = await service.from('share_updates').insert({
         share_id: shareId,
         body,

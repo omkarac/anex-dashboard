@@ -72,6 +72,30 @@ export const ShareUpdateCreateSchema = z.object({
 });
 export type ShareUpdateCreate = z.infer<typeof ShareUpdateCreateSchema>;
 
+const DateOnlyString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD');
+
+export const ShareWithDeveloperInputSchema = z
+  .object({
+    notes: z.string(),
+    share_date: DateOnlyString.nullable(),
+    selected_tasks: z.array(
+      z.object({
+        type: z.enum(['im_shared', 'ff_shared', 'eoi_issued']),
+        date: DateOnlyString,
+      })
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (data.selected_tasks.length > 0 && !data.share_date) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Share date is required when any task is selected',
+        path: ['share_date'],
+      });
+    }
+  });
+export type ShareWithDeveloperInput = z.infer<typeof ShareWithDeveloperInputSchema>;
+
 export const DeveloperShareSchema = z.object({
   id: z.string().uuid(),
   asset_id: z.string().uuid(),

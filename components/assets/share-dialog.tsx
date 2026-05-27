@@ -12,10 +12,16 @@ import type { DeveloperOption } from '@/lib/queries/developers';
 import type { ShareWithDetails } from '@/lib/queries/developers';
 
 const TASK_OPTIONS = [
-  { type: 'im_shared', label: 'Share Information Memorandum (IM)', defaultChecked: true },
-  { type: 'ff_shared', label: 'Share Financial Feasibility (FF)',  defaultChecked: false },
-  { type: 'eoi_issued', label: 'Issue EOI',                        defaultChecked: false },
+  { type: 'im_shared',  label: 'Share Information Memorandum (IM)', dateLabel: 'IM share date' },
+  { type: 'ff_shared',  label: 'Share Financial Feasibility (FF)',  dateLabel: 'FF share date' },
+  { type: 'eoi_issued', label: 'Secure EOI',                        dateLabel: 'EOI date'      },
 ] as const;
+
+type TaskType = (typeof TASK_OPTIONS)[number]['type'];
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const OUTCOME_CONFIG: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
   interested: { icon: <CheckCircle2 className="h-3 w-3" />, className: 'text-green-600', label: 'Interested' },
@@ -34,28 +40,40 @@ export function ShareDialog({ assetId, developers, existingShares }: Props) {
   const [open, setOpen] = useState(false);
   const [developerId, setDeveloperId] = useState('');
   const [notes, setNotes] = useState('');
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(
-    () => new Set(TASK_OPTIONS.filter((t) => t.defaultChecked).map((t) => t.type))
-  );
+  const [selectedTasks, setSelectedTasks] = useState<Set<TaskType>>(() => new Set());
+  const [shareDate, setShareDate] = useState('');
+  const [taskDates, setTaskDates] = useState<Record<TaskType, string>>({
+    im_shared: '',
+    ff_shared: '',
+    eoi_issued: '',
+  });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   const alreadySharedIds = new Set(existingShares.map((s) => s.developer_id));
+  const hasAnyTask = selectedTasks.size > 0;
 
-  function toggleTask(type: string) {
+  function toggleTask(type: TaskType) {
     setSelectedTasks((prev) => {
       const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+        setTaskDates((d) => (d[type] ? d : { ...d, [type]: todayIso() }));
+        setShareDate((d) => d || todayIso());
+      }
       return next;
     });
   }
 
   function handleOpen() {
-    setSelectedTasks(new Set(TASK_OPTIONS.filter((t) => t.defaultChecked).map((t) => t.type)));
+    setSelectedTasks(new Set());
     setDeveloperId('');
     setNotes('');
+    setShareDate('');
+    setTaskDates({ im_shared: '', ff_shared: '', eoi_issued: '' });
     setError(null);
     setOpen(true);
   }
@@ -63,9 +81,26 @@ export function ShareDialog({ assetId, developers, existingShares }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!developerId) { setError('Please select a developer'); return; }
+
+    if (hasAnyTask && !shareDate) {
+      setError('Share date is required when any task is selected');
+      return;
+    }
+    for (const type of selectedTasks) {
+      if (!taskDates[type]) {
+        const label = TASK_OPTIONS.find((o) => o.type === type)?.dateLabel ?? 'Date';
+        setError(`${label} is required`);
+        return;
+      }
+    }
+
     setError(null);
     startTransition(async () => {
-      const result = await shareWithDeveloper(assetId, developerId, notes, [...selectedTasks]);
+      const result = await shareWithDeveloper(assetId, developerId, {
+        notes,
+        share_date: hasAnyTask ? shareDate : null,
+        selected_tasks: [...selectedTasks].map((type) => ({ type, date: taskDates[type] })),
+      });
       if (result.ok) {
         setOpen(false);
         router.refresh();
@@ -154,32 +189,78 @@ export function ShareDialog({ assetId, developers, existingShares }: Props) {
                 )}
               </div>
 
-              {/* ── Tasks to create ──────────────────────────────────── */}
+              {/* ── Tasks to log as completed ────────────────────────── */}
               <div className="flex flex-col gap-1.5">
-                <Label>Tasks to create</Label>
+                <Label>Tasks completed with this share</Label>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">
-                  Select which tasks to open for this share. IM is shared at a minimum.
+                  Tick each item that has already happened. A date is required for every ticked item.
+                  Leave them all unticked to just log the share.
                 </p>
-                <div className="flex flex-col gap-2 mt-1">
-                  {TASK_OPTIONS.map((opt) => (
-                    <div key={opt.type} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`task-${opt.type}`}
-                        checked={selectedTasks.has(opt.type)}
-                        onChange={() => toggleTask(opt.type)}
-                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
-                      />
-                      <label
-                        htmlFor={`task-${opt.type}`}
-                        className="text-sm leading-none cursor-pointer select-none"
-                      >
-                        {opt.label}
-                      </label>
-                    </div>
-                  ))}
+                <div className="flex flex-col gap-3 mt-1">
+                  {TASK_OPTIONS.map((opt) => {
+                    const isChecked = selectedTasks.has(opt.type);
+                    return (
+                      <div key={opt.type} className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id={`task-${opt.type}`}
+                            checked={isChecked}
+                            onChange={() => toggleTask(opt.type)}
+                            className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                          />
+                          <label
+                            htmlFor={`task-${opt.type}`}
+                            className="text-sm leading-none cursor-pointer select-none"
+                          >
+                            {opt.label}
+                          </label>
+                        </div>
+                        {isChecked && (
+                          <div className="flex items-center gap-2 pl-6">
+                            <Label
+                              htmlFor={`task-date-${opt.type}`}
+                              className="text-xs text-muted-foreground shrink-0"
+                            >
+                              {opt.dateLabel} *
+                            </Label>
+                            <input
+                              id={`task-date-${opt.type}`}
+                              type="date"
+                              required
+                              max={todayIso()}
+                              value={taskDates[opt.type]}
+                              onChange={(e) =>
+                                setTaskDates((d) => ({ ...d, [opt.type]: e.target.value }))
+                              }
+                              className="flex h-8 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* ── Share date (only when any task ticked) ───────────── */}
+              {hasAnyTask && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="share-date">Share date *</Label>
+                  <p className="text-[11px] text-muted-foreground -mt-0.5">
+                    When did you share this asset with the developer?
+                  </p>
+                  <input
+                    id="share-date"
+                    type="date"
+                    required
+                    max={todayIso()}
+                    value={shareDate}
+                    onChange={(e) => setShareDate(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+              )}
 
               {/* ── Notes ────────────────────────────────────────────── */}
               <div className="flex flex-col gap-1.5">
