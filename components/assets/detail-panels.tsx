@@ -705,22 +705,39 @@ function SharesPanel({ shares, sort }: { shares: ShareWithDetails[]; sort: Share
   if (sorted.length === 0) return <p className="text-xs text-muted-foreground text-center py-6 px-3">No shares yet.</p>;
   return (
     <div className="flex flex-col divide-y">
-      {sorted.map((s) => (
-        <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20">
-          <div className="flex-1 min-w-0">
-            <Link
-              href={`/capital-markets/developers/${s.developer_id}`}
-              className="text-sm font-medium truncate hover:underline underline-offset-2 block"
-            >
-              {s.developer_name}
-            </Link>
-            <p className="text-xs text-muted-foreground">by {s.shared_by_name} · {_formatDate(s.shared_at)}</p>
+      {sorted.map((s) => {
+        const lu = s.last_update;
+        const isAuto = lu?.source === 'task_completed';
+        return (
+          <div key={s.id} className="flex items-start gap-3 px-3 py-2.5 hover:bg-muted/20">
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/capital-markets/developers/${s.developer_id}`}
+                className="text-sm font-medium truncate hover:underline underline-offset-2 block"
+              >
+                {s.developer_name}
+              </Link>
+              <p className="text-xs text-muted-foreground">by {s.shared_by_name} · {_formatDate(s.shared_at)}</p>
+              {lu && (
+                <div className="mt-1.5 rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1.5">
+                  <p
+                    className={`text-xs leading-snug line-clamp-2 ${isAuto ? 'text-muted-foreground italic' : 'text-slate-700'}`}
+                    title={lu.body}
+                  >
+                    {lu.body}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                    {lu.created_by_name} · {formatTimeAgo(lu.created_at)}
+                  </p>
+                </div>
+              )}
+            </div>
+            <span className={`text-xs capitalize font-medium shrink-0 mt-0.5 ${OUTCOME_COLORS[s.outcome ?? ''] ?? 'text-muted-foreground'}`}>
+              {s.outcome ?? 'Pending'}
+            </span>
           </div>
-          <span className={`text-xs capitalize font-medium shrink-0 ${OUTCOME_COLORS[s.outcome ?? ''] ?? 'text-muted-foreground'}`}>
-            {s.outcome ?? 'Pending'}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

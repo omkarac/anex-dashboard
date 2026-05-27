@@ -51,6 +51,13 @@ export type DeveloperWithStats = Developer & {
   passedMarkets: string[];
 };
 
+export type ShareLastUpdate = {
+  body: string;
+  created_at: string;
+  created_by_name: string;
+  source: string;
+};
+
 export type ShareWithDetails = {
   id: string;
   asset_id: string;
@@ -63,6 +70,7 @@ export type ShareWithDetails = {
   outcome: string | null;
   notes: string | null;
   last_completed_task: string | null;
+  last_update: ShareLastUpdate | null;
 };
 
 export async function listDevelopers(): Promise<DeveloperWithStats[]> {
@@ -162,6 +170,7 @@ export async function listAllShares(): Promise<ShareWithDetails[]> {
     outcome: s.outcome,
     notes: s.notes,
     last_completed_task: null,
+    last_update: null,
   }));
 }
 
@@ -185,11 +194,9 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
 
   const shareIds = shares.map((s) => s.id);
   const devIds = [...new Set(shares.map((s) => s.developer_id))];
-  const actorIds = [...new Set(shares.map((s) => s.shared_by))];
 
-  const [{ data: devs }, { data: members }, { data: completedTasks }] = await Promise.all([
+  const [{ data: devs }, { data: completedTasks }, { data: rawUpdates }] = await Promise.all([
     service.from('developers').select('id, name').in('id', devIds),
-    service.from('team_members').select('id, full_name').in('id', actorIds),
     service
       .from('share_tasks')
       .select('share_id, title, task_type, completed_at')
@@ -197,7 +204,21 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
       .eq('status', 'done')
       .is('deleted_at', null)
       .order('completed_at', { ascending: false }),
+    service
+      .from('share_updates')
+      .select('share_id, body, source, created_at, created_by')
+      .in('share_id', shareIds)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
   ]);
+
+  // Members needed for both shared_by (shares) and created_by (updates)
+  const memberIdSet = new Set<string>(shares.map((s) => s.shared_by));
+  for (const u of rawUpdates ?? []) memberIdSet.add(u.created_by);
+
+  const { data: members } = memberIdSet.size
+    ? await service.from('team_members').select('id, full_name').in('id', [...memberIdSet])
+    : { data: [] };
 
   const devMap = Object.fromEntries((devs ?? []).map((d) => [d.id, d.name]));
   const memberMap = Object.fromEntries((members ?? []).map((m) => [m.id, m.full_name]));
@@ -207,6 +228,19 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
   for (const t of completedTasks ?? []) {
     if (!lastTaskMap.has(t.share_id)) {
       lastTaskMap.set(t.share_id, TASK_TYPE_LABELS[t.task_type ?? ''] ?? t.title);
+    }
+  }
+
+  // Keep only the most-recent update per share (rawUpdates is already DESC by created_at)
+  const lastUpdateMap = new Map<string, ShareLastUpdate>();
+  for (const u of rawUpdates ?? []) {
+    if (!lastUpdateMap.has(u.share_id)) {
+      lastUpdateMap.set(u.share_id, {
+        body: u.body,
+        created_at: u.created_at,
+        created_by_name: memberMap[u.created_by] ?? 'Unknown',
+        source: u.source ?? 'manual',
+      });
     }
   }
 
@@ -222,6 +256,7 @@ export async function getSharesForAsset(assetId: string): Promise<ShareWithDetai
     outcome: s.outcome,
     notes: s.notes,
     last_completed_task: lastTaskMap.get(s.id) ?? null,
+    last_update: lastUpdateMap.get(s.id) ?? null,
   }));
 }
 
