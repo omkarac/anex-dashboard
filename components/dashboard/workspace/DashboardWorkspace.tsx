@@ -131,22 +131,34 @@ export function DashboardWorkspace({ data }: Props) {
                 <span className="text-xs font-medium truncate max-w-[120px]">{win.name}</span>
               )}
 
-              {isEditMode && !isRenaming && (
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); startRename(i, win.name); }}
-                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                    aria-label="Rename window"
-                  >
-                    <Pencil className="w-2.5 h-2.5" />
-                  </button>
+              {!isRenaming && (
+                <div className="flex items-center gap-0.5">
+                  {isEditMode && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startRename(i, win.name); }}
+                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Rename view"
+                    >
+                      <Pencil className="w-2.5 h-2.5" />
+                    </button>
+                  )}
                   {state.windows.length > 1 && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); removeWindow(i); }}
-                      className="p-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 text-muted-foreground"
-                      aria-label="Remove window"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete view "${win.name}"? This cannot be undone.`)) {
+                          removeWindow(i);
+                        }
+                      }}
+                      className={`p-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-500 transition-all ${
+                        isActive
+                          ? 'text-muted-foreground hover:text-rose-500'
+                          : 'text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:text-rose-500'
+                      }`}
+                      aria-label={`Delete view ${win.name}`}
+                      title="Delete view"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   )}
                 </div>
