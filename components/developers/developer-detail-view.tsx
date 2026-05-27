@@ -146,9 +146,16 @@ function ShareRow({ share, members }: { share: DeveloperShareFull; members: Team
 
   const openCount = share.tasks.filter((t) => t.status !== 'done').length;
   const totalCount = share.tasks.length;
+  const isPassed = share.outcome === 'passed';
 
   return (
-    <div id={`share-${share.id}`} className="rounded-xl border p-4 flex flex-col gap-0 scroll-mt-4">
+    <div
+      id={`share-${share.id}`}
+      className={`rounded-xl border p-4 flex flex-col gap-0 scroll-mt-4 transition-colors ${
+        isPassed ? 'bg-slate-50/60 border-slate-200/80' : ''
+      }`}
+      aria-disabled={isPassed || undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <Link
@@ -196,6 +203,7 @@ function ShareRow({ share, members }: { share: DeveloperShareFull; members: Team
         tasks={share.tasks}
         updates={share.updates}
         members={members}
+        disabled={isPassed}
       />
     </div>
   );

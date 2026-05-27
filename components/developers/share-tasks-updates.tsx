@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Plus, Trash2, Circle, CheckCircle2, Clock, User, Undo2 } from 'lucide-react';
+import { Check, Plus, Trash2, Circle, CheckCircle2, Clock, User, Undo2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -306,11 +306,13 @@ export function ShareTasksUpdates({
   tasks,
   updates,
   members,
+  disabled = false,
 }: {
   shareId: string;
   tasks: ShareTask[];
   updates: ShareUpdate[];
   members: TeamMemberSelect[];
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [addingTask, setAddingTask] = useState(false);
@@ -319,6 +321,12 @@ export function ShareTasksUpdates({
 
   const openTasks = tasks.filter((t) => t.status !== 'done');
   const doneTasks = tasks.filter((t) => t.status === 'done');
+
+  // Collapse any open add-forms whenever the share gets locked
+  if (disabled && (addingTask || addingUpdate)) {
+    if (addingTask) setAddingTask(false);
+    if (addingUpdate) setAddingUpdate(false);
+  }
 
   function handleDeleteUpdate(updateId: string) {
     startTransition(async () => {
@@ -329,6 +337,13 @@ export function ShareTasksUpdates({
 
   return (
     <div className="flex flex-col gap-0 mt-3 border-t pt-3">
+      {disabled && (
+        <div className="mb-3 flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-medium text-slate-600">
+          <Lock className="h-3 w-3" />
+          Developer passed — change outcome to add new tasks or updates.
+        </div>
+      )}
+
       {/* Tasks section */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1">
@@ -336,7 +351,9 @@ export function ShareTasksUpdates({
           {!addingTask && (
             <button
               onClick={() => setAddingTask(true)}
-              className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-0.5"
+              disabled={disabled}
+              className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground/60"
+              title={disabled ? 'Locked — developer passed on this share' : undefined}
             >
               <Plus className="h-3 w-3" />Add
             </button>
@@ -357,7 +374,7 @@ export function ShareTasksUpdates({
           ))}
         </div>
 
-        {addingTask && (
+        {addingTask && !disabled && (
           <AddTaskForm shareId={shareId} members={members} onClose={() => setAddingTask(false)} />
         )}
       </div>
@@ -369,7 +386,9 @@ export function ShareTasksUpdates({
           {!addingUpdate && (
             <button
               onClick={() => setAddingUpdate(true)}
-              className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-0.5"
+              disabled={disabled}
+              className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground/60"
+              title={disabled ? 'Locked — developer passed on this share' : undefined}
             >
               <Plus className="h-3 w-3" />Add
             </button>
@@ -388,7 +407,7 @@ export function ShareTasksUpdates({
           </div>
         )}
 
-        {addingUpdate && (
+        {addingUpdate && !disabled && (
           <AddUpdateForm shareId={shareId} onClose={() => setAddingUpdate(false)} />
         )}
       </div>
