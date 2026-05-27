@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ReactGridLayout, { useContainerWidth, verticalCompactor } from 'react-grid-layout';
@@ -34,6 +34,7 @@ type Props = {
 };
 
 const LAYOUT_KEY = 'anex:asset-panels-layout:v1';
+const SHARES_SORT_KEY = 'anex:asset-shares-sort:v1';
 
 const DEFAULT_LAYOUT: Layout = [
   { i: 'updates',  x: 0, y: 0,  w: 1, h: 11, minW: 1, minH: 6 },
@@ -42,8 +43,8 @@ const DEFAULT_LAYOUT: Layout = [
   { i: 'shares',   x: 1, y: 9,  w: 1, h: 5,  minW: 1, minH: 3 },
 ];
 
-function PanelShell({ title, count, children, chatMode }: {
-  title: string; count?: number; children: React.ReactNode; chatMode?: boolean;
+function PanelShell({ title, count, actions, children, chatMode }: {
+  title: string; count?: number; actions?: React.ReactNode; children: React.ReactNode; chatMode?: boolean;
 }) {
   return (
     <div className="rounded-lg border flex flex-col h-full min-h-0 overflow-hidden bg-card">
@@ -54,6 +55,15 @@ function PanelShell({ title, count, children, chatMode }: {
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
         {count !== undefined && (
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{count}</span>
+        )}
+        {actions && (
+          <div
+            className="ml-auto flex items-center gap-1 cursor-default"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {actions}
+          </div>
         )}
       </div>
       <div className={chatMode ? 'flex flex-col flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-y-auto'}>
@@ -639,11 +649,63 @@ const OUTCOME_COLORS: Record<string, string> = {
   interested: 'text-green-700', pursuing: 'text-blue-700', passed: 'text-gray-500', won: 'text-emerald-700',
 };
 
-function SharesPanel({ shares }: { shares: ShareWithDetails[] }) {
-  if (shares.length === 0) return <p className="text-xs text-muted-foreground text-center py-6 px-3">No shares yet.</p>;
+type ShareSort = 'newest' | 'oldest' | 'developer' | 'outcome' | 'shared_by';
+
+const SHARE_SORT_OPTIONS: { value: ShareSort; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'developer', label: 'Developer A–Z' },
+  { value: 'outcome', label: 'Outcome' },
+  { value: 'shared_by', label: 'Shared by A–Z' },
+];
+
+// Won → Interested → Pursuing → Pending → Passed
+const OUTCOME_RANK: Record<string, number> = {
+  won: 0, interested: 1, pursuing: 2, pending: 3, passed: 4,
+};
+
+function sortShares(shares: ShareWithDetails[], sort: ShareSort): ShareWithDetails[] {
+  const arr = [...shares];
+  switch (sort) {
+    case 'newest':
+      return arr.sort((a, b) => new Date(b.shared_at).getTime() - new Date(a.shared_at).getTime());
+    case 'oldest':
+      return arr.sort((a, b) => new Date(a.shared_at).getTime() - new Date(b.shared_at).getTime());
+    case 'developer':
+      return arr.sort((a, b) => a.developer_name.localeCompare(b.developer_name));
+    case 'shared_by':
+      return arr.sort((a, b) => a.shared_by_name.localeCompare(b.shared_by_name));
+    case 'outcome':
+      return arr.sort((a, b) => {
+        const ra = OUTCOME_RANK[a.outcome ?? 'pending'] ?? 99;
+        const rb = OUTCOME_RANK[b.outcome ?? 'pending'] ?? 99;
+        if (ra !== rb) return ra - rb;
+        return new Date(b.shared_at).getTime() - new Date(a.shared_at).getTime();
+      });
+  }
+}
+
+function SharesSortDropdown({ value, onChange }: { value: ShareSort; onChange: (v: ShareSort) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ShareSort)}
+      aria-label="Sort developer shares"
+      className="h-6 rounded border border-slate-200 bg-white px-1.5 text-[11px] outline-none focus:border-slate-400 cursor-pointer"
+    >
+      {SHARE_SORT_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function SharesPanel({ shares, sort }: { shares: ShareWithDetails[]; sort: ShareSort }) {
+  const sorted = useMemo(() => sortShares(shares, sort), [shares, sort]);
+  if (sorted.length === 0) return <p className="text-xs text-muted-foreground text-center py-6 px-3">No shares yet.</p>;
   return (
     <div className="flex flex-col divide-y">
-      {shares.map((s) => (
+      {sorted.map((s) => (
         <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20">
           <div className="flex-1 min-w-0">
             <Link
@@ -668,6 +730,21 @@ function SharesPanel({ shares }: { shares: ShareWithDetails[] }) {
 export function DetailPanels({ assetId, currentUserId, updates, tasks, activity, shares, teamMembers }: Props) {
   const openTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled').length;
   const { width, containerRef, mounted } = useContainerWidth();
+
+  const [shareSort, setShareSort] = useState<ShareSort>('newest');
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SHARES_SORT_KEY);
+      if (stored && SHARE_SORT_OPTIONS.some((opt) => opt.value === stored)) {
+        setShareSort(stored as ShareSort);
+      }
+    } catch {}
+  }, []);
+
+  function handleShareSortChange(next: ShareSort) {
+    setShareSort(next);
+    try { localStorage.setItem(SHARES_SORT_KEY, next); } catch {}
+  }
 
   const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
   useEffect(() => {
@@ -724,8 +801,12 @@ export function DetailPanels({ assetId, currentUserId, updates, tasks, activity,
               </PanelShell>
             </div>
             <div key="shares" className="h-full">
-              <PanelShell title="Developer Shares" count={shares.length}>
-                <SharesPanel shares={shares} />
+              <PanelShell
+                title="Developer Shares"
+                count={shares.length}
+                actions={<SharesSortDropdown value={shareSort} onChange={handleShareSortChange} />}
+              >
+                <SharesPanel shares={shares} sort={shareSort} />
               </PanelShell>
             </div>
           </ReactGridLayout>
