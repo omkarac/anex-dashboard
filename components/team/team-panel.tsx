@@ -46,14 +46,16 @@ function Section({
           {rows.length} member{rows.length !== 1 ? 's' : ''}
         </span>
       </div>
-      <table className="w-full text-sm">
-        <thead>{TABLE_HEADER}</thead>
-        <tbody>
-          {rows.map((m) => (
-            <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
-          ))}
-        </tbody>
-      </table>
+      <div className="max-h-80 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead>{TABLE_HEADER}</thead>
+          <tbody>
+            {rows.map((m) => (
+              <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -83,14 +85,16 @@ export function TeamPanel({ members, currentUserId, isAdmin, embedded }: Props) 
               {pending.length} waiting
             </span>
           </div>
-          <table className="w-full text-sm">
-            <thead>{TABLE_HEADER}</thead>
-            <tbody>
-              {pending.map((m) => (
-                <PendingMemberRow key={m.id} member={m} isCurrentUserAdmin={isAdmin} />
-              ))}
-            </tbody>
-          </table>
+          <div className="max-h-80 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>{TABLE_HEADER}</thead>
+              <tbody>
+                {pending.map((m) => (
+                  <PendingMemberRow key={m.id} member={m} isCurrentUserAdmin={isAdmin} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       <Section
@@ -133,14 +137,16 @@ export function TeamPanel({ members, currentUserId, isAdmin, embedded }: Props) 
               {inactive.length} member{inactive.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <table className="w-full text-sm">
-            <thead>{TABLE_HEADER}</thead>
-            <tbody>
-              {inactive.map((m) => (
-                <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
-              ))}
-            </tbody>
-          </table>
+          <div className="max-h-80 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>{TABLE_HEADER}</thead>
+              <tbody>
+                {inactive.map((m) => (
+                  <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </>
