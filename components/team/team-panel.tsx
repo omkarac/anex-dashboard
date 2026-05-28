@@ -45,16 +45,14 @@ function Section({
           {rows.length} member{rows.length !== 1 ? 's' : ''}
         </span>
       </div>
-      <div className="scroll-visible max-h-60 overflow-y-scroll">
-        <table className="w-full text-sm">
-          <thead>{TABLE_HEADER}</thead>
-          <tbody>
-            {rows.map((m) => (
-              <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <table className="w-full text-sm">
+        <thead>{TABLE_HEADER}</thead>
+        <tbody>
+          {rows.map((m) => (
+            <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -113,16 +111,14 @@ export function TeamPanel({ members, currentUserId, isAdmin, embedded }: Props) 
               {inactive.length} member{inactive.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <div className="scroll-visible max-h-60 overflow-y-scroll">
-            <table className="w-full text-sm">
-              <thead>{TABLE_HEADER}</thead>
-              <tbody>
-                {inactive.map((m) => (
-                  <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full text-sm">
+            <thead>{TABLE_HEADER}</thead>
+            <tbody>
+              {inactive.map((m) => (
+                <MemberRow key={m.id} member={m} currentUserId={currentUserId} isCurrentUserAdmin={isAdmin} />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </>

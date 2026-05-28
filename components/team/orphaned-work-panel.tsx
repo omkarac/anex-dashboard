@@ -125,7 +125,7 @@ export function OrphanedWorkPanel({ items, activeMembers, currentUserId, isAdmin
           {items.length} item{items.length !== 1 ? 's' : ''} from offboarded members · claim or reassign
         </span>
       </div>
-      <div className="scroll-visible max-h-60 overflow-y-scroll">
+      <div>
         {items.map((it) => (
           <ItemRow
             key={`${it.kind}:${it.id}`}
