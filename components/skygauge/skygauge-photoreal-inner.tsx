@@ -24,6 +24,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { X } from 'lucide-react';
 
 import { loadMap3DLibrary } from './google-maps-loader';
 import { computeOLSLimit } from '@/skygauge/api/ols/engine';
@@ -107,17 +108,10 @@ interface Polygon3DElement extends HTMLElement {
 
 type Polygon3DInteractiveElement = Polygon3DElement;
 
-interface Marker3DElement extends HTMLElement {
-  position: LatLngAltitudeInit;
-  altitudeMode: AltitudeModeValue;
-  label: string;
-}
-
 interface Map3DLibrary {
   Map3DElement: new (options: Map3DCameraOptions & { mode?: Map3DMode }) => Map3DElement;
   Polygon3DElement: new () => Polygon3DElement;
   Polygon3DInteractiveElement?: new () => Polygon3DInteractiveElement;
-  Marker3DElement: new () => Marker3DElement;
   AltitudeMode?: Record<AltitudeModeValue, AltitudeModeValue>;
 }
 
@@ -149,7 +143,6 @@ export default function SkygaugePhotorealInner({
   const mapRef = useRef<Map3DElement | null>(null);
   const libRef = useRef<Map3DLibrary | null>(null);
   const overlaysRef = useRef<HTMLElement[]>([]);
-  const labelMarkerRef = useRef<Marker3DElement | null>(null);
   // Lookup from a polygon DOM node back to its descriptor so click/hover
   // handlers surface the right height data. Multiple polygons per pillar all
   // resolve to the same `PillarOverlay`.
@@ -237,7 +230,6 @@ export default function SkygaugePhotorealInner({
       mapRef.current = null;
       libRef.current = null;
       overlaysRef.current = [];
-      labelMarkerRef.current = null;
       pillarByElementRef.current = new WeakMap();
     };
     // `googleKey` is a stable, build-time-resolved string — re-running the
@@ -365,38 +357,11 @@ export default function SkygaugePhotorealInner({
       }
     }
 
-    // 3. Shared label marker — hidden until a pillar is picked.
-    const marker = new lib.Marker3DElement();
-    marker.altitudeMode = altRel;
-    marker.position = { lat: site.lat, lng: site.lon, altitude: 0 };
-    marker.style.display = 'none';
-    map.appendChild(marker);
-    labelMarkerRef.current = marker;
-    created.push(marker);
-
     overlaysRef.current = created;
     console.info(
       `[skygauge/photoreal] mounted ${allPillars.length} structures (${created.length} elements)`,
     );
   }, [status, showCeiling, ceilingCells, pillars, siteMassing, site]);
-
-  // ── Drive the floating label off the selection state.
-  useEffect(() => {
-    const marker = labelMarkerRef.current;
-    if (!marker) return;
-    if (!selectedPillar) {
-      // Don't write `label = ''` — Map3D throws InvalidValueError for that.
-      marker.style.display = 'none';
-      return;
-    }
-    marker.position = {
-      lat: selectedPillar.centre.lat,
-      lng: selectedPillar.centre.lng,
-      altitude: selectedPillar.heightM,
-    };
-    marker.label = buildPillarLabel(selectedPillar);
-    marker.style.display = '';
-  }, [selectedPillar]);
 
   // ── Camera follows the site when it changes (animated, keeps tile cache).
   useEffect(() => {
@@ -490,6 +455,68 @@ export default function SkygaugePhotorealInner({
         </div>
       )}
 
+      {/* Selection card — HTML overlay, NOT a Map3D Marker3D label. Map3D
+          renders marker labels inside the WebGL scene where they pick up the
+          camera tilt and lose contrast against the photoreal imagery, making
+          them unreadable. An absolute-positioned DOM card stays camera-
+          independent and inherits all our normal Tailwind styling. */}
+      {selectedPillar && (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-[1050] flex justify-center px-3">
+          <div
+            className="pointer-events-auto w-[320px] max-w-[calc(100vw-1.5rem)] rounded-lg border bg-card/95 shadow-lg backdrop-blur-md"
+            style={{ borderLeft: `4px solid ${selectedPillar.fillColor}` }}
+          >
+            <div className="flex items-start justify-between gap-2 px-3 pt-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span
+                    className="size-2 rounded-sm"
+                    style={{ background: selectedPillar.fillColor }}
+                    aria-hidden
+                  />
+                  {pillarKindLabel(selectedPillar)}
+                </div>
+                {selectedPillar.nocId ? (
+                  <p className="mt-0.5 truncate font-mono text-sm font-semibold text-foreground">
+                    {selectedPillar.nocId}
+                    {selectedPillar.meetingDate && (
+                      <span className="ml-1.5 font-sans text-[11px] font-normal text-muted-foreground">
+                        ({fmtIsoDate(selectedPillar.meetingDate)})
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">
+                    {selectedPillar.label}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPillar(null)}
+                className="-mr-1 -mt-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Dismiss"
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </div>
+            <div className="border-t border-border/60 px-3 py-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-mono text-lg font-semibold tabular-nums text-foreground">
+                  {selectedPillar.topAmsl.toFixed(1)}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">m AMSL</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                ~
+                {Math.max(0, selectedPillar.topAmsl - selectedPillar.groundAmsl).toFixed(0)}{' '}
+                m above ground
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="pointer-events-none absolute bottom-3 left-3 space-y-1 rounded-md bg-card/90 px-3 py-2 text-[11px] shadow backdrop-blur-sm">
         <div className="font-semibold text-foreground">
           Photoreal · Google 3D Tiles{' '}
@@ -567,34 +594,31 @@ function ToggleButton({
   );
 }
 
-/**
- * Single-line hover/click label for a structure. Map3D's `Marker3D.label`
- * is a flat string (no multi-line / no rich content), so we pack all the
- * NOC / appellate identifiers + heights into one `·`-separated row.
- */
-function buildPillarLabel(p: PillarOverlay): string {
-  const aboveGround = Math.max(0, p.topAmsl - p.groundAmsl);
-  const heightStr = `${p.topAmsl.toFixed(1)} m AMSL · ~${aboveGround.toFixed(0)} m above ground`;
-
-  let header: string;
+/** Human label for the pillar kind — drives the card header. */
+function pillarKindLabel(p: PillarOverlay): string {
   switch (p.kind) {
     case 'site':
-      header = 'Buildable site massing';
-      break;
+      return 'Buildable site massing';
     case 'appeal':
-      header = p.nocId ? `Appellate case ${p.nocId}` : 'Appellate case';
-      if (p.meetingDate) header += ` (${p.meetingDate})`;
-      break;
+      return 'Appellate case';
     case 'noc_restricted':
-      header = p.nocId ? `Restricted NOC ${p.nocId}` : 'Restricted NOC';
-      break;
+      return 'Restricted NOC';
     case 'noc':
     default:
-      header = p.nocId ? `Issued NOC ${p.nocId}` : 'Issued NOC';
-      break;
+      return 'Issued NOC';
   }
+}
 
-  return `${header} · ${heightStr}`;
+/** Format an ISO date for display — defensive against malformed values. */
+function fmtIsoDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 /** Append an alpha channel to a #rrggbb hex. Map3D accepts #rrggbbaa. */
