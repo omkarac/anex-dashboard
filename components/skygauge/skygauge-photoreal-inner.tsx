@@ -24,7 +24,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { X } from 'lucide-react';
 
 import { loadMap3DLibrary } from './google-maps-loader';
 import { computeOLSLimit } from '@/skygauge/api/ols/engine';
@@ -108,10 +107,16 @@ interface Polygon3DElement extends HTMLElement {
 
 type Polygon3DInteractiveElement = Polygon3DElement;
 
+interface Marker3DElement extends HTMLElement {
+  position: LatLngAltitudeInit;
+  altitudeMode: AltitudeModeValue;
+}
+
 interface Map3DLibrary {
   Map3DElement: new (options: Map3DCameraOptions & { mode?: Map3DMode }) => Map3DElement;
   Polygon3DElement: new () => Polygon3DElement;
   Polygon3DInteractiveElement?: new () => Polygon3DInteractiveElement;
+  Marker3DElement: new () => Marker3DElement;
   AltitudeMode?: Record<AltitudeModeValue, AltitudeModeValue>;
 }
 
@@ -143,6 +148,7 @@ export default function SkygaugePhotorealInner({
   const mapRef = useRef<Map3DElement | null>(null);
   const libRef = useRef<Map3DLibrary | null>(null);
   const overlaysRef = useRef<HTMLElement[]>([]);
+  const labelMarkerRef = useRef<Marker3DElement | null>(null);
   // Lookup from a polygon DOM node back to its descriptor so click/hover
   // handlers surface the right height data. Multiple polygons per pillar all
   // resolve to the same `PillarOverlay`.
@@ -230,6 +236,7 @@ export default function SkygaugePhotorealInner({
       mapRef.current = null;
       libRef.current = null;
       overlaysRef.current = [];
+      labelMarkerRef.current = null;
       pillarByElementRef.current = new WeakMap();
     };
     // `googleKey` is a stable, build-time-resolved string — re-running the
@@ -357,11 +364,49 @@ export default function SkygaugePhotorealInner({
       }
     }
 
+    // 3. Shared label marker — anchors the selected building's bubble at its
+    //    top altitude. Created hidden; the selection effect updates its
+    //    position and re-renders the styled HTML child as the marker's
+    //    appearance. Map3D anchors the bottom-centre of the child content at
+    //    `position`, so the bubble's pointer-tail sits exactly on the
+    //    building's roof.
+    const marker = new lib.Marker3DElement();
+    marker.altitudeMode = altRel;
+    marker.position = { lat: site.lat, lng: site.lon, altitude: 0 };
+    marker.style.display = 'none';
+    map.appendChild(marker);
+    labelMarkerRef.current = marker;
+    created.push(marker);
+
     overlaysRef.current = created;
     console.info(
       `[skygauge/photoreal] mounted ${allPillars.length} structures (${created.length} elements)`,
     );
   }, [status, showCeiling, ceilingCells, pillars, siteMassing, site]);
+
+  // ── Render / update the styled HTML bubble inside the shared marker when
+  //    the selection changes. Lives in the marker's child slot so Map3D
+  //    keeps it anchored to the building's top in world space, but its
+  //    contents are regular DOM with theme-aware styling — readable against
+  //    photoreal imagery in a way the built-in `Marker3D.label` is not.
+  useEffect(() => {
+    const marker = labelMarkerRef.current;
+    if (!marker) return;
+    if (!selectedPillar) {
+      marker.style.display = 'none';
+      // Detach old contents — Map3D doesn't dispose them automatically.
+      while (marker.firstChild) marker.removeChild(marker.firstChild);
+      return;
+    }
+    marker.position = {
+      lat: selectedPillar.centre.lat,
+      lng: selectedPillar.centre.lng,
+      altitude: selectedPillar.heightM,
+    };
+    while (marker.firstChild) marker.removeChild(marker.firstChild);
+    marker.appendChild(buildBubbleElement(selectedPillar, dark));
+    marker.style.display = '';
+  }, [selectedPillar, dark]);
 
   // ── Camera follows the site when it changes (animated, keeps tile cache).
   useEffect(() => {
@@ -450,68 +495,6 @@ export default function SkygaugePhotorealInner({
               >
                 Hard reload
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Selection card — HTML overlay, NOT a Map3D Marker3D label. Map3D
-          renders marker labels inside the WebGL scene where they pick up the
-          camera tilt and lose contrast against the photoreal imagery, making
-          them unreadable. An absolute-positioned DOM card stays camera-
-          independent and inherits all our normal Tailwind styling. */}
-      {selectedPillar && (
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-[1050] flex justify-center px-3">
-          <div
-            className="pointer-events-auto w-[320px] max-w-[calc(100vw-1.5rem)] rounded-lg border bg-card/95 shadow-lg backdrop-blur-md"
-            style={{ borderLeft: `4px solid ${selectedPillar.fillColor}` }}
-          >
-            <div className="flex items-start justify-between gap-2 px-3 pt-2.5">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span
-                    className="size-2 rounded-sm"
-                    style={{ background: selectedPillar.fillColor }}
-                    aria-hidden
-                  />
-                  {pillarKindLabel(selectedPillar)}
-                </div>
-                {selectedPillar.nocId ? (
-                  <p className="mt-0.5 truncate font-mono text-sm font-semibold text-foreground">
-                    {selectedPillar.nocId}
-                    {selectedPillar.meetingDate && (
-                      <span className="ml-1.5 font-sans text-[11px] font-normal text-muted-foreground">
-                        ({fmtIsoDate(selectedPillar.meetingDate)})
-                      </span>
-                    )}
-                  </p>
-                ) : (
-                  <p className="mt-0.5 text-sm font-semibold text-foreground">
-                    {selectedPillar.label}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedPillar(null)}
-                className="-mr-1 -mt-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Dismiss"
-              >
-                <X className="size-3.5" aria-hidden />
-              </button>
-            </div>
-            <div className="border-t border-border/60 px-3 py-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-mono text-lg font-semibold tabular-nums text-foreground">
-                  {selectedPillar.topAmsl.toFixed(1)}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">m AMSL</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                ~
-                {Math.max(0, selectedPillar.topAmsl - selectedPillar.groundAmsl).toFixed(0)}{' '}
-                m above ground
-              </p>
             </div>
           </div>
         </div>
@@ -619,6 +602,122 @@ function fmtIsoDate(iso: string | null | undefined): string | null {
     month: 'short',
     year: 'numeric',
   });
+}
+
+/**
+ * Build the styled HTML bubble that Map3D mounts as the marker's child. The
+ * marker anchors the bubble's bottom-centre at the building's roof, so the
+ * downward-pointing tail sits exactly on the structure. Styling is inline
+ * so it survives even if the marker lives inside the Map3D shadow root.
+ */
+function buildBubbleElement(pillar: PillarOverlay, dark: boolean): HTMLElement {
+  const bgColor = dark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.97)';
+  const textColor = dark ? '#f1f5f9' : '#0f172a';
+  const subtleColor = dark ? '#94a3b8' : '#64748b';
+  const borderColor = dark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(15, 23, 42, 0.08)';
+  const shadow = dark
+    ? '0 6px 18px rgba(0, 0, 0, 0.5)'
+    : '0 6px 18px rgba(15, 23, 42, 0.22)';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = [
+    'display: flex',
+    'flex-direction: column',
+    'align-items: center',
+    'pointer-events: none',
+    'font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+  ].join(';');
+
+  const bubble = document.createElement('div');
+  bubble.style.cssText = [
+    `background: ${bgColor}`,
+    `color: ${textColor}`,
+    `border: 1px solid ${borderColor}`,
+    `border-left: 3px solid ${pillar.fillColor}`,
+    'border-radius: 8px',
+    'padding: 6px 10px 7px',
+    'min-width: 140px',
+    'max-width: 280px',
+    'line-height: 1.35',
+    `box-shadow: ${shadow}`,
+    'backdrop-filter: blur(6px)',
+  ].join(';');
+
+  // Kind row
+  const kindRow = document.createElement('div');
+  kindRow.style.cssText = [
+    'display: flex',
+    'align-items: center',
+    'gap: 5px',
+    'font-size: 9px',
+    `color: ${subtleColor}`,
+    'text-transform: uppercase',
+    'letter-spacing: 0.06em',
+    'font-weight: 600',
+  ].join(';');
+  const dot = document.createElement('span');
+  dot.style.cssText = `width: 6px; height: 6px; border-radius: 2px; background: ${pillar.fillColor}; display: inline-block;`;
+  kindRow.appendChild(dot);
+  kindRow.appendChild(document.createTextNode(pillarKindLabel(pillar)));
+  bubble.appendChild(kindRow);
+
+  // Identifier row (NOC ID + optional meeting date)
+  if (pillar.nocId) {
+    const idRow = document.createElement('div');
+    idRow.style.cssText = [
+      'font-family: ui-monospace, SFMono-Regular, Menlo, monospace',
+      'font-weight: 600',
+      'font-size: 12px',
+      'margin-top: 2px',
+      'white-space: nowrap',
+      'overflow: hidden',
+      'text-overflow: ellipsis',
+    ].join(';');
+    idRow.textContent = pillar.nocId;
+    if (pillar.meetingDate) {
+      const dateSpan = document.createElement('span');
+      dateSpan.style.cssText = `font-family: inherit; font-weight: 400; font-size: 10px; color: ${subtleColor}; margin-left: 6px;`;
+      dateSpan.textContent = `(${fmtIsoDate(pillar.meetingDate) ?? pillar.meetingDate})`;
+      idRow.appendChild(dateSpan);
+    }
+    bubble.appendChild(idRow);
+  }
+
+  // Height rows
+  const heightRow = document.createElement('div');
+  heightRow.style.cssText = 'margin-top: 4px; display: flex; align-items: baseline; gap: 3px;';
+  const heightNum = document.createElement('span');
+  heightNum.style.cssText =
+    'font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums;';
+  heightNum.textContent = pillar.topAmsl.toFixed(1);
+  const heightUnit = document.createElement('span');
+  heightUnit.style.cssText = `font-size: 10px; color: ${subtleColor}; font-weight: 500;`;
+  heightUnit.textContent = 'm AMSL';
+  heightRow.appendChild(heightNum);
+  heightRow.appendChild(heightUnit);
+  bubble.appendChild(heightRow);
+
+  const aboveGround = Math.max(0, pillar.topAmsl - pillar.groundAmsl);
+  const aglRow = document.createElement('div');
+  aglRow.style.cssText = `font-size: 10px; color: ${subtleColor};`;
+  aglRow.textContent = `~${aboveGround.toFixed(0)} m above ground`;
+  bubble.appendChild(aglRow);
+
+  // Downward arrow tail — same fill as the bubble, sits at the anchor point.
+  const tail = document.createElement('div');
+  tail.style.cssText = [
+    'width: 0',
+    'height: 0',
+    'border-left: 6px solid transparent',
+    'border-right: 6px solid transparent',
+    `border-top: 7px solid ${bgColor}`,
+    'margin-top: -1px',
+    `filter: drop-shadow(0 2px 2px ${dark ? 'rgba(0,0,0,0.4)' : 'rgba(15,23,42,0.15)'})`,
+  ].join(';');
+
+  wrapper.appendChild(bubble);
+  wrapper.appendChild(tail);
+  return wrapper;
 }
 
 /** Append an alpha channel to a #rrggbb hex. Map3D accepts #rrggbbaa. */
