@@ -57,11 +57,55 @@ function getFileTypeConfig(url: string): FileTypeConfig {
   };
 }
 
+// ─── Preview routing ──────────────────────────────────────────────────────────
+
+type PreviewMode = 'image' | 'iframe' | 'fallback';
+
+// Hosts that send X-Frame-Options: SAMEORIGIN (or equivalent CSP) and so
+// cannot be embedded cross-origin. SharePoint embed URLs (action=embedview)
+// and the Office Online viewer ARE designed to iframe, so we let those through.
+function getPreviewMode(url: string, label: string): PreviewMode {
+  const lower = url.toLowerCase();
+  if (
+    lower.includes('action=embedview') ||
+    lower.includes('view.officeapps.live.com/op/embed')
+  ) {
+    return 'iframe';
+  }
+  if (
+    lower.includes('.sharepoint.com') ||
+    (lower.includes('docs.google.com') && !lower.includes('/embed')) ||
+    (lower.includes('drive.google.com') && !lower.includes('/preview'))
+  ) {
+    return 'fallback';
+  }
+  if (label === 'IMG') return 'image';
+  return 'iframe';
+}
+
+function getOpenLabel(url: string): string {
+  const lower = url.toLowerCase();
+  if (lower.includes('.sharepoint.com')) return 'Open in SharePoint';
+  if (lower.includes('docs.google.com') || lower.includes('drive.google.com')) {
+    return 'Open in Google Drive';
+  }
+  return 'Open in new tab';
+}
+
+function getHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+}
+
 // ─── Preview modal ────────────────────────────────────────────────────────────
 
 function FilePreviewModal({ file, onClose }: { file: AssetFile; onClose: () => void }) {
   const cfg = getFileTypeConfig(file.url);
-  const isImage = cfg.label === 'IMG';
+  const mode = getPreviewMode(file.url, cfg.label);
+  const openLabel = getOpenLabel(file.url);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -97,7 +141,7 @@ function FilePreviewModal({ file, onClose }: { file: AssetFile; onClose: () => v
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
-            Open in new tab
+            {openLabel}
           </a>
           <button
             onClick={onClose}
@@ -108,22 +152,46 @@ function FilePreviewModal({ file, onClose }: { file: AssetFile; onClose: () => v
           </button>
         </div>
         <div className="flex-1 bg-muted/30 overflow-hidden">
-          {isImage ? (
+          {mode === 'image' && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={file.url}
               alt={file.title}
               className="w-full h-full object-contain"
             />
-          ) : (
+          )}
+          {mode === 'iframe' && (
             <iframe
               src={file.url}
               title={file.title || 'File preview'}
               className="w-full h-full border-0"
-              // SharePoint / Office Online previews need the document.domain
-              // and the user's existing session; we just point at the URL and
-              // let the host service render it.
             />
+          )}
+          {mode === 'fallback' && (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-6 px-6 text-center">
+              <div className={`w-24 h-24 rounded-2xl ${cfg.iconBg} flex items-center justify-center`}>
+                <cfg.Icon className={`w-12 h-12 ${cfg.iconColor}`} strokeWidth={1.5} />
+              </div>
+              <div className="flex flex-col gap-1.5 max-w-md">
+                <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded self-center ${cfg.iconBg} ${cfg.iconColor}`}>
+                  {cfg.label}
+                </span>
+                <h3 className="text-base font-semibold">{file.title || 'Untitled'}</h3>
+                <p className="text-xs text-muted-foreground">{getHostname(file.url)}</p>
+              </div>
+              <p className="text-sm text-muted-foreground max-w-md">
+                This host blocks inline preview (X-Frame-Options). Open the file in a new tab to view it.
+              </p>
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 text-sm font-medium transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                {openLabel}
+              </a>
+            </div>
           )}
         </div>
       </div>
