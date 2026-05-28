@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { getAuthenticatedMember } from '@/lib/auth/member';
 import { listTeamMembers, getActiveTeamMembers } from '@/lib/queries/team';
 import { getOrphanedWork } from '@/lib/queries/orphaned';
-import { TeamPanel } from '@/components/team/team-panel';
+import { TeamDirectory } from '@/components/team/team-directory';
 import { OrphanedWorkPanel } from '@/components/team/orphaned-work-panel';
 import { PendingApprovalButton } from '@/components/team/pending-approval-button';
 
@@ -39,7 +39,7 @@ export default async function TeamPage() {
           currentUserId={me.id}
           isAdmin={isAdmin}
         />
-        <TeamPanel members={members} currentUserId={me.id} isAdmin={isAdmin} embedded />
+        <TeamDirectory members={members} currentUserId={me.id} isAdmin={isAdmin} />
       </div>
     </div>
   );
