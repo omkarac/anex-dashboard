@@ -3,6 +3,7 @@ import { Archivo, Plus_Jakarta_Sans, DM_Mono } from 'next/font/google';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SwRegister } from '@/app/sw-register';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 
 const archivo = Archivo({
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
         <SwRegister />
+        <SpeedInsights />
       </body>
     </html>
   );
