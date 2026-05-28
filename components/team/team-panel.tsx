@@ -46,7 +46,7 @@ function Section({
           {rows.length} member{rows.length !== 1 ? 's' : ''}
         </span>
       </div>
-      <div className="max-h-80 overflow-y-auto">
+      <div className="scroll-visible max-h-60 overflow-y-scroll">
         <table className="w-full text-sm">
           <thead>{TABLE_HEADER}</thead>
           <tbody>
@@ -85,7 +85,7 @@ export function TeamPanel({ members, currentUserId, isAdmin, embedded }: Props) 
               {pending.length} waiting
             </span>
           </div>
-          <div className="max-h-80 overflow-y-auto">
+          <div className="scroll-visible max-h-60 overflow-y-scroll">
             <table className="w-full text-sm">
               <thead>{TABLE_HEADER}</thead>
               <tbody>
@@ -137,7 +137,7 @@ export function TeamPanel({ members, currentUserId, isAdmin, embedded }: Props) 
               {inactive.length} member{inactive.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <div className="max-h-80 overflow-y-auto">
+          <div className="scroll-visible max-h-60 overflow-y-scroll">
             <table className="w-full text-sm">
               <thead>{TABLE_HEADER}</thead>
               <tbody>
