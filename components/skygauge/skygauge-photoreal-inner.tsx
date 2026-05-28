@@ -41,6 +41,26 @@ import {
 
 const DEFAULT_RADIUS_M = 1200;
 
+// Map3D's alpha runtime emits hover events on Polygon3DInteractiveElement
+// under inconsistent names across versions — attaching them all is harmless
+// and ensures we catch whichever the deployed runtime fires.
+const HOVER_ENTER_EVENTS = [
+  'gmp-pointerenter',
+  'gmp-pointerover',
+  'gmp-mouseenter',
+  'gmp-mouseover',
+] as const;
+const HOVER_LEAVE_EVENTS = [
+  'gmp-pointerleave',
+  'gmp-pointerout',
+  'gmp-mouseleave',
+  'gmp-mouseout',
+] as const;
+/** Hover leave is debounced so moving the cursor between segments of the
+ *  same building (one extruded polygon per setback/taper slab) doesn't
+ *  flicker the floating label between visible and hidden. */
+const HOVER_LEAVE_DELAY_MS = 80;
+
 // ─── Minimal Map3D typings — @types/google.maps doesn't ship maps3d yet ──────
 
 type AltitudeModeValue =
@@ -135,6 +155,11 @@ export default function SkygaugePhotorealInner({
   // resolve to the same `PillarOverlay`.
   const pillarByElementRef = useRef<WeakMap<HTMLElement, PillarOverlay>>(new WeakMap());
   const initialSiteRef = useRef<LatLon>(site);
+  // Debounce timer for hover-leave. Multiple polygon segments per building
+  // can fire enter/leave rapidly as the cursor moves between them; we delay
+  // the "clear selection" so a leave-then-enter on the same building doesn't
+  // flicker the floating label.
+  const hoverLeaveTimerRef = useRef<number | null>(null);
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -203,6 +228,10 @@ export default function SkygaugePhotorealInner({
 
     return () => {
       cancelled = true;
+      if (hoverLeaveTimerRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimerRef.current);
+        hoverLeaveTimerRef.current = null;
+      }
       const map = mapRef.current;
       if (map && host.contains(map)) host.removeChild(map);
       mapRef.current = null;
@@ -258,6 +287,25 @@ export default function SkygaugePhotorealInner({
       lib.AltitudeMode?.RELATIVE_TO_GROUND ?? 'RELATIVE_TO_GROUND';
     const PolyInteractive = lib.Polygon3DInteractiveElement ?? lib.Polygon3DElement;
 
+    // Hover bookkeeping — debounced leave avoids flicker between segments of
+    // the same building.
+    const handlePillarEnter = (pillar: PillarOverlay) => {
+      if (hoverLeaveTimerRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimerRef.current);
+        hoverLeaveTimerRef.current = null;
+      }
+      setSelectedPillar(pillar);
+    };
+    const handlePillarLeave = (pillar: PillarOverlay) => {
+      if (hoverLeaveTimerRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimerRef.current);
+      }
+      hoverLeaveTimerRef.current = window.setTimeout(() => {
+        hoverLeaveTimerRef.current = null;
+        setSelectedPillar((current) => (current?.key === pillar.key ? null : current));
+      }, HOVER_LEAVE_DELAY_MS);
+    };
+
     const created: HTMLElement[] = [];
     const allPillars: PillarOverlay[] = siteMassing ? [...pillars, siteMassing] : pillars;
 
@@ -298,14 +346,19 @@ export default function SkygaugePhotorealInner({
 
         poly.addEventListener('gmp-click', (event: Event) => {
           event.stopPropagation();
-          setSelectedPillar(pillar);
+          handlePillarEnter(pillar);
         });
-        // Hover events — fire on the runtimes that ship them, harmless when
-        // they don't. Click stays as the dependable fallback.
-        poly.addEventListener('gmp-pointerenter', () => setSelectedPillar(pillar));
-        poly.addEventListener('gmp-pointerleave', () =>
-          setSelectedPillar((current) => (current?.key === pillar.key ? null : current)),
-        );
+        // Map3D's alpha channel ships hover events on Polygon3DInteractiveElement
+        // under inconsistent names across runtimes — some emit `gmp-pointerenter`,
+        // others `gmp-pointerover` or `gmp-mouseover`. Attach all of them; the
+        // ones the runtime doesn't fire are a no-op, and any of them is enough
+        // to drive the same handler.
+        for (const evt of HOVER_ENTER_EVENTS) {
+          poly.addEventListener(evt, () => handlePillarEnter(pillar));
+        }
+        for (const evt of HOVER_LEAVE_EVENTS) {
+          poly.addEventListener(evt, () => handlePillarLeave(pillar));
+        }
 
         map.appendChild(poly);
         created.push(poly);
@@ -336,13 +389,12 @@ export default function SkygaugePhotorealInner({
       marker.style.display = 'none';
       return;
     }
-    const aboveGround = Math.max(0, selectedPillar.topAmsl - selectedPillar.groundAmsl);
     marker.position = {
       lat: selectedPillar.centre.lat,
       lng: selectedPillar.centre.lng,
       altitude: selectedPillar.heightM,
     };
-    marker.label = `${selectedPillar.label} · ${selectedPillar.topAmsl.toFixed(1)} m AMSL · ~${aboveGround.toFixed(0)} m above ground`;
+    marker.label = buildPillarLabel(selectedPillar);
     marker.style.display = '';
   }, [selectedPillar]);
 
@@ -453,7 +505,7 @@ export default function SkygaugePhotorealInner({
           <LegendDot color={PILLAR_COLORS.site} label="Your site" />
         </div>
         <div className="text-muted-foreground">
-          Hover or click a building for its permitted top · imagery © Google
+          Hover a building for its NOC + permitted top · imagery © Google
         </div>
       </div>
 
@@ -513,6 +565,36 @@ function ToggleButton({
       {children}
     </button>
   );
+}
+
+/**
+ * Single-line hover/click label for a structure. Map3D's `Marker3D.label`
+ * is a flat string (no multi-line / no rich content), so we pack all the
+ * NOC / appellate identifiers + heights into one `·`-separated row.
+ */
+function buildPillarLabel(p: PillarOverlay): string {
+  const aboveGround = Math.max(0, p.topAmsl - p.groundAmsl);
+  const heightStr = `${p.topAmsl.toFixed(1)} m AMSL · ~${aboveGround.toFixed(0)} m above ground`;
+
+  let header: string;
+  switch (p.kind) {
+    case 'site':
+      header = 'Buildable site massing';
+      break;
+    case 'appeal':
+      header = p.nocId ? `Appellate case ${p.nocId}` : 'Appellate case';
+      if (p.meetingDate) header += ` (${p.meetingDate})`;
+      break;
+    case 'noc_restricted':
+      header = p.nocId ? `Restricted NOC ${p.nocId}` : 'Restricted NOC';
+      break;
+    case 'noc':
+    default:
+      header = p.nocId ? `Issued NOC ${p.nocId}` : 'Issued NOC';
+      break;
+  }
+
+  return `${header} · ${heightStr}`;
 }
 
 /** Append an alpha channel to a #rrggbb hex. Map3D accepts #rrggbbaa. */

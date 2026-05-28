@@ -74,6 +74,10 @@ export interface PillarOverlay {
   readonly groundAmsl: number;
   /** Stack of extruded polygons composing the building's silhouette. */
   readonly segments: readonly PillarSegment[];
+  /** AAI NOC identifier (for NOCs + appeals; null for the site massing). */
+  readonly nocId: string | null;
+  /** Appellate committee meeting date, ISO. Null for non-appeal records. */
+  readonly meetingDate: string | null;
 }
 
 export const PILLAR_COLORS: Record<PillarKind, string> = {
@@ -265,6 +269,8 @@ export function buildSiteMassing(
     heightM,
     groundAmsl,
     segments: segmentsFor(site, SITE_STYLE, SITE_FOOTPRINT_M, heightM),
+    nocId: null,
+    meetingDate: null,
   };
 }
 
@@ -298,6 +304,8 @@ export function buildPillars(
       heightM,
       groundAmsl,
       segments: segmentsFor(centre, style, footprintM, heightM),
+      nocId: noc.noc_id,
+      meetingDate: null,
     });
   });
 
@@ -321,6 +329,8 @@ export function buildPillars(
       heightM,
       groundAmsl,
       segments: segmentsFor(centre, style, footprintM, heightM),
+      nocId: appeal.noc_id,
+      meetingDate: appeal.meeting_date,
     });
   });
 
