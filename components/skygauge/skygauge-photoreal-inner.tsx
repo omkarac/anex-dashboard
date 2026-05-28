@@ -110,13 +110,21 @@ type Polygon3DInteractiveElement = Polygon3DElement;
 interface Marker3DElement extends HTMLElement {
   position: LatLngAltitudeInit;
   altitudeMode: AltitudeModeValue;
+  label?: string;
+  sizePreserved?: boolean;
 }
+
+type Marker3DInteractiveElement = Marker3DElement;
 
 interface Map3DLibrary {
   Map3DElement: new (options: Map3DCameraOptions & { mode?: Map3DMode }) => Map3DElement;
   Polygon3DElement: new () => Polygon3DElement;
   Polygon3DInteractiveElement?: new () => Polygon3DInteractiveElement;
   Marker3DElement: new () => Marker3DElement;
+  /** Map3DInteractiveElement is the only marker variant that reliably
+   *  accepts arbitrary HTML children as its visual; the non-interactive
+   *  Marker3DElement only renders the built-in label string. */
+  Marker3DInteractiveElement?: new () => Marker3DInteractiveElement;
   AltitudeMode?: Record<AltitudeModeValue, AltitudeModeValue>;
 }
 
@@ -365,14 +373,23 @@ export default function SkygaugePhotorealInner({
     }
 
     // 3. Shared label marker — anchors the selected building's bubble at its
-    //    top altitude. Created hidden; the selection effect updates its
-    //    position and re-renders the styled HTML child as the marker's
-    //    appearance. Map3D anchors the bottom-centre of the child content at
-    //    `position`, so the bubble's pointer-tail sits exactly on the
-    //    building's roof.
-    const marker = new lib.Marker3DElement();
+    //    top altitude. We prefer Marker3DInteractiveElement here because that's
+    //    the marker variant Map3D's alpha runtime actually renders custom HTML
+    //    children for; Marker3DElement only paints the built-in `label`
+    //    string. The selection effect updates `position` and replaces the
+    //    marker's children with a styled bubble whose downward tail anchors
+    //    at the marker's bottom-centre = the building's roof.
+    const MarkerCtor =
+      lib.Marker3DInteractiveElement ?? lib.Marker3DElement;
+    const marker = new MarkerCtor();
     marker.altitudeMode = altRel;
     marker.position = { lat: site.lat, lng: site.lon, altitude: 0 };
+    if ('sizePreserved' in marker) {
+      // Keep the bubble at a constant pixel size regardless of zoom — without
+      // this the marker scales with camera distance and either tiny-shrinks
+      // far away or covers the whole view up close.
+      marker.sizePreserved = true;
+    }
     marker.style.display = 'none';
     map.appendChild(marker);
     labelMarkerRef.current = marker;
@@ -405,6 +422,9 @@ export default function SkygaugePhotorealInner({
     };
     while (marker.firstChild) marker.removeChild(marker.firstChild);
     marker.appendChild(buildBubbleElement(selectedPillar, dark));
+    // Fallback `label` so SOMETHING reads if the runtime ignores the HTML
+    // child slot — short single line that matches what's in the bubble.
+    marker.label = buildFallbackLabel(selectedPillar);
     marker.style.display = '';
   }, [selectedPillar, dark]);
 
@@ -575,6 +595,15 @@ function ToggleButton({
       {children}
     </button>
   );
+}
+
+/** Single-line fallback label for Marker3D.label — used only if the runtime
+ *  doesn't render the HTML child we mount as the marker's appearance. */
+function buildFallbackLabel(p: PillarOverlay): string {
+  const aboveGround = Math.max(0, p.topAmsl - p.groundAmsl);
+  const id = p.nocId ? ` ${p.nocId}` : '';
+  const kind = pillarKindLabel(p);
+  return `${kind}${id} · ${p.topAmsl.toFixed(1)} m AMSL · ~${aboveGround.toFixed(0)} m`;
 }
 
 /** Human label for the pillar kind — drives the card header. */
