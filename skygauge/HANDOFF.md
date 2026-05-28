@@ -77,10 +77,10 @@ Seven slices' worth of work complete. In Supabase (PostGIS): 11,578 NOCs **and**
 
 | Slice | Description | Why it matters |
 |---|---|---|
-| 4-tiles-verify | Visually verify + tune the Photoreal 3D Tiles overlay alignment (NORTH_SIGN, ground datum) | Built but unverified-by-eye. First real-browser pass to confirm tiles load + overlay lines up. |
-| 12-live | Live monthly appellate PDF cron parser → keep `appeal_case` fresh | Historical seed is in; this keeps it current. Needs the AAI PDF endpoint. |
-| 18 | Per-NOC PDF letter extraction (owner / address / detailed coords) | Only 7.9 % of records have owner+address today. Phase 2. |
-| — | PDF report generation | Noted earlier; nice-to-have once the above land. |
+| 12-live | Live monthly appellate PDF cron parser → keep `appeal_case` fresh | Historical seed is in; this keeps it current. Needs live access to the AAI PDF endpoint (`nocas2.aai.aero/.../AppealProceeding/`) to verify the parser against real PDFs — deferred until the team can run a stable test against it. |
+| 18-parser | Per-NOC PDF letter extraction (owner / address / detailed coords) — Python scraper + idempotent backfill | Only 7.9 % of NOC records have owner + address today. Same external-endpoint constraint as 12-live; defer until a couple of letter PDFs can be inspected end-to-end. |
+| 4-tiles-verify | DONE — photoreal rebuilt on Map3DElement + stacked Polygon3DInteractive structures; hover, NOC IDs, dark mode, label toggle, OLS ceiling toggle all shipped. |
+| Site report | DONE — `/skygauge/report?lat=&lon=&elev=&radius=&label=` server-renders a printable site analysis. "Report" link on the result panel opens it in a new tab; `window.print()` saves as PDF. |
 
 ## Recommended next prompt
 

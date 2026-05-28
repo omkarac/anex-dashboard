@@ -10,12 +10,31 @@
  * insight. Elevation is a manual input in v1 (Bhuvan SRTM DEM is a v2 follow-up).
  */
 
+import { Printer } from 'lucide-react';
+
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { LatLon, OLSResult, SurfaceHit } from '@/skygauge/api/ols/types';
 import type { EmpiricalBand, NearbyAppeal } from '@/skygauge/api/empirical/types';
 
 import { SURFACE_META } from './surface-meta';
+
+/** Compose the printable-report URL with the current site + radius + elevation. */
+function buildReportHref(
+  site: LatLon,
+  label: string | undefined,
+  elevationStr: string,
+  radiusM: number,
+): string {
+  const params = new URLSearchParams();
+  params.set('lat', site.lat.toString());
+  params.set('lon', site.lon.toString());
+  const parsed = Number.parseFloat(elevationStr);
+  if (Number.isFinite(parsed)) params.set('elev', parsed.toString());
+  if (label) params.set('label', label);
+  params.set('radius', radiusM.toString());
+  return `/skygauge/report?${params.toString()}`;
+}
 
 export type EmpiricalStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type ElevationSource = 'loading' | 'google' | 'manual' | null;
@@ -98,11 +117,13 @@ export function SkygaugeResultPanel({
   const { binding } = result;
 
   // ── Unconstrained (outside every airport's outer-horizontal footprint) ─────
+  const reportHref = buildReportHref(site, label, elevationStr, empirical.radiusM);
+
   if (!binding || result.max_top_amsl_m === null) {
     return (
       <aside className={cn(PANEL_SHELL, className)}>
         <div className="space-y-3 p-4">
-          <SiteHeading label={label} site={site} />
+          <SiteHeading label={label} site={site} reportHref={reportHref} />
           <div className="rounded-lg border border-dashed bg-muted/40 p-3">
             <p className="text-sm font-medium text-foreground">No OLS constraint</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -126,7 +147,7 @@ export function SkygaugeResultPanel({
       <div className="h-1 shrink-0 rounded-t-xl" style={{ background: bindingMeta.color }} />
 
       <div className="space-y-4 p-4">
-        <SiteHeading label={label} site={site} />
+        <SiteHeading label={label} site={site} reportHref={reportHref} />
 
         {/* Headline metric — theoretical max permissible top, AMSL */}
         <div>
@@ -437,19 +458,41 @@ function ElevationSourceBadge({ source }: { source: ElevationSource }) {
   return null;
 }
 
-function SiteHeading({ label, site }: { label?: string; site: LatLon }) {
+function SiteHeading({
+  label,
+  site,
+  reportHref,
+}: {
+  label?: string;
+  site: LatLon;
+  reportHref?: string;
+}) {
   return (
-    <div>
-      {label ? (
-        <h2 className="truncate text-sm font-semibold tracking-tight text-foreground">
-          {label}
-        </h2>
-      ) : (
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">
-          Selected site
-        </h2>
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        {label ? (
+          <h2 className="truncate text-sm font-semibold tracking-tight text-foreground">
+            {label}
+          </h2>
+        ) : (
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+            Selected site
+          </h2>
+        )}
+        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{fmtCoords(site)}</p>
+      </div>
+      {reportHref && (
+        <a
+          href={reportHref}
+          target="_blank"
+          rel="noreferrer"
+          title="Open a printable site report in a new tab"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <Printer className="size-3" aria-hidden />
+          Report
+        </a>
       )}
-      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{fmtCoords(site)}</p>
     </div>
   );
 }
