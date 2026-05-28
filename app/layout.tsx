@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Archivo, Plus_Jakarta_Sans, DM_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SwRegister } from '@/app/sw-register';
@@ -45,6 +47,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
         <SwRegister />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
