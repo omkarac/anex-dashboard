@@ -54,6 +54,7 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: LucideIco
     { href: '/capital-markets/developers', label: 'Developers', icon: Users2 },
     { href: '/skygauge', label: 'Skygauge', icon: Plane, adminOnly: true },
     { href: '/audit', label: 'Audit Room', icon: ScrollText },
+    { href: '/audit/eod-report', label: 'EOD Report', icon: FileText, adminOnly: true },
     { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
   ],
   sales_marketing: [
