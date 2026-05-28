@@ -47,7 +47,18 @@ import type { TeamMember } from '@/lib/rbac';
 
 export type Vertical = 'capital_markets' | 'sales_marketing';
 
-const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: LucideIcon; exact?: boolean; adminOnly?: boolean }[]> = {
+type NotifyKey = 'pending_members';
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  adminOnly?: boolean;
+  notify?: NotifyKey;
+};
+
+const NAV_ITEMS: Record<Vertical, NavItem[]> = {
   capital_markets: [
     { href: '/capital-markets', label: 'Capital Markets', icon: LayoutDashboard, exact: true },
     { href: '/capital-markets/assets', label: 'Assets', icon: Building2 },
@@ -55,7 +66,7 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: LucideIco
     { href: '/skygauge', label: 'Skygauge', icon: Plane, adminOnly: true },
     { href: '/audit', label: 'Audit Room', icon: ScrollText },
     { href: '/audit/eod-report', label: 'EOD Report', icon: FileText, adminOnly: true },
-    { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true },
+    { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true, notify: 'pending_members' },
   ],
   sales_marketing: [
     { href: '/sales-marketing', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -68,36 +79,81 @@ const NAV_ITEMS: Record<Vertical, { href: string; label: string; icon: LucideIco
     { href: '/sales-marketing/cp-review', label: 'CP Review', icon: TrendingUp },
     { href: '/sales-marketing/lost-analysis', label: 'Lost Analysis', icon: TrendingDown },
     { href: '/audit', label: 'Audit Room', icon: ScrollText },
-    { href: '/sales-marketing/team', label: 'Team', icon: Grid3X3, adminOnly: true },
+    { href: '/sales-marketing/team', label: 'Team', icon: Grid3X3, adminOnly: true, notify: 'pending_members' },
   ],
 };
+
+// CSS for the attention-pulse on the badge — defined once at module scope and
+// injected via a single <style> below so we don't need a tailwind plugin.
+const BADGE_STYLES = `
+  @keyframes anex-badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.45); }
+    50%      { box-shadow: 0 0 0 5px rgba(180, 83, 9, 0); }
+  }
+  .anex-badge-pulse { animation: anex-badge-pulse 1.8s ease-out infinite; }
+`;
 
 function initials(name: string) {
   return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
 function NavLink({
-  href, label, icon: Icon, exact, collapsed, onClick,
+  href, label, icon: Icon, exact, collapsed, onClick, badgeCount,
 }: {
-  href: string; label: string; icon: LucideIcon; exact?: boolean; collapsed?: boolean; onClick?: () => void;
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  collapsed?: boolean;
+  onClick?: () => void;
+  badgeCount?: number;
 }) {
   const pathname = usePathname();
   const active = exact ? pathname === href : pathname.startsWith(href);
+  const hasBadge = (badgeCount ?? 0) > 0;
+  const titleText = collapsed
+    ? hasBadge
+      ? `${label} · ${badgeCount} pending`
+      : label
+    : undefined;
 
   return (
     <Link
       href={href}
-      title={collapsed ? label : undefined}
+      title={titleText}
       onClick={onClick}
       className={cn(
-        'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150 min-h-[44px]',
+        'relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150 min-h-[44px]',
         active
           ? 'bg-primary text-primary-foreground shadow-sm'
           : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <span className="relative shrink-0 flex">
+        <Icon className="h-4 w-4" />
+        {/* Collapsed sidebar: amber dot on icon corner */}
+        {collapsed && hasBadge && (
+          <span
+            aria-hidden
+            className="anex-badge-pulse absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#B45309] ring-2 ring-sidebar"
+          />
+        )}
+      </span>
       {!collapsed && <span className="truncate">{label}</span>}
+      {/* Expanded sidebar: numeric pill */}
+      {!collapsed && hasBadge && (
+        <span
+          aria-label={`${badgeCount} pending approval`}
+          className={cn(
+            'anex-badge-pulse ml-auto inline-flex items-center justify-center min-w-[20px] h-5 rounded-full text-[10px] font-bold px-1.5 tabular-nums shrink-0',
+            active
+              ? 'bg-white/95 text-[#B45309]'
+              : 'bg-[#B45309] text-white'
+          )}
+        >
+          {badgeCount}
+        </span>
+      )}
     </Link>
   );
 }
@@ -137,12 +193,14 @@ function SidebarContent({
   collapsed,
   setCollapsed,
   onNavClick,
+  notifyCounts,
 }: {
   member: TeamMember;
   vertical: Vertical;
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
   onNavClick?: () => void;
+  notifyCounts: Record<NotifyKey, number>;
 }) {
   const visibleNav = NAV_ITEMS[vertical].filter((item) => !item.adminOnly || member.role === 'admin');
 
@@ -202,6 +260,7 @@ function SidebarContent({
             exact={item.exact}
             collapsed={collapsed}
             onClick={onNavClick}
+            badgeCount={item.notify ? notifyCounts[item.notify] : 0}
           />
         ))}
       </nav>
@@ -286,17 +345,24 @@ function MobilePageTitle({ vertical }: { vertical: Vertical }) {
 export function AppShell({
   member,
   vertical,
+  pendingMembersCount = 0,
   children,
 }: {
   member: TeamMember;
   vertical: Vertical;
+  pendingMembersCount?: number;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const notifyCounts: Record<NotifyKey, number> = {
+    pending_members: pendingMembersCount,
+  };
+
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
+      <style>{BADGE_STYLES}</style>
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
@@ -330,6 +396,7 @@ export function AppShell({
           collapsed={collapsed}
           setCollapsed={setCollapsed}
           onNavClick={() => setMobileOpen(false)}
+          notifyCounts={notifyCounts}
         />
       </aside>
 

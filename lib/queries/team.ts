@@ -3,6 +3,18 @@ import type { TeamMemberRole, MemberStatus } from '@/lib/schemas/team';
 
 export type TeamMemberSelect = { id: string; full_name: string };
 
+// Quarantined members waiting on an admin to assign role + department. Surfaces
+// in the sidebar as a badge on the Team nav item so admins don't miss them.
+export async function getPendingMembersCount(): Promise<number> {
+  const service = createServiceClient();
+  const { count } = await service
+    .from('team_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+    .eq('is_active', true);
+  return count ?? 0;
+}
+
 export async function getActiveTeamMembers(): Promise<TeamMemberSelect[]> {
   const service = createServiceClient();
   const { data } = await service
