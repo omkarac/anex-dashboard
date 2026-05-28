@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FileText, FileSpreadsheet, Layers, Image, File, Plus, X, ExternalLink, GripVertical } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AssetFile } from '@/lib/schemas/asset-file';
@@ -57,12 +57,87 @@ function getFileTypeConfig(url: string): FileTypeConfig {
   };
 }
 
+// ─── Preview modal ────────────────────────────────────────────────────────────
+
+function FilePreviewModal({ file, onClose }: { file: AssetFile; onClose: () => void }) {
+  const cfg = getFileTypeConfig(file.url);
+  const isImage = cfg.label === 'IMG';
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Preview of ${file.title}`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex flex-col w-full max-w-6xl h-[90vh] bg-background rounded-lg shadow-2xl overflow-hidden"
+      >
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b shrink-0">
+          <p className="text-sm font-medium truncate flex-1">{file.title || 'Untitled'}</p>
+          <a
+            href={file.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Open in new tab
+          </a>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground p-1 rounded"
+            aria-label="Close preview"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 bg-muted/30 overflow-hidden">
+          {isImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={file.url}
+              alt={file.title}
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <iframe
+              src={file.url}
+              title={file.title || 'File preview'}
+              className="w-full h-full border-0"
+              // SharePoint / Office Online previews need the document.domain
+              // and the user's existing session; we just point at the URL and
+              // let the host service render it.
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── File card ────────────────────────────────────────────────────────────────
 
 function FileCard({
   file,
   onRemove,
   onRename,
+  onOpenPreview,
   isDragOver,
   onDragStart,
   onDragOver,
@@ -72,6 +147,7 @@ function FileCard({
   file: AssetFile;
   onRemove: () => void;
   onRename: (title: string) => void;
+  onOpenPreview: () => void;
   isDragOver: boolean;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -81,6 +157,10 @@ function FileCard({
   const cfg = getFileTypeConfig(file.url);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(file.title);
+  // Image URLs that can't actually be fetched (SharePoint share links,
+  // CORS-blocked, 404s) silently fall back to the icon.
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImageThumb = cfg.label === 'IMG' && !imgFailed;
 
   function commitRename() {
     setEditing(false);
@@ -96,8 +176,9 @@ function FileCard({
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
       onDrop={onDrop}
+      onClick={() => { if (!editing) onOpenPreview(); }}
       className={[
-        'relative group flex flex-col rounded-md border transition-all duration-150 overflow-hidden cursor-grab active:cursor-grabbing select-none',
+        'relative group flex flex-col rounded-md border transition-all duration-150 overflow-hidden cursor-pointer select-none',
         cfg.cardBg,
         'dark:bg-card',
         isDragOver
@@ -105,6 +186,7 @@ function FileCard({
           : 'border-border hover:border-foreground/20 hover:shadow-sm',
       ].join(' ')}
       style={{ borderTopRightRadius: 0 }}
+      title="Click to preview · Drag to reorder"
     >
       {/* Folded corner */}
       <div
@@ -124,10 +206,23 @@ function FileCard({
           </span>
         </div>
 
-        {/* Icon */}
-        <div className={`w-9 h-9 rounded-md ${cfg.iconBg} flex items-center justify-center mx-auto`}>
-          <cfg.Icon className={`w-4.5 h-4.5 ${cfg.iconColor}`} strokeWidth={1.5} />
-        </div>
+        {/* Image thumbnail OR icon */}
+        {showImageThumb ? (
+          <div className="w-full aspect-square rounded-md overflow-hidden bg-muted/40 border border-border/50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={file.url}
+              alt={file.title}
+              onError={() => setImgFailed(true)}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        ) : (
+          <div className={`w-9 h-9 rounded-md ${cfg.iconBg} flex items-center justify-center mx-auto`}>
+            <cfg.Icon className={`w-4.5 h-4.5 ${cfg.iconColor}`} strokeWidth={1.5} />
+          </div>
+        )}
 
         {/* Title */}
         <div className="flex-1">
@@ -147,6 +242,7 @@ function FileCard({
           ) : (
             <p
               className="text-[11px] font-medium text-foreground/85 line-clamp-2 leading-tight cursor-text hover:text-foreground text-center"
+              onClick={(e) => e.stopPropagation()}
               onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
               title="Double-click to rename"
             >
@@ -267,6 +363,7 @@ function AddFileForm({ assetId, onAdded }: { assetId: string; onAdded: (file: As
 
 export function FileDrawer({ assetId, initialFiles }: { assetId: string; initialFiles: AssetFile[] }) {
   const [files, setFiles] = useState<AssetFile[]>(initialFiles);
+  const [previewFile, setPreviewFile] = useState<AssetFile | null>(null);
   const dragIndex = useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -332,6 +429,7 @@ export function FileDrawer({ assetId, initialFiles }: { assetId: string; initial
               onDrop={() => handleDrop(index)}
               onRemove={() => handleRemove(file.id)}
               onRename={(title) => handleRename(file.id, title)}
+              onOpenPreview={() => setPreviewFile(file)}
             />
           ))}
         </div>
@@ -340,7 +438,11 @@ export function FileDrawer({ assetId, initialFiles }: { assetId: string; initial
       <AddFileForm assetId={assetId} onAdded={handleAdded} />
 
       {files.length > 0 && (
-        <p className="text-[10px] text-muted-foreground text-center">Drag to reorder · Double-click title to rename</p>
+        <p className="text-[10px] text-muted-foreground text-center">Click to preview · Drag to reorder · Double-click title to rename</p>
+      )}
+
+      {previewFile && (
+        <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       )}
     </section>
   );
