@@ -39,7 +39,6 @@ import {
   type PillarOverlay,
 } from './photoreal-overlays';
 
-const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const DEFAULT_RADIUS_M = 1200;
 
 // ─── Minimal Map3D typings — @types/google.maps doesn't ship maps3d yet ──────
@@ -109,6 +108,10 @@ interface SkygaugePhotorealInnerProps {
   nocs?: NearbyNoc[];
   appeals?: NearbyAppeal[];
   height?: string;
+  /** Threaded down from `SkygaugePhotoreal` (non-dynamic wrapper) so we never
+   *  depend on Next.js / Turbopack inlining `NEXT_PUBLIC_*` env vars into
+   *  this dynamically-imported chunk. */
+  googleKey?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -120,6 +123,7 @@ export default function SkygaugePhotorealInner({
   nocs = [],
   appeals = [],
   height = '100%',
+  googleKey,
 }: SkygaugePhotorealInnerProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map3DElement | null>(null);
@@ -151,7 +155,7 @@ export default function SkygaugePhotorealInner({
     setStatus('loading');
     setErrorMessage(null);
 
-    loadMap3DLibrary()
+    loadMap3DLibrary(googleKey)
       .then((lib) => {
         if (cancelled || !hostRef.current) return;
         const m3d = lib as Map3DLibrary;
@@ -207,6 +211,9 @@ export default function SkygaugePhotorealInner({
       labelMarkerRef.current = null;
       pillarByElementRef.current = new WeakMap();
     };
+    // `googleKey` is a stable, build-time-resolved string — re-running the
+    // mount effect on it would tear down the live map for no real reason.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryNonce]);
 
   // ── Mode + label toggle is a single property update on the live element.
@@ -370,7 +377,7 @@ export default function SkygaugePhotorealInner({
     });
   }, [site, radiusM, groundAmsl, siteResult]);
 
-  if (!GOOGLE_KEY) {
+  if (!googleKey) {
     return (
       <div
         style={{ height }}
@@ -379,7 +386,8 @@ export default function SkygaugePhotorealInner({
         <p className="max-w-sm text-sm text-muted-foreground">
           Photoreal needs a Google key with the <span className="font-medium">Map Tiles API</span>{' '}
           enabled (+ billing). Set{' '}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>{' '}
+          and redeploy with a fresh build (uncheck &ldquo;Use existing Build Cache&rdquo;).
         </p>
       </div>
     );

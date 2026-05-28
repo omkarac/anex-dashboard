@@ -11,7 +11,14 @@
  * Beta channel is required for `maps3d` — Places/Elevation behave identically.
  */
 
-const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+// Module-level read of the env var. In Next.js + Turbopack this is inlined
+// into THIS module's chunk at build time. If the module ends up in a
+// dynamically-imported (`ssr: false`) chunk, the inlining can silently fail
+// (the value becomes `undefined` in that chunk despite Vercel having the var
+// set). Callers in dynamic chunks should therefore pass the key explicitly
+// via the `apiKey` parameter to `loadGoogleMaps` / `loadMap3DLibrary`; the
+// env-var fallback is only used by callers in the main client bundle.
+const GOOGLE_KEY_FROM_ENV = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 declare global {
   interface Window {
@@ -23,15 +30,22 @@ let mapsPromise: Promise<typeof google> | null = null;
 
 /** True when a Google key is configured (build-time inlined). */
 export function hasGoogleKey(): boolean {
-  return Boolean(GOOGLE_KEY);
+  return Boolean(GOOGLE_KEY_FROM_ENV);
 }
 
-/** Load the Maps JS API (Places library) exactly once. Rejects without a key. */
-export function loadGoogleMaps(): Promise<typeof google> {
+/**
+ * Load the Maps JS API (Places library) exactly once.
+ *
+ * @param apiKey  Override the env-var-derived key. Pass this from callers
+ *                that live in dynamically-imported chunks where Turbopack
+ *                may not have inlined `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+ */
+export function loadGoogleMaps(apiKey?: string): Promise<typeof google> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Google Maps unavailable during SSR'));
   }
-  if (!GOOGLE_KEY) return Promise.reject(new Error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY not set'));
+  const key = apiKey ?? GOOGLE_KEY_FROM_ENV;
+  if (!key) return Promise.reject(new Error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY not set'));
 
   const existing = window.google;
   if (existing?.maps) return Promise.resolve(existing);
@@ -43,7 +57,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
     // superset of beta; Places + Elevation behave identically. Nothing else
     // in the app depends on a pinned version.
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      GOOGLE_KEY,
+      key,
     )}&v=alpha&libraries=places&loading=async`;
     script.async = true;
     script.onload = () => {
@@ -79,12 +93,15 @@ export async function getGoogleElevation(lat: number, lon: number): Promise<numb
  * load via HMR or a back-nav) can hang indefinitely. We race it against a
  * 12-second deadline so the UI flips to an explicit error rather than a
  * permanent spinner.
+ *
+ * @param apiKey  See `loadGoogleMaps` — required when this is called from a
+ *                dynamically-imported chunk.
  */
 const MAP3D_TIMEOUT_MS = 12_000;
 
 let map3dPromise: Promise<unknown> | null = null;
-export async function loadMap3DLibrary(): Promise<unknown> {
-  const g = await loadGoogleMaps();
+export async function loadMap3DLibrary(apiKey?: string): Promise<unknown> {
+  const g = await loadGoogleMaps(apiKey);
   if (!map3dPromise) {
     const importPromise = g.maps.importLibrary('maps3d');
     const timeoutPromise = new Promise<never>((_, reject) => {
