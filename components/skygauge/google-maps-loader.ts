@@ -51,21 +51,37 @@ export function loadGoogleMaps(apiKey?: string): Promise<typeof google> {
   if (existing?.maps) return Promise.resolve(existing);
   if (mapsPromise) return mapsPromise;
 
-  mapsPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    // v=alpha is required for the maps3d photoreal web components and is a
-    // superset of beta; Places + Elevation behave identically. Nothing else
-    // in the app depends on a pinned version.
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      key,
-    )}&v=alpha&libraries=places&loading=async`;
-    script.async = true;
-    script.onload = () => {
-      const loaded = window.google;
-      if (loaded?.maps) resolve(loaded);
-      else reject(new Error('Google Maps failed to initialise after load'));
+  mapsPromise = new Promise<typeof google>((resolve, reject) => {
+    // Use Google's documented `callback=` parameter rather than `script.onload`.
+    // With `loading=async`, `google.maps` (and especially `importLibrary`)
+    // becomes available AFTER the script bytes have parsed — `script.onload`
+    // can fire while `importLibrary` is still missing, which surfaces as the
+    // classic "t.maps.importLibrary is not a function" runtime error. The
+    // callback only runs once Maps has finished installing its API surface.
+    const callbackName = `__skygaugeMapsReady_${Math.random().toString(36).slice(2, 10)}`;
+    const win = window as unknown as Record<string, unknown>;
+
+    const finish = (fn: () => void) => {
+      delete win[callbackName];
+      fn();
     };
-    script.onerror = () => reject(new Error('Google Maps script failed to load'));
+
+    win[callbackName] = () => {
+      const loaded = window.google;
+      if (loaded?.maps) finish(() => resolve(loaded));
+      else finish(() => reject(new Error('Google Maps callback fired but maps namespace is missing')));
+    };
+
+    const script = document.createElement('script');
+    // v=alpha is required for the maps3d photoreal web components.
+    // Preload BOTH places and maps3d via libraries=… so Map3DElement is
+    // available directly on `google.maps.maps3d` and we don't strictly
+    // depend on `importLibrary` being present.
+    script.src =
+      `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}` +
+      `&v=alpha&libraries=places,maps3d&loading=async&callback=${callbackName}`;
+    script.async = true;
+    script.onerror = () => finish(() => reject(new Error('Google Maps script failed to load')));
     document.head.appendChild(script);
   });
   return mapsPromise;
@@ -103,36 +119,51 @@ let map3dPromise: Promise<unknown> | null = null;
 export async function loadMap3DLibrary(apiKey?: string): Promise<unknown> {
   const g = await loadGoogleMaps(apiKey);
   if (!map3dPromise) {
-    const importPromise = g.maps.importLibrary('maps3d');
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
-        () =>
-          reject(
-            new Error(
-              'maps3d library did not load within 12s — confirm the Map Tiles API is enabled, ' +
-                'billing is active, and the Maps JS script was loaded with v=alpha. A hard ' +
-                'reload may be needed if a previous session cached an older script.',
-            ),
-          ),
-        MAP3D_TIMEOUT_MS,
-      );
-    });
-    map3dPromise = Promise.race([importPromise, timeoutPromise]).then((lib) => {
-      // Validate the shape — a successful resolution that's missing the constructor
-      // points at a channel mismatch, not a runtime error.
-      const candidate = lib as { Map3DElement?: unknown } | null;
-      if (!candidate || typeof candidate.Map3DElement !== 'function') {
-        throw new Error(
-          'maps3d library loaded but is missing Map3DElement — the Maps JS script must be ' +
-            'served from the alpha channel (v=alpha). A hard reload may be needed.',
-        );
-      }
-      return lib;
-    });
+    map3dPromise = resolveMaps3D(g);
     // Reset the cache on rejection so a retry can re-fetch on the next render.
     map3dPromise.catch(() => {
       map3dPromise = null;
     });
   }
   return map3dPromise;
+}
+
+async function resolveMaps3D(g: typeof google): Promise<unknown> {
+  // Path 1 — direct namespace. The loader script URL preloads `maps3d` via
+  // the `libraries=…` param, so `google.maps.maps3d` is the canonical
+  // location for `Map3DElement` and friends. No importLibrary call needed.
+  const direct = (g.maps as { maps3d?: unknown }).maps3d;
+  if (isValidMaps3D(direct)) return direct;
+
+  // Path 2 — dynamic library import. Some runtimes only expose maps3d via
+  // `importLibrary`; race it against a deadline so the UI flips to an
+  // explicit error rather than a permanent spinner.
+  if (typeof g.maps.importLibrary === 'function') {
+    const importPromise = g.maps.importLibrary('maps3d');
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              'maps3d library did not load within 12s — confirm the Map Tiles API is enabled and billing is active.',
+            ),
+          ),
+        MAP3D_TIMEOUT_MS,
+      );
+    });
+    const lib = await Promise.race([importPromise, timeoutPromise]);
+    if (isValidMaps3D(lib)) return lib;
+    throw new Error(
+      'maps3d resolved but Map3DElement is missing — channel mismatch (need v=alpha)?',
+    );
+  }
+
+  throw new Error(
+    'Google Maps loaded without the maps3d library — ' +
+      'libraries=maps3d was missing from the script URL or the Map Tiles API is not enabled on this key.',
+  );
+}
+
+function isValidMaps3D(lib: unknown): lib is { Map3DElement: unknown } {
+  return Boolean(lib) && typeof (lib as { Map3DElement?: unknown }).Map3DElement === 'function';
 }
