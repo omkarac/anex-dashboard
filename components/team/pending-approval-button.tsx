@@ -105,32 +105,50 @@ export function PendingApprovalButton({
   isAdmin: boolean;
 }) {
   const count = pending.length;
-  if (count === 0) return null;
+  const hasPending = count > 0;
 
   return (
     <Sheet>
       <SheetTrigger
         type="button"
-        className="relative inline-flex items-center gap-2 rounded-md border border-[#B45309]/30 bg-[#B45309]/10 px-3 h-8 text-xs font-medium text-[#B45309] hover:bg-[#B45309]/20 transition-colors"
+        className={
+          hasPending
+            ? 'relative inline-flex items-center gap-2 rounded-md border border-[#B45309]/30 bg-[#B45309]/10 px-3 h-8 text-xs font-medium text-[#B45309] hover:bg-[#B45309]/20 transition-colors'
+            : 'relative inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 h-8 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors'
+        }
       >
         <UserPlus className="h-3.5 w-3.5" />
         Pending approval
-        <span className="relative inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#B45309] text-white text-[11px] font-semibold">
+        <span
+          className={
+            hasPending
+              ? 'relative inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#B45309] text-white text-[11px] font-semibold'
+              : 'inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-muted text-muted-foreground text-[11px] font-semibold'
+          }
+        >
           {count}
-          <span className="absolute inset-0 rounded-full bg-[#B45309] animate-ping opacity-60" />
+          {hasPending && (
+            <span className="absolute inset-0 rounded-full bg-[#B45309] animate-ping opacity-60" />
+          )}
         </span>
       </SheetTrigger>
       <SheetContent side="right" className="w-[420px] sm:max-w-md flex flex-col gap-0 p-0">
         <SheetHeader className="border-b">
           <SheetTitle>Pending approval</SheetTitle>
           <SheetDescription>
-            {count} member{count === 1 ? '' : 's'} waiting for role + department assignment.
+            {hasPending
+              ? `${count} member${count === 1 ? '' : 's'} waiting for role + department assignment.`
+              : 'No members are waiting for approval right now.'}
           </SheetDescription>
         </SheetHeader>
         <div className="scroll-visible flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-          {pending.map((m) => (
-            <PendingCard key={m.id} member={m} isAdmin={isAdmin} />
-          ))}
+          {hasPending ? (
+            pending.map((m) => <PendingCard key={m.id} member={m} isAdmin={isAdmin} />)
+          ) : (
+            <div className="text-xs text-muted-foreground border border-dashed rounded-lg p-6 text-center">
+              You'll see new joiners here once they sign in with an @anexadvisory.com magic link.
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
