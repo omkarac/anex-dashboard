@@ -25,7 +25,7 @@ function dashboardUrl(): string {
 }
 
 function revalidateEodPaths() {
-  revalidatePath('/audit/eod-report');
+  revalidatePath('/capital-markets/eod-report');
 }
 
 export type EodSendResult = {

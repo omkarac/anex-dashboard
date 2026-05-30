@@ -65,7 +65,7 @@ const NAV_ITEMS: Record<Vertical, NavItem[]> = {
     { href: '/capital-markets/developers', label: 'Developers', icon: Users2 },
     { href: '/skygauge', label: 'Skygauge', icon: Plane, adminOnly: true },
     { href: '/audit', label: 'Audit Room', icon: ScrollText },
-    { href: '/audit/eod-report', label: 'EOD Report', icon: FileText, adminOnly: true },
+    { href: '/capital-markets/eod-report', label: 'EOD Report', icon: FileText, adminOnly: true },
     { href: '/capital-markets/team', label: 'Team', icon: UsersRound, adminOnly: true, notify: 'pending_members' },
   ],
   sales_marketing: [
@@ -78,7 +78,7 @@ const NAV_ITEMS: Record<Vertical, NavItem[]> = {
     { href: '/sales-marketing/sm-performance', label: 'SM Performance', icon: BarChart3, adminOnly: true },
     { href: '/sales-marketing/cp-review', label: 'CP Review', icon: TrendingUp },
     { href: '/sales-marketing/lost-analysis', label: 'Lost Analysis', icon: TrendingDown },
-    { href: '/audit', label: 'Audit Room', icon: ScrollText },
+    { href: '/audit?v=sm', label: 'Audit Room', icon: ScrollText },
     { href: '/sales-marketing/team', label: 'Team', icon: Grid3X3, adminOnly: true, notify: 'pending_members' },
   ],
 };
@@ -109,7 +109,8 @@ function NavLink({
   badgeCount?: number;
 }) {
   const pathname = usePathname();
-  const active = exact ? pathname === href : pathname.startsWith(href);
+  const matchPath = href.split('?')[0];
+  const active = exact ? pathname === matchPath : pathname.startsWith(matchPath);
   const hasBadge = (badgeCount ?? 0) > 0;
   const titleText = collapsed
     ? hasBadge
@@ -329,13 +330,14 @@ function MobilePageTitle({ vertical }: { vertical: Vertical }) {
 
   const title = (() => {
     const nav = NAV_ITEMS[vertical];
+    const matchOf = (n: NavItem) => n.href.split('?')[0];
     // Exact match first
-    const exact = nav.find(n => n.exact && pathname === n.href);
+    const exact = nav.find(n => n.exact && pathname === matchOf(n));
     if (exact) return exact.label;
     // Prefix match — longest wins
     const prefix = [...nav]
-      .filter(n => pathname.startsWith(n.href))
-      .sort((a, b) => b.href.length - a.href.length)[0];
+      .filter(n => pathname.startsWith(matchOf(n)))
+      .sort((a, b) => matchOf(b).length - matchOf(a).length)[0];
     return prefix?.label ?? 'Anex';
   })();
 
